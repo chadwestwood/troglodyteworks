@@ -1,0 +1,19 @@
+[
+  {
+    "server_id": "srv_asa_genesis_001",
+    "customer_id": "cust_0001",
+    "service_id": "svc_asa_0001",
+    "game": "ARK Survival Ascended",
+    "name": "Cohorts in the Wild -- Genesis",
+    "status": "running",
+    "map": "Genesis_WP",
+    "public_ip": "73.142.46.152",
+    "ports": {
+      "game": 7777,
+      "query": 27015,
+      "rcon": 27020
+    },
+    "mods": ["929420", "928548", "929578"],
+    "backup_status": "last backup 6 hours ago"
+  }
+]

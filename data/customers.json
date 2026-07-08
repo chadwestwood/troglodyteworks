@@ -1,0 +1,16 @@
+[
+  {
+    "customer_id": "cust_0001",
+    "name": "Chad Westwood",
+    "email": "chadwestwood@gmail.com",
+    "subscription": "founder",
+    "services": ["svc_asa_0001"]
+  },
+  {
+    "customer_id": "cust_0002",
+    "name": "Test Customer",
+    "email": "test@example.com",
+    "subscription": "standard",
+    "services": ["svc_mc_0001"]
+  }
+
