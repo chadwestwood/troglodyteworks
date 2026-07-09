@@ -1,95 +1,163 @@
 # Troglodyte Works Architecture
 
-## Customer Portal
+## Philosophy
 
-The customer-facing website.
+Troglodyte Works is built from the outside in.
 
-Responsibilities:
+The architecture begins with the Member experience.
 
-- Login
-- Dashboard
-- Billing
-- Server list
-- Backups
-- Settings
-- AI Chat
+Technology exists to support Journeys.
+
+Journeys support Communities.
+
+Communities create value.
 
 ---
 
-## AI Layer
+# Layer 1 — Experience
 
-The AI never directly edits files.
-
-Instead it communicates with MCP servers.
-
-The AI's responsibility is reasoning.
-
-The MCP servers' responsibility is taking actions.
-
----
-
-## MCP Servers
-
-Each MCP server specializes in one area.
+Everything begins with a Journey.
 
 Examples:
 
-- Customer MCP
-- Game MCP
-- Linux MCP
-- Billing MCP
-- Monitoring MCP
+- Join Friends
+- Manage Game Servers
+- Explore Troglodyte Works
 
-Each MCP server exposes tools.
+A Journey asks one question at a time and reveals only the next relevant step.
 
 ---
 
-## Game Servers
+# Layer 2 — Communities
 
-Each customer's servers run independently.
+Communities are the center of the platform.
 
-Supported games include:
+A Community may contain:
 
-- Ark Survival Ascended
-- Ark Survival Evolved
-- Minecraft
-- Palworld
+- Members
+- Roles
+- Servers
+- Events
+- Polls
+- Automations
 
-Future games can be added without changing the AI.
-
----
-
-## Storage
-
-Stores:
-
-- Customer accounts
-- Server profiles
-- Game templates
-- Logs
-- Backups
-- Billing information
+Most features exist within the context of a Community.
 
 ---
 
-## Monitoring
+# Layer 3 — Services
 
-Collects:
+Services provide capabilities.
 
-- CPU usage
-- RAM usage
-- Disk usage
-- Player count
-- Server status
-- Crash reports
+Examples:
+
+- Server Management
+- Hosting
+- Discord Integration
+- Monitoring
+- Automation
+- Guidance
+
+Services should remain modular.
+
+New Services should be added without redesigning the platform.
 
 ---
 
-## Automation
+# Layer 4 — Guides
 
-Handles:
+Guides help Members accomplish goals.
 
-- Scheduled restarts
-- Automatic backups
-- Mod updates
-- Notifications
+Guides:
+
+- Explain
+- Recommend
+- Observe
+- Adapt
+
+Guides do not directly perform actions.
+
+They request Tools.
+
+The interface must remain usable even when Guides are disabled.
+
+---
+
+# Layer 5 — AI
+
+AI provides reasoning.
+
+Examples:
+
+- Diagnose issues
+- Recommend actions
+- Explain settings
+- Coordinate workflows
+
+AI never directly changes the operating system.
+
+---
+
+# Layer 6 — MCP Tools
+
+MCP Tools provide approved actions.
+
+Examples:
+
+- Restart Server
+- Read Logs
+- Install Mods
+- Create Backup
+- Schedule Event
+
+Every Tool has a clearly defined responsibility.
+
+---
+
+# Layer 7 — Infrastructure
+
+Infrastructure executes the work.
+
+Includes:
+
+- Linux
+- Docker
+- Game Servers
+- Databases
+- Storage
+- Monitoring
+- Networking
+
+Infrastructure should remain replaceable.
+
+Replacing infrastructure should not change the Member experience.
+
+---
+
+# Design Principles
+
+Every architectural decision should answer:
+
+Does this make the product:
+
+- calmer?
+- simpler?
+- more powerful?
+
+If not, reconsider the design.
+
+---
+
+# Long-Term Vision
+
+The architecture should support new:
+
+- Games
+- Communities
+- Services
+- Guides
+- Integrations
+
+without requiring fundamental redesign.
+
+The platform should evolve by adding capabilities rather than increasing complexity.

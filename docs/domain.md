@@ -1,35 +1,102 @@
 # Troglodyte Works Domain Model
 
-The platform is built around business objects.
+The platform is organized around people, communities, and the services that support them.
 
-## Customer
-
-A person with one account.
-
-Owns one or more Services.
+Technology exists to serve the community—not the other way around.
 
 ---
 
-## Service
+# Visitor
 
-A hosted product.
+A person exploring Troglodyte Works.
+
+Visitors have no identity within the platform.
+
+They may:
+
+- Explore
+- Learn
+- Experience demonstrations
+- Begin onboarding
+
+Visitors become Members after authenticating.
+
+---
+
+# Member
+
+A known identity within Troglodyte Works.
+
+Members may belong to multiple Communities.
+
+Membership is independent of billing.
+
+Possible authentication methods include:
+
+- Google
+- Discord
+- Steam
+- Email
+- Microsoft
+- Apple
+
+---
+
+# Community
+
+The primary organizational object.
+
+Everything meaningful happens within a Community.
 
 Examples:
 
-- ARK Survival Ascended
-- Minecraft
-- Palworld
-- Docker Host
+- Friends gaming together
+- Content creator communities
+- Gaming clans
+- Discord communities
+- Family servers
 
-A Service owns one or more Servers.
+A Community owns:
+
+- Members
+- Roles
+- Servers
+- Events
+- Polls
+- Automations
+- Resources
 
 ---
 
-## Server
+# Role
 
-A running instance.
+A Member's permissions inside a specific Community.
 
-Properties:
+Examples:
+
+- Community Member
+- Moderator
+- Community Owner
+- Server Owner
+- Administrator
+
+A Member may have different Roles in different Communities.
+
+---
+
+# Server
+
+A managed game server.
+
+Servers may be:
+
+- Hosted by Troglodyte Works
+- Self-hosted
+- Hosted by another provider
+
+Troglodyte Works manages them consistently regardless of where they run.
+
+Properties include:
 
 - Name
 - Status
@@ -40,68 +107,70 @@ Properties:
 - Mods
 - Backups
 - Logs
-- Resources
 
 ---
 
-## Map
+# Service
 
-A playable world.
+A capability provided by Troglodyte Works.
 
 Examples:
 
-- Genesis
-- Ragnarok
-- Lost Colony
-- The Island
+- Server Hosting
+- Server Management
+- Discord Integration
+- Polls
+- Scheduling
+- Automation
+- Monitoring
+- AI Guidance
+
+Services may be free or subscription-based.
 
 ---
 
-## Mod
+# Guide
 
-A downloadable extension.
+A companion that helps Members accomplish goals.
 
-Properties:
+Guides never perform actions without permission.
 
-- ID
-- Name
-- Version
-- Dependencies
-- Enabled
+Guides adapt over time to how Members prefer to be helped.
 
----
+Trog is the default Guide.
 
-## Backup
-
-A snapshot of a server.
-
-Properties:
-
-- Date
-- Size
-- Reason
-- Restore Point
+Other Guides may specialize in different interaction styles.
 
 ---
 
-## Tool
+# Tool
 
-An action exposed through MCP.
+A safe action exposed through MCP.
 
 Examples:
 
-- start_server
-- stop_server
-- backup_server
-- install_mod
-- read_logs
+- Restart Server
+- Create Backup
+- Read Logs
+- Schedule Event
+- Install Mod
+
+Guides request Tools.
+
+Tools perform actions.
 
 ---
 
-## Agent
+# Journey
 
-An AI employee.
+A sequence of questions leading a Member toward a goal.
 
-Agents never directly edit the operating system.
+Examples:
 
-Agents use Tools.
+- Join Friends
+- Manage Game Servers
+- Explore Troglodyte Works
+
+Journeys define the user experience.
+
+Pages exist to support Journeys—not the other way around.

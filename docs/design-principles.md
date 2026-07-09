@@ -1,157 +1,220 @@
 # Troglodyte Works Design Principles
 
-Version: 1.0
+Version: 2.0
 
 ---
 
 # Purpose
 
-These principles define how Troglodyte Works should be designed and developed.
+These principles define every design decision made within Troglodyte Works.
 
-Whenever a new feature, page, workflow, or interface is created, it should be measured against these principles before implementation.
+When deciding between two solutions, choose the one that best supports these principles.
 
-Our goal is not simply to build another game server control panel.
+Technology changes.
 
-Our goal is to build software that helps people succeed.
+These principles should not.
 
 ---
 
-## Guiding Philosophy
+# Our North Star
 
-Troglodyte Works exists to make powerful technology approachable.
+Troglodyte Works exists to help gaming communities accomplish meaningful goals with confidence.
 
-Users should feel calm, capable, and confident while using the platform.
+Members should never feel overwhelmed.
+
+Members should never feel talked down to.
+
+Members should feel capable.
+
+---
+
+# 1. Calm. Simple. Powerful.
+
+Every interaction should reinforce these three ideas.
+
+Calm reduces anxiety.
+
+Simple reduces effort.
+
+Powerful enables growth.
 
 Power should be discovered—not endured.
 
-The interface should grow with the user, revealing additional capability only when it becomes useful.
+---
+
+# 2. Journeys Before Pages
+
+Design Journeys first.
+
+Pages exist only to support Journeys.
+
+A page without a clear Journey probably should not exist.
 
 ---
 
-# 1. Don't Make Me Think
+# 3. One Question At A Time
 
-Users should never have to search for common actions.
+Avoid overwhelming Members.
 
-If a user must leave Troglodyte Works to search Google, YouTube, Reddit, Discord, or ChatGPT to figure out how to use the interface, the interface has failed.
+Ask one meaningful question.
 
-The software should guide the user naturally.
+Use the answer to determine the next question.
 
----
+The interface should feel like a conversation.
 
-# 2. Guided Minimalism
-
-Show only what the user needs right now.
-
-Hide complexity until it becomes useful.
-
-Every screen should feel approachable to a first-time user.
-
-Power should never come at the expense of clarity.
+Not a form.
 
 ---
 
-# 3. Progressive Disclosure
+# 4. Don't Make Me Learn Your Vocabulary
 
-Advanced features are never removed.
+Members should never need to understand Troglodyte Works terminology before receiving value.
 
-They are revealed only when the user needs them.
+Use the Member's language.
 
-Beginners should never feel overwhelmed.
-
-Experienced users should never feel limited.
+Teach platform terminology naturally over time.
 
 ---
 
-# 4. One Purpose Per Screen
+# 5. Progressive Disclosure
 
-Every page should have one primary objective.
+Reveal complexity only when it becomes useful.
 
-Avoid combining unrelated tasks onto a single screen.
+Advanced features should never disappear.
 
-Users should immediately understand what the page is for.
-
----
-
-# 5. Plain English
-
-Prefer language that everyone understands.
-
-Use:
-
-- Restart Server
-- Edit Settings
-- Install Mods
-
-Avoid unnecessary technical terminology whenever possible.
+They should simply appear at the appropriate time.
 
 ---
 
-# 6. The Interface Should Teach
+# 6. Confidence Is The Product
 
-The interface should explain itself.
+Every interaction should increase confidence.
 
-Users should learn naturally while using the software instead of reading documentation.
+Members should leave believing:
 
-Short descriptions are encouraged.
+"I can do this."
 
-Documentation should support the interface—not replace it.
-
----
-
-# 7. The 30-Second Rule
-
-A first-time user should accomplish the intended task within thirty seconds.
-
-If they cannot, the workflow should be redesigned.
+The Guide should support confidence—not dependency.
 
 ---
 
-# 8. Trog Is a Guide
+# 7. Guides Walk Beside People
 
-Trog exists to help users accomplish goals.
+Guides are companions.
 
-Trog should proactively assist users when appropriate.
+Not teachers.
 
-Examples include:
+Not salespeople.
 
-• Explaining unfamiliar settings
+Not mascots.
 
-• Suggesting the next logical step
+A Guide quietly offers help when useful.
 
-• Warning about potential mistakes
-
-• Offering shortcuts
-
-Trog should never become a requirement for using the interface.
-
-The interface itself must remain intuitive.
+Members remain in control.
 
 ---
 
-# 9. Confidence Over Complexity
+# 8. Guidance Adapts
 
-Every interaction should leave the user feeling more confident than before.
+Members should not configure Guides first.
 
-Success is measured by user confidence, not by the number of available features.
+Guides should learn from interaction.
+
+Examples:
+
+- Short explanations
+- Detailed explanations
+- Visual examples
+- Technical depth
+
+Recommendations should feel natural.
+
+Never intrusive.
 
 ---
 
-# 10. Consistency
+# 9. The Product Must Stand Alone
 
-Every page should behave similarly.
+If every Guide disappeared tomorrow...
 
-Buttons should appear in familiar locations.
+Troglodyte Works should still be excellent.
 
-Navigation should remain predictable.
+Guides improve the experience.
 
-Users should never wonder where something moved.
+They are never required.
 
-Consistency reduces learning time and builds trust.
+---
+
+# 10. Communities Come First
+
+Communities create value.
+
+Hosting supports Communities.
+
+Automation supports Communities.
+
+Guides support Communities.
+
+Every feature should strengthen the Community experience.
+
+---
+
+# 11. Empty Space Is A Feature
+
+Whitespace creates clarity.
+
+Do not fill space simply because it exists.
+
+Every visible element must justify its presence.
+
+---
+
+# 12. Every Screen Has One Job
+
+A Member should immediately understand:
+
+"What am I here to accomplish?"
+
+Avoid combining unrelated tasks.
+
+---
+
+# 13. Build For The Next Question
+
+Members should always know the next logical step.
+
+Never present every possible option at once.
+
+Curiosity should naturally lead forward.
+
+---
+
+# 14. Design For Real People
+
+Members arrive with different experience levels.
+
+Different goals.
+
+Different personalities.
+
+Different confidence.
+
+The product adapts.
+
+Members should not have to.
 
 ---
 
 # Final Principle
 
-Troglodyte Works exists to remove friction—not create it.
+Every design decision should answer:
 
-Every design decision should make the product easier to understand, easier to use, and easier to trust.
+Does this make Troglodyte Works calmer?
+
+Does it make it simpler?
+
+Does it help communities succeed?
+
+If not...
+
+Keep designing.
