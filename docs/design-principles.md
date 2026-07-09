@@ -1,135 +1,157 @@
 # Troglodyte Works Design Principles
 
-## Our Mission
-
-Troglodyte Works exists to help gaming communities create memorable experiences through intelligent infrastructure, community engagement, and AI-guided decision making.
+Version: 1.0
 
 ---
 
-# Principle 1
+# Purpose
 
-Community before Infrastructure.
+These principles define how Troglodyte Works should be designed and developed.
 
-Customers are not buying servers.
+Whenever a new feature, page, workflow, or interface is created, it should be measured against these principles before implementation.
 
-They are building communities.
+Our goal is not simply to build another game server control panel.
 
-Everything we create should strengthen that community.
-
----
-
-# Principle 2
-
-Conversations before Configuration.
-
-The platform should ask questions before presenting settings.
-
-Understand the goal before offering tools.
+Our goal is to build software that helps people succeed.
 
 ---
 
-# Principle 3
+## Guiding Philosophy
 
-Teach before Asking.
+Troglodyte Works exists to make powerful technology approachable.
 
-Explain.
+Users should feel calm, capable, and confident while using the platform.
 
-Educate.
+Power should be discovered—not endured.
 
-Recommend.
-
-Then let the customer decide.
-
-Understanding creates confidence.
+The interface should grow with the user, revealing additional capability only when it becomes useful.
 
 ---
 
-# Principle 4
+# 1. Don't Make Me Think
 
-Complexity Behind the Curtain.
+Users should never have to search for common actions.
 
-A beginner should never need to understand Game.ini.
+If a user must leave Troglodyte Works to search Google, YouTube, Reddit, Discord, or ChatGPT to figure out how to use the interface, the interface has failed.
 
-Advanced users should always have access to every detail.
-
----
-
-# Principle 5
-
-Every Click Reduces Uncertainty.
-
-Each interaction should make the user feel more confident.
-
-Never overwhelm.
-
-Never present unnecessary choices.
+The software should guide the user naturally.
 
 ---
 
-# Principle 6
+# 2. Guided Minimalism
 
-The Platform Adapts.
+Show only what the user needs right now.
 
-Two different communities should not experience the same homepage.
+Hide complexity until it becomes useful.
 
-The platform should learn what the customer is trying to accomplish.
+Every screen should feel approachable to a first-time user.
 
----
-
-# Principle 7
-
-AI Advises Before Acting.
-
-The AI should explain:
-
-• what it found
-
-• what it recommends
-
-• why
-
-Actions happen only after approval.
+Power should never come at the expense of clarity.
 
 ---
 
-# Principle 8
+# 3. Progressive Disclosure
 
-Respect Experts.
+Advanced features are never removed.
 
-Power users should never feel trapped.
+They are revealed only when the user needs them.
 
-Every automated action should remain transparent.
+Beginners should never feel overwhelmed.
 
----
-
-# Principle 9
-
-Trog Guides.
-
-Trog is not the mascot.
-
-Trog is the guide.
-
-He appears when invited or when genuine guidance would improve the experience.
-
-He should never distract from the user's goals.
+Experienced users should never feel limited.
 
 ---
 
-# Principle 10
+# 4. One Purpose Per Screen
 
-Leave Things Better.
+Every page should have one primary objective.
 
-Every visit should improve something.
+Avoid combining unrelated tasks onto a single screen.
 
-A setting.
+Users should immediately understand what the page is for.
 
-An event.
+---
 
-A backup.
+# 5. Plain English
 
-A conversation.
+Prefer language that everyone understands.
 
-A community.
+Use:
 
-The user should always leave feeling that their community is healthier than when they arrived.
+- Restart Server
+- Edit Settings
+- Install Mods
+
+Avoid unnecessary technical terminology whenever possible.
+
+---
+
+# 6. The Interface Should Teach
+
+The interface should explain itself.
+
+Users should learn naturally while using the software instead of reading documentation.
+
+Short descriptions are encouraged.
+
+Documentation should support the interface—not replace it.
+
+---
+
+# 7. The 30-Second Rule
+
+A first-time user should accomplish the intended task within thirty seconds.
+
+If they cannot, the workflow should be redesigned.
+
+---
+
+# 8. Trog Is a Guide
+
+Trog exists to help users accomplish goals.
+
+Trog should proactively assist users when appropriate.
+
+Examples include:
+
+• Explaining unfamiliar settings
+
+• Suggesting the next logical step
+
+• Warning about potential mistakes
+
+• Offering shortcuts
+
+Trog should never become a requirement for using the interface.
+
+The interface itself must remain intuitive.
+
+---
+
+# 9. Confidence Over Complexity
+
+Every interaction should leave the user feeling more confident than before.
+
+Success is measured by user confidence, not by the number of available features.
+
+---
+
+# 10. Consistency
+
+Every page should behave similarly.
+
+Buttons should appear in familiar locations.
+
+Navigation should remain predictable.
+
+Users should never wonder where something moved.
+
+Consistency reduces learning time and builds trust.
+
+---
+
+# Final Principle
+
+Troglodyte Works exists to remove friction—not create it.
+
+Every design decision should make the product easier to understand, easier to use, and easier to trust.

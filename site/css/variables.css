@@ -1,0 +1,44 @@
+:root {
+
+    /* Backgrounds */
+
+    --color-background: #F3F1EC;
+    --color-surface: #FCFCFB;
+
+    /* Text */
+
+    --color-text: #2F3437;
+
+    /* Primary */
+
+    --color-primary: #2E5D7B;
+    --color-primary-hover: #254B64;
+
+    /* Success */
+
+    --color-success: #5B8C5A;
+
+    /* Warning */
+
+    --color-warning: #C88A2A;
+
+    /* Danger */
+
+    --color-danger: #B85450;
+
+    /* Border */
+
+    --color-border: #D7D9DC;
+
+    /* Radius */
+
+    --radius-small: 6px;
+    --radius-medium: 10px;
+    --radius-large: 16px;
+
+    /* Shadows */
+
+    --shadow-card:
+        0 2px 8px rgba(0,0,0,.08);
+
+}
