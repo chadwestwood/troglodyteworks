@@ -1,64 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Troglodyte Works | Register</title>
-
-    <link rel="stylesheet" href="../css/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create Account | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-
-<body>
-
-    <main class="register-container">
-
-        <h1>Create Your Account</h1>
-
-        <p>
-            Create a Troglodyte Works account to manage your game servers.
-        </p>
-
-        <form id="registerForm">
-
-            <label for="username">Username</label>
-            <input
-                type="text"
-                id="username"
-                name="username"
-                required
-            >
-
-            <label for="email">Email Address</label>
-            <input
-                type="email"
-                id="email"
-                name="email"
-                required
-            >
-
-            <label for="password">Password</label>
-            <input
-                type="password"
-                id="password"
-                name="password"
-                required
-            >
-
-            <label for="confirmPassword">Confirm Password</label>
-            <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                required
-            >
-
-            <button type="submit">
-                Create Account
-            </button>
-
-        </form>
-
-    </main>
-
+<body class="app-page" data-page="register">
+  <main class="app-shell narrow">
+    <a class="brand" href="/" aria-label="Troglodyte Works home">
+      <span class="brand-mark" aria-hidden="true">TW</span>
+      <span>Troglodyte Works</span>
+    </a>
+    <nav class="auth-nav" aria-label="Visitor navigation">
+      <a class="header-link" href="/explore/">Explore</a>
+      <a class="header-link" href="/auth/sign-in.html">Sign In</a>
+    </nav>
+    <section class="app-panel">
+      <p class="eyebrow">Create Account</p>
+      <h1>Start with identity.</h1>
+      <p class="muted">Creating an account does not join a Community or create hosting.</p>
+      <p class="form-error" data-error hidden></p>
+      <form class="stack-form" data-register-form>
+        <label for="display_name">Display name</label>
+        <input id="display_name" name="display_name" type="text" autocomplete="name" required>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" minlength="12" required>
+        <label for="password_confirmation">Confirm password</label>
+        <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="12" required>
+        <button class="primary-button" type="submit">Create Account</button>
+      </form>
+      <p class="muted">Already have an account? <a class="header-link" href="/auth/sign-in.html">Sign In</a>.</p>
+    </section>
+  </main>
+  <script src="/js/twe-api.js"></script>
+  <script src="/js/twe-pages.js"></script>
 </body>
 </html>

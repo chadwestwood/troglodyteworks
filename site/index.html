@@ -13,7 +13,11 @@
         <span class="brand-mark" aria-hidden="true">TW</span>
         <span>Troglodyte Works</span>
       </a>
-      <a class="header-link" href="auth/sign-in.html">Sign in</a>
+      <nav class="header-actions" aria-label="Visitor navigation">
+        <a class="header-link" href="explore/">Explore</a>
+        <a class="header-link" href="auth/sign-in.html">Sign In</a>
+        <a class="header-link" href="auth/register.html">Create Account</a>
+      </nav>
     </header>
 
     <main class="landing-main">
@@ -35,27 +39,20 @@
         </div>
 
         <div class="journey-choices" aria-label="Visitor journey choices">
-          <button class="journey-card" type="button" data-journey="join">
-            <span class="journey-card__label">Join Friends</span>
-            <span class="journey-card__copy">I have an invite or want to get into a community.</span>
-          </button>
+          <a class="journey-card" href="explore/">
+            <span class="journey-card__label">Continue to Explore</span>
+            <span class="journey-card__copy">Learn what Troglodyte Works helps communities do.</span>
+          </a>
 
-          <button class="journey-card" type="button" data-journey="servers">
-            <span class="journey-card__label">Game Servers</span>
-            <span class="journey-card__copy">I want to host, manage, or understand a server.</span>
-          </button>
+          <a class="journey-card" href="auth/sign-in.html">
+            <span class="journey-card__label">Sign In</span>
+            <span class="journey-card__copy">I already have a TWE account.</span>
+          </a>
 
-          <button class="journey-card" type="button" data-journey="explore">
-            <span class="journey-card__label">Explore</span>
-            <span class="journey-card__copy">I want to see what Troglodyte Works can help with.</span>
-          </button>
-        </div>
-
-        <div class="next-step" id="next-step" hidden>
-          <p class="step-label">Next question</p>
-          <h3 id="next-step-title"></h3>
-          <p id="next-step-copy"></p>
-          <button class="text-button" type="button" id="reset-journey">Choose a different path</button>
+          <a class="journey-card" href="auth/register.html">
+            <span class="journey-card__label">Create Account</span>
+            <span class="journey-card__copy">Create an account without joining a Community yet.</span>
+          </a>
         </div>
       </section>
 
@@ -65,7 +62,5 @@
       </aside>
     </main>
   </div>
-
-  <script src="js/app.js"></script>
 </body>
 </html>

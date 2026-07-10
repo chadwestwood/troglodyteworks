@@ -1,6 +1,7 @@
 const routes = {
   communities: "/communities/",
   community: "/communities/cohorts-in-the-wild/",
+  explore: "/explore/",
   gameServer: "/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/",
   genesis: "/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/instances/genesis/",
 };
@@ -25,11 +26,39 @@ async function initSignIn() {
   });
 }
 
+async function initRegister() {
+  const form = document.querySelector("[data-register-form]");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    try {
+      await apiRequest("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          display_name: formData.get("display_name"),
+          email: formData.get("email"),
+          password: formData.get("password"),
+          password_confirmation: formData.get("password_confirmation"),
+        }),
+      });
+      window.location.href = routes.communities;
+    } catch (error) {
+      showError(error.message);
+    }
+  });
+}
+
 async function initCommunities() {
   await requireCurrentUser();
   const list = document.querySelector("[data-communities-list]");
+  const emptyState = document.querySelector("[data-empty-communities]");
   const data = await apiRequest("/communities");
   list.innerHTML = "";
+  if (data.communities.length === 0) {
+    emptyState.hidden = false;
+    return;
+  }
+  emptyState.hidden = true;
   data.communities.forEach((community) => {
     remember("twe.community_id", community.id);
     const item = document.createElement("a");
@@ -201,6 +230,7 @@ async function findInstanceId() {
 const page = document.body.dataset.page;
 const initializers = {
   signIn: initSignIn,
+  register: initRegister,
   communities: initCommunities,
   community: initCommunity,
   gameServer: initGameServer,

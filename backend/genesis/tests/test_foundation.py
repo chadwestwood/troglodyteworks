@@ -11,6 +11,7 @@ from twe.app import create_app
 from twe.authorization import can_request_capability
 from twe.config import Config
 from twe.responses import api_error
+from twe.routes.auth import normalize_email, validate_registration_payload
 from twe.security import hash_password, verify_password
 from twe.services import local_asa
 
@@ -34,6 +35,16 @@ class FoundationTests(unittest.TestCase):
         response = client.get("/auth/sign-in.html")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Sign In", response.data)
+
+    def test_static_register_and_explore_pages_are_served(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        register = client.get("/auth/register.html")
+        explore = client.get("/explore/")
+        self.assertEqual(register.status_code, 200)
+        self.assertIn(b"Create Account", register.data)
+        self.assertEqual(explore.status_code, 200)
+        self.assertIn(b"Explore", explore.data)
 
     def test_role_restrictions(self):
         self.assertTrue(can_request_capability("member", "instance.status"))
@@ -59,6 +70,35 @@ class FoundationTests(unittest.TestCase):
             response, status = api_error("FORBIDDEN", "Nope.", 403)
             self.assertEqual(status, 403)
             self.assertEqual(response.get_json(), {"error": {"code": "FORBIDDEN", "message": "Nope."}})
+
+    def test_registration_validation(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        valid = {
+            "display_name": "Alex",
+            "email": "alex@example.com",
+            "password": "long-enough-password",
+            "password_confirmation": "long-enough-password",
+        }
+        with app.app_context():
+            self.assertIsNone(validate_registration_payload(valid))
+
+            mismatch = valid | {"password_confirmation": "different-password"}
+            response, status = validate_registration_payload(mismatch)
+            self.assertEqual(status, 400)
+            self.assertEqual(response.get_json()["error"]["code"], "PASSWORD_MISMATCH")
+
+            short = valid | {"password": "short", "password_confirmation": "short"}
+            response, status = validate_registration_payload(short)
+            self.assertEqual(status, 400)
+            self.assertEqual(response.get_json()["error"]["code"], "VALIDATION_ERROR")
+
+            privileged = valid | {"role": "owner"}
+            response, status = validate_registration_payload(privileged)
+            self.assertEqual(status, 400)
+            self.assertEqual(response.get_json()["error"]["code"], "VALIDATION_ERROR")
+
+    def test_email_normalization(self):
+        self.assertEqual(normalize_email("  Alex@Example.COM "), "alex@example.com")
 
     def test_migration_contains_required_tables(self):
         migration = (ROOT / "migrations" / "0001_initial_twe.sql").read_text()
