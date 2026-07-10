@@ -37,11 +37,33 @@ Current domains include:
 
 ## Community Domain
 
+### Visitor
+
+An anonymous person using TWE without an authenticated account.
+
+A Visitor may browse public content and explore the platform.
+
+A Visitor is not stored as a User record.
+
+---
+
 ### User
 
-A person with a TWE account.
+A person who has created a TWE account.
 
-A user may belong to multiple communities and may own multiple communities.
+A User may authenticate, manage their personal profile, and belong to zero or more Communities.
+
+Creating a User account does not automatically create a Community Membership.
+
+---
+
+### Community Member
+
+A User with an active Membership in a specific Community.
+
+Membership is scoped to an individual Community.
+
+Roles and permissions are granted through Community Membership rather than through the User record.
 
 ### Community
 

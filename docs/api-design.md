@@ -68,7 +68,44 @@ Detailed authentication and authorization rules are defined in:
 ```text
 docs/authentication.md
 ```
+---
 
+## Create Account
+
+```text
+POST /api/v1/auth/register
+```
+
+Creates a new User account.
+
+Creating an account does not automatically create a Community Membership.
+
+### Request
+
+```json
+{
+    "display_name": "Alex",
+    "email": "alex@example.com",
+    "password": "a-secure-password",
+    "password_confirmation": "a-secure-password"
+}
+```
+
+### Successful Response
+
+```json
+{
+    "user": {
+        "id": "user-id",
+        "email": "alex@example.com",
+        "display_name": "Alex"
+    }
+}
+```
+
+The response also establishes a secure authenticated session.
+
+Successful registration redirects the User to **My Communities** unless an approved invite destination exists.
 ---
 
 ## Sign In
@@ -901,6 +938,8 @@ Initial error codes:
 - `CONFIRMATION_REQUIRED`
 - `OPERATION_ALREADY_RUNNING`
 - `INTERNAL_ERROR`
+- `EMAIL_ALREADY_REGISTERED`
+- `PASSWORD_MISMATCH`
 
 ### Error Rules
 
@@ -952,19 +991,30 @@ They are not security.
 
 ---
 
-# Initial Vertical Slice
+# Current Supported API
 
-The first implementation should include only the following API routes.
+This document defines every API endpoint that is currently approved for implementation within TWE.
 
-Authentication
+Individual Vertical Slice documents specify which subset of these endpoints is required to complete a particular user journey.
+
+Implementations should expose only documented endpoints.
+
+New endpoints require an approved design change.
+
+---
+
+## Authentication
 
 ```text
+POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/logout
 GET  /api/v1/auth/me
 ```
 
-Communities
+---
+
+## Communities
 
 ```text
 GET /api/v1/communities
@@ -972,22 +1022,29 @@ GET /api/v1/communities/{community_id}
 GET /api/v1/communities/{community_id}/game-servers
 ```
 
-Game Servers
+---
+
+## Game Servers
 
 ```text
 GET /api/v1/game-servers/{game_server_id}
 GET /api/v1/game-servers/{game_server_id}/instances
 ```
 
-Game Instances
+---
+
+## Game Instances
 
 ```text
+GET /api/v1/instances/{instance_id}
 GET /api/v1/instances/{instance_id}
 GET /api/v1/instances/{instance_id}/health
 GET /api/v1/instances/{instance_id}/capabilities
 ```
 
-Server Operations
+---
+
+## Server Operations
 
 ```text
 POST /api/v1/instances/{instance_id}/server-operations
@@ -995,7 +1052,35 @@ GET  /api/v1/instances/{instance_id}/server-operations
 GET  /api/v1/server-operations/{operation_id}
 ```
 
-No additional endpoints should be introduced without an approved design change.
+---
+
+## Engineering (Reserved)
+
+```text
+GET  /api/v1/issues
+POST /api/v1/issues
+GET  /api/v1/issues/{issue_id}
+PATCH /api/v1/issues/{issue_id}
+```
+
+These endpoints are approved for future implementation but are not required by the current vertical slices.
+
+---
+
+# Vertical Slice Responsibility
+
+The API Design document defines the complete platform API.
+
+Each Vertical Slice document identifies the subset of endpoints required to implement its specific user journey.
+
+Examples:
+
+- `docs/vertical-slices/citw-genesis-v1.md`
+- `docs/vertical-slices/visitor-to-user-v1.md`
+
+An implementation should not introduce undocumented endpoints or omit required endpoints for the active Vertical Slice.
+
+Additional endpoints require an approved architecture change before implementation.
 
 ---
 
