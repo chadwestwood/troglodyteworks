@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign In | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page" data-page="signIn">
+  <main class="app-shell narrow">
+    <a class="brand" href="/" aria-label="Troglodyte Works home">
+      <span class="brand-mark" aria-hidden="true">TW</span>
+      <span>Troglodyte Works</span>
+    </a>
+    <section class="app-panel">
+      <p class="eyebrow">Sign in</p>
+      <h1>Welcome back.</h1>
+      <p class="muted">Use your TWE account to open your communities.</p>
+      <p class="form-error" data-error hidden></p>
+      <form class="stack-form" data-sign-in-form>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <button class="primary-button" type="submit">Sign in</button>
+      </form>
+    </section>
+  </main>
+  <script src="/js/twe-api.js"></script>
+  <script src="/js/twe-pages.js"></script>
+</body>
+</html>

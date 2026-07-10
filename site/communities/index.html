@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Communities | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page" data-page="communities">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <button class="text-button" type="button" data-sign-out>Sign out</button>
+    </header>
+    <nav class="breadcrumbs">Home &gt; My Communities</nav>
+    <main class="app-panel">
+      <p class="eyebrow">My Communities</p>
+      <h1>Communities for <span data-current-user></span></h1>
+      <p class="form-error" data-error hidden></p>
+      <div class="resource-list" data-communities-list></div>
+    </main>
+  </div>
+  <script src="/js/twe-api.js"></script>
+  <script src="/js/twe-pages.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server Operation | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page" data-page="operation">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <button class="text-button" type="button" data-sign-out>Sign out</button>
+    </header>
+    <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild &gt; ARK Survival Ascended &gt; Genesis &gt; Server Operation</nav>
+    <main class="app-grid">
+      <section class="app-panel">
+        <p class="eyebrow">Server Operation</p>
+        <h1 data-operation-capability>Loading</h1>
+        <p>Status: <strong data-operation-status></strong></p>
+        <p>Stage: <strong data-operation-stage></strong></p>
+        <p class="muted" data-operation-result></p>
+        <p class="form-error" data-error hidden></p>
+      </section>
+      <section class="app-panel">
+        <h2>Checks</h2>
+        <div class="resource-list" data-operation-checks></div>
+      </section>
+    </main>
+  </div>
+  <script src="/js/twe-api.js"></script>
+  <script src="/js/twe-pages.js"></script>
+</body>
+</html>

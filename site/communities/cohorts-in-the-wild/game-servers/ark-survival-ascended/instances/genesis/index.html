@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Genesis | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page" data-page="genesis">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <button class="text-button" type="button" data-sign-out>Sign out</button>
+    </header>
+    <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild &gt; ARK Survival Ascended &gt; Genesis</nav>
+    <main class="app-grid">
+      <section class="app-panel">
+        <p class="eyebrow">Game Instance</p>
+        <h1 data-instance-name>Genesis</h1>
+        <p class="muted"><span data-instance-type></span> · <strong data-instance-status></strong></p>
+        <p class="form-error" data-error hidden></p>
+      </section>
+      <section class="app-panel">
+        <h2>Current Health</h2>
+        <p class="status-line" data-health-status>Loading</p>
+        <div class="resource-list" data-health-checks></div>
+      </section>
+      <section class="app-panel">
+        <h2>Capabilities</h2>
+        <div class="resource-list" data-capabilities></div>
+      </section>
+      <section class="app-panel">
+        <h2>Recent Server Operations</h2>
+        <div class="resource-list" data-operations></div>
+      </section>
+    </main>
+  </div>
+  <script src="/js/twe-api.js"></script>
+  <script src="/js/twe-pages.js"></script>
+</body>
+</html>
