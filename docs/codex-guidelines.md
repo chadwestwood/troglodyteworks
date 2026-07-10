@@ -45,6 +45,26 @@ If conflicts exist, do not guess.
 
 Document the conflict and request clarification.
 ---
+# Implementation Prompts
+
+Implementation prompts should reference the project documentation rather than restating it.
+
+The documentation is the authoritative source of truth for architecture, business rules, terminology, workflows, and implementation contracts.
+
+Implementation prompts should:
+
+- identify the implementation objective
+- reference the relevant documentation
+- describe the current milestone
+- identify any special constraints or review requirements
+
+Implementation prompts should not duplicate architectural decisions that already exist in the documentation.
+
+If documentation and an implementation prompt conflict, pause implementation and request clarification rather than guessing.
+
+The goal is to maintain a single authoritative source of truth and minimize documentation drift.
+
+---
 
 # Business Rules
 
