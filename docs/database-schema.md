@@ -103,21 +103,59 @@ Fields:
 - created_at
 - updated_at
 
-### Server Action
+### Server Operation
 
-Represents a requested management action for a game instance.
+Represents a recorded execution of a Capability against a specific Game Instance.
+
+A Server Operation records the complete lifecycle of requested work, including execution, verification, and final outcome.
 
 Fields:
 
 - id
 - game_instance_id
 - requested_by
-- action_type
+- capability
 - status
+- current_stage
 - requested_at
 - started_at
 - completed_at
 - result_message
+
+Initial statuses:
+
+- requested
+- queued
+- executing
+- verifying
+- completed
+- failed
+- cancelled
+
+A Server Operation may have multiple stage or health-check records so that execution and verification progress can be displayed.
+
+### Server Operation Check
+
+Represents one deterministic execution or verification check belonging to a Server Operation.
+
+Fields:
+
+- id
+- server_operation_id
+- name
+- status
+- started_at
+- completed_at
+- result_message
+- sort_order
+
+Initial check statuses:
+
+- pending
+- running
+- passed
+- failed
+- skipped
 
 ## Initial Seed Data
 

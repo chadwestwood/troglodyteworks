@@ -218,3 +218,13 @@ Does it help communities succeed?
 If not...
 
 Keep designing.
+
+# Respect Attention
+
+A Member's attention is valuable.
+
+Troglodyte Works should never interrupt someone simply because information exists.
+
+Information should become visible when it helps a Member make their next decision.
+
+The platform should guide attention rather than compete for it.

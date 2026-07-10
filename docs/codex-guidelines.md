@@ -26,20 +26,24 @@ Implementation should faithfully follow the documented design.
 
 # Source of Truth
 
-When implementing TWE, use the following order of precedence:
+The documentation hierarchy defined in `docs/README.md` is authoritative.
 
-1. Architecture Decisions
-2. Database Schema
-3. Glossary
-4. Server Operation Lifecycle
-5. Engineering Tracker
-6. Project documentation
-7. Existing codebase
+At the current stage, use this order of precedence:
+
+1. Architecture Decision Records, when present
+2. Glossary
+3. Database Schema
+4. Authentication
+5. API Design
+6. Server Operation Lifecycle
+7. Vertical Slice
+8. Existing Implementation
+
+Supporting documents such as the Engineering Tracker and Codex Guidelines govern workflow but do not override the business and implementation contracts above.
 
 If conflicts exist, do not guess.
 
 Document the conflict and request clarification.
-
 ---
 
 # Business Rules

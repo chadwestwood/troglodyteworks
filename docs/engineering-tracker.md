@@ -185,3 +185,57 @@ AI does not replace engineering judgment.
 The Engineering Tracker should become the primary project management system for TWE itself.
 
 TWE should eventually manage its own development lifecycle.
+
+---
+
+# Example
+
+The following example illustrates how an engineering item may appear within TWE.
+
+Issue ID
+: IMP-0018
+
+Type
+: Improvement
+
+Title
+: Community Activity Feed
+
+Status
+: In Progress
+
+Priority
+: High
+
+Related Community
+: Cohorts in the Wild
+
+Related Game Server
+: Cohorts in the Wild (ARK Survival Ascended)
+
+Related Instance
+: Genesis
+
+Related Documentation
+
+- PM0004.md
+- database-schema.md
+
+Assigned To
+
+- Codex
+
+Reviewer
+
+- Chad
+
+Description
+
+Display recent activity on the Community landing page, including
+recent Server Operations, member activity, and announcements.
+
+Acceptance Criteria
+
+- Recent activity is visible from the Community page.
+- Activity updates automatically after a Server Operation completes.
+- Activity is filterable by type.
