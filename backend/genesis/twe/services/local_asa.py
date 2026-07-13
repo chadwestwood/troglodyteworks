@@ -50,11 +50,7 @@ def health(config):
     checks = [
         _process_check(config.asa_expected_process),
         _port_check(config.asa_health_host, config.asa_health_port),
-        {
-            "name": "broadcasting",
-            "status": "not_configured",
-            "message": "Game query or broadcasting confirmation is not configured yet.",
-        },
+        _rcon_check(config),
     ]
     statuses = {check["status"] for check in checks}
     if statuses == {"passed"}:
@@ -126,4 +122,32 @@ def _port_check(host: str | None, port: int | None):
         "name": "port_reachable",
         "status": "passed",
         "message": "Expected network port responded.",
+    }
+
+
+def _rcon_check(config):
+    if not config.asa_rcon_host or not config.asa_rcon_port or not config.asa_rcon_password:
+        return {
+            "name": "broadcasting",
+            "status": "not_configured",
+            "message": "RCON status verification is not configured.",
+        }
+    try:
+        from services.rcon import list_players
+
+        list_players(
+            host=config.asa_rcon_host,
+            port=config.asa_rcon_port,
+            password=config.asa_rcon_password,
+        )
+    except Exception:
+        return {
+            "name": "broadcasting",
+            "status": "failed",
+            "message": "The game server did not respond to the configured RCON status check.",
+        }
+    return {
+        "name": "broadcasting",
+        "status": "passed",
+        "message": "The game server responded to the configured RCON status check.",
     }

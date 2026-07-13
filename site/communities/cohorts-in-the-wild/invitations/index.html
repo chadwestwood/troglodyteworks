@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invitations | Cohorts in the Wild</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page" data-page="community-invitations">
+  <main class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/communities/cohorts-in-the-wild/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <div class="header-actions">
+        <span class="muted" data-current-user></span>
+        <button class="text-button" type="button" data-sign-out>Sign out</button>
+      </div>
+    </header>
+
+    <section class="app-panel">
+      <p class="eyebrow">Community Invitations</p>
+      <h1>Bring someone into Cohorts.</h1>
+      <p class="muted">Invitations create basic community membership only. They do not grant Genesis, Trog installation, restart, save, or mod access.</p>
+      <p class="form-error" data-error hidden></p>
+      <p class="guidance-note" data-created-link hidden></p>
+
+      <div class="app-grid">
+        <form class="stack-form" data-direct-invite-form>
+          <h2>Invite existing user</h2>
+          <label for="direct_email">Exact email</label>
+          <input id="direct_email" name="email" type="email" autocomplete="off" required>
+          <label for="direct_role">Initial role</label>
+          <select id="direct_role" name="initial_role">
+            <option value="member">member</option>
+            <option value="moderator">moderator</option>
+            <option value="admin">admin</option>
+          </select>
+          <button class="primary-button" type="submit">Send Invitation</button>
+        </form>
+
+        <form class="stack-form" data-link-invite-form>
+          <h2>Create invitation link</h2>
+          <label for="link_role">Initial role</label>
+          <select id="link_role" name="initial_role">
+            <option value="member">member</option>
+            <option value="moderator">moderator</option>
+            <option value="admin">admin</option>
+          </select>
+          <label for="maximum_uses">Maximum uses</label>
+          <input id="maximum_uses" name="maximum_uses" type="number" min="1" value="1" required>
+          <label for="expires_in_hours">Expires in hours</label>
+          <input id="expires_in_hours" name="expires_in_hours" type="number" min="1" value="168" required>
+          <label>
+            <input name="requires_approval" type="checkbox">
+            Leader approval required after redemption
+          </label>
+          <button class="primary-button" type="submit">Create Link</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="app-panel">
+      <h2>Pending invitations</h2>
+      <div class="resource-list" data-invitations-list></div>
+    </section>
+  </main>
+
+  <script src="/js/twe-api.js"></script>
+  <script src="/js/community-invitations.js"></script>
+</body>
+</html>

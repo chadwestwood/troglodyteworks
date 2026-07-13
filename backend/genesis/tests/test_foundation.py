@@ -41,15 +41,28 @@ class FoundationTests(unittest.TestCase):
         client = app.test_client()
         register = client.get("/auth/register.html")
         explore = client.get("/explore/")
+        invite = client.get("/invite/example-token/")
         self.assertEqual(register.status_code, 200)
         self.assertIn(b"Create Account", register.data)
         self.assertEqual(explore.status_code, 200)
         self.assertIn(b"Explore", explore.data)
+        self.assertEqual(invite.status_code, 200)
+        self.assertIn(b"Community Invitation", invite.data)
+
+    def test_browser_cannot_self_assign_ownership_endpoint(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        response = client.post("/api/v1/communities/cohorts-in-the-wild/owner")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json()["error"]["code"], "NOT_FOUND")
 
     def test_role_restrictions(self):
-        self.assertTrue(can_request_capability("member", "instance.status"))
-        self.assertFalse(can_request_capability("member", "instance.restart"))
-        self.assertTrue(can_request_capability("owner", "instance.restart"))
+        owner_access = {"role": "owner"}
+        member_access = {"role": "member"}
+        self.assertTrue(can_request_capability(owner_access, "instance.status"))
+        self.assertTrue(can_request_capability(owner_access, "instance.restart"))
+        self.assertFalse(can_request_capability(member_access, "instance.status"))
+        self.assertFalse(can_request_capability(member_access, "instance.restart"))
 
     def test_unconfigured_health_does_not_pass(self):
         health = local_asa.health(Config(database_url="postgresql://unused"))
@@ -57,6 +70,80 @@ class FoundationTests(unittest.TestCase):
         statuses = {check["status"] for check in health["checks"]}
         self.assertIn("not_configured", statuses)
         self.assertNotIn("passed", statuses)
+
+    def test_configured_health_reports_ready_when_required_checks_pass(self):
+        original_process_check = local_asa._process_check
+        original_port_check = local_asa._port_check
+        original_rcon_check = local_asa._rcon_check
+        try:
+            local_asa._process_check = lambda _expected: {
+                "name": "process_running",
+                "status": "passed",
+                "message": "ok",
+            }
+            local_asa._port_check = lambda _host, _port: {
+                "name": "port_reachable",
+                "status": "passed",
+                "message": "ok",
+            }
+            local_asa._rcon_check = lambda _config: {
+                "name": "broadcasting",
+                "status": "passed",
+                "message": "ok",
+            }
+            health = local_asa.health(
+                Config(
+                    database_url="postgresql://unused",
+                    asa_expected_process="ArkAscendedServer.exe",
+                    asa_health_host="127.0.0.1",
+                    asa_health_port=27020,
+                    asa_rcon_host="127.0.0.1",
+                    asa_rcon_port=27020,
+                    asa_rcon_password="secret",
+                )
+            )
+            self.assertEqual(health["overall_status"], "ready")
+        finally:
+            local_asa._process_check = original_process_check
+            local_asa._port_check = original_port_check
+            local_asa._rcon_check = original_rcon_check
+
+    def test_configured_health_reports_offline_when_rcon_fails(self):
+        original_process_check = local_asa._process_check
+        original_port_check = local_asa._port_check
+        original_rcon_check = local_asa._rcon_check
+        try:
+            local_asa._process_check = lambda _expected: {
+                "name": "process_running",
+                "status": "passed",
+                "message": "ok",
+            }
+            local_asa._port_check = lambda _host, _port: {
+                "name": "port_reachable",
+                "status": "passed",
+                "message": "ok",
+            }
+            local_asa._rcon_check = lambda _config: {
+                "name": "broadcasting",
+                "status": "failed",
+                "message": "not ok",
+            }
+            health = local_asa.health(
+                Config(
+                    database_url="postgresql://unused",
+                    asa_expected_process="ArkAscendedServer.exe",
+                    asa_health_host="127.0.0.1",
+                    asa_health_port=27020,
+                    asa_rcon_host="127.0.0.1",
+                    asa_rcon_port=27020,
+                    asa_rcon_password="secret",
+                )
+            )
+            self.assertEqual(health["overall_status"], "offline")
+        finally:
+            local_asa._process_check = original_process_check
+            local_asa._port_check = original_port_check
+            local_asa._rcon_check = original_rcon_check
 
     def test_restart_capability_is_disabled(self):
         restart = local_asa.capability_for("instance.restart")
@@ -76,8 +163,8 @@ class FoundationTests(unittest.TestCase):
         valid = {
             "display_name": "Alex",
             "email": "alex@example.com",
-            "password": "long-enough-password",
-            "password_confirmation": "long-enough-password",
+            "password": "eight888",
+            "password_confirmation": "eight888",
         }
         with app.app_context():
             self.assertIsNone(validate_registration_payload(valid))
@@ -87,7 +174,7 @@ class FoundationTests(unittest.TestCase):
             self.assertEqual(status, 400)
             self.assertEqual(response.get_json()["error"]["code"], "PASSWORD_MISMATCH")
 
-            short = valid | {"password": "short", "password_confirmation": "short"}
+            short = valid | {"password": "seven77", "password_confirmation": "seven77"}
             response, status = validate_registration_payload(short)
             self.assertEqual(status, 400)
             self.assertEqual(response.get_json()["error"]["code"], "VALIDATION_ERROR")
@@ -102,6 +189,11 @@ class FoundationTests(unittest.TestCase):
 
     def test_migration_contains_required_tables(self):
         migration = (ROOT / "migrations" / "0001_initial_twe.sql").read_text()
+        grant_migration = (ROOT / "migrations" / "0002_capability_grants.sql").read_text()
+        discord_migration = (ROOT / "migrations" / "0003_discord_foundation.sql").read_text()
+        unlink_migration = (ROOT / "migrations" / "0004_discord_identity_unlink.sql").read_text()
+        instance_access_migration = (ROOT / "migrations" / "0005_discord_instance_access_grants.sql").read_text()
+        invitations_migration = (ROOT / "migrations" / "0006_community_invitations.sql").read_text()
         for table in [
             "users",
             "sessions",
@@ -114,6 +206,15 @@ class FoundationTests(unittest.TestCase):
             "audit_logs",
         ]:
             self.assertIn(f"CREATE TABLE IF NOT EXISTS {table}", migration)
+        self.assertIn("CREATE TABLE IF NOT EXISTS server_operation_capability_grants", grant_migration)
+        for table in ["discord_guild_installations", "discord_identities", "discord_channel_policies"]:
+            self.assertIn(f"CREATE TABLE IF NOT EXISTS {table}", discord_migration)
+        self.assertIn("discord_identities_linked_at_check", unlink_migration)
+        self.assertIn("CREATE TABLE IF NOT EXISTS discord_instance_access_grants", instance_access_migration)
+        self.assertIn("CREATE TABLE IF NOT EXISTS discord_instance_access_grant_capabilities", instance_access_migration)
+        self.assertIn("CREATE TABLE IF NOT EXISTS discord_guild_authority_verifications", instance_access_migration)
+        self.assertIn("CREATE TABLE IF NOT EXISTS community_invitations", invitations_migration)
+        self.assertIn("CREATE TABLE IF NOT EXISTS community_invitation_redemptions", invitations_migration)
 
     def test_seed_uses_environment_credentials(self):
         seed = (ROOT / "scripts" / "seed_initial.py").read_text()

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Community Invitation | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page" data-page="invite-landing">
+  <main class="app-shell narrow">
+    <a class="brand" href="/" aria-label="Troglodyte Works home">
+      <span class="brand-mark" aria-hidden="true">TW</span>
+      <span>Troglodyte Works</span>
+    </a>
+
+    <section class="app-panel">
+      <p class="eyebrow">Community Invitation</p>
+      <h1 data-invite-community>Loading invitation.</h1>
+      <p class="muted" data-invite-details></p>
+      <p class="form-error" data-error hidden></p>
+      <div class="button-row" data-auth-actions hidden>
+        <a class="primary-button" href="/auth/register.html">Create Account</a>
+        <a class="primary-button secondary" href="/auth/sign-in.html">Sign In</a>
+      </div>
+      <div class="button-row" data-member-actions hidden>
+        <button class="primary-button" type="button" data-accept-invite>Accept Invitation</button>
+        <button class="primary-button secondary" type="button" data-decline-invite>Decline</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/twe-api.js"></script>
+  <script src="/js/invite.js"></script>
+</body>
+</html>

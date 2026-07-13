@@ -11,8 +11,13 @@ def load_env():
         for line in ENV_PATH.read_text().splitlines():
             if "=" in line and not line.strip().startswith("#"):
                 key, value = line.split("=", 1)
-                values[key.strip()] = value.strip()
+                values[key.strip()] = clean_env_value(value.strip())
     return values
+
+def clean_env_value(value):
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
 
 def rcon_packet(request_id, packet_type, body):
     payload = body.encode("utf-8") + b"\x00\x00"
@@ -33,14 +38,14 @@ def read_packet(sock):
     body = data[8:-2].decode("utf-8", errors="replace")
     return request_id, packet_type, body
 
-def send_rcon_command(command):
+def send_rcon_command(command, host=None, port=None, password=None):
     env = load_env()
-    host = env.get("RCON_HOST", "127.0.0.1")
-    port = int(env.get("RCON_PORT", "27020"))
-    password = env.get("RCON_PASSWORD")
+    host = host or env.get("TWE_ASA_RCON_HOST") or env.get("RCON_HOST", "127.0.0.1")
+    port = int(port or env.get("TWE_ASA_RCON_PORT") or env.get("RCON_PORT", "27020"))
+    password = password or env.get("TWE_ASA_RCON_PASSWORD") or env.get("RCON_PASSWORD")
 
     if not password:
-        raise RuntimeError("RCON_PASSWORD is missing from .env")
+        raise RuntimeError("RCON password is missing from environment configuration")
 
     with socket.create_connection((host, port), timeout=5) as sock:
         sock.sendall(rcon_packet(1, 3, password))
@@ -54,8 +59,8 @@ def send_rcon_command(command):
 
     return response
 
-def list_players():
-    response = send_rcon_command("ListPlayers")
+def list_players(host=None, port=None, password=None):
+    response = send_rcon_command("ListPlayers", host=host, port=port, password=password)
     return {
         "raw": response,
         "players": parse_players(response)
@@ -66,6 +71,8 @@ def parse_players(response):
     for line in response.splitlines():
         line = line.strip()
         if not line:
+            continue
+        if line.lower() in {"no players connected", "no players connected."}:
             continue
         players.append(line)
     return players

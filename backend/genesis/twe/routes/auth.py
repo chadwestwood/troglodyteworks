@@ -121,8 +121,8 @@ def validate_registration_payload(payload):
         return api_error("VALIDATION_ERROR", "Display name is required.", 400)
     if not email or not EMAIL_RE.match(email):
         return api_error("VALIDATION_ERROR", "A valid email address is required.", 400)
-    if not isinstance(password, str) or not password.strip() or len(password) < 12:
-        return api_error("VALIDATION_ERROR", "Password must be at least 12 characters.", 400)
+    if not isinstance(password, str) or not password.strip() or len(password) < 8:
+        return api_error("VALIDATION_ERROR", "Password must be at least 8 characters.", 400)
     if password != confirmation:
         return api_error("PASSWORD_MISMATCH", "Password confirmation must match.", 400)
     return None

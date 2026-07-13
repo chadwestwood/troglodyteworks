@@ -226,7 +226,7 @@ The initial implementation should use a simple, documented minimum standard.
 
 Minimum requirements:
 
-- at least 12 characters
+- at least 8 characters
 - not entirely whitespace
 - must match password confirmation
 

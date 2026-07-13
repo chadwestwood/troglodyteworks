@@ -159,3 +159,11 @@ Example:
 
 ```text
 Genesis_WP
+
+### Community Capability Grant
+
+Represents explicit authorization for a Community Member to perform one or more approved capabilities within a Community.
+
+Community Owners receive all approved Community Capabilities by default.
+
+All other Community Members require explicit Community Capability Grants.

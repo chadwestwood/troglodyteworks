@@ -60,6 +60,7 @@ A Community owns:
 
 - Members
 - Roles
+- Invitations
 - Servers
 - Events
 - Polls
@@ -81,6 +82,14 @@ Examples:
 - Administrator
 
 A Member may have different Roles in different Communities.
+
+---
+
+# Community Invitation
+
+A Community Invitation is a controlled way for a Community leader to bring a person into a Community.
+
+Invitations may target an existing TWE User directly or use a shareable Invite Link. Accepting an invitation creates Community Membership only. It does not grant server-operation capabilities, instance access, Discord installation approval, or ownership.
 
 ---
 

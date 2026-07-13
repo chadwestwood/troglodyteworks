@@ -71,12 +71,12 @@ def get_capabilities(instance_id):
         row = instance_access(conn, g.current_user["id"], instance_id)
         if not row:
             return api_error("NOT_FOUND", "Game Instance was not found.", 404)
-    adapter = adapter_for(row["management_adapter"])
-    capabilities = adapter.capabilities() if adapter else []
-    for capability in capabilities:
-        if not can_request_capability(row["role"], capability["key"]):
-            capability["available"] = False
-            capability["unavailable_reason"] = "Your Community role cannot request this Capability."
+        adapter = adapter_for(row["management_adapter"])
+        capabilities = adapter.capabilities() if adapter else []
+        for capability in capabilities:
+            if not can_request_capability(row, capability["key"], conn):
+                capability["available"] = False
+                capability["unavailable_reason"] = "Your Community role cannot request this Capability."
     return jsonify({"capabilities": capabilities})
 
 
@@ -96,7 +96,7 @@ def create_operation(instance_id):
         capability = adapter.capability_for(capability_key) if adapter else None
         if not capability:
             return api_error("VALIDATION_ERROR", "Capability is not defined for this Instance.", 400)
-        if not can_request_capability(access["role"], capability_key):
+        if not can_request_capability(access, capability_key, conn):
             return api_error("FORBIDDEN", "You do not have permission to perform this operation.", 403)
         if capability.get("requires_confirmation") and payload.get("confirmed") is not True:
             return api_error("CONFIRMATION_REQUIRED", "This operation requires confirmation.", 400)

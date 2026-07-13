@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trog Discord Access | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page" data-page="discord-access">
+  <main class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <div class="header-actions">
+        <span class="muted" data-current-user></span>
+        <button class="text-button" type="button" data-sign-out>Sign out</button>
+      </div>
+    </header>
+
+    <section class="app-panel">
+      <p class="eyebrow">Trog Discord Access</p>
+      <h1>Expose one provider-owned instance.</h1>
+      <p class="muted">This setup keeps Cohorts in the Wild as the owner of Genesis while a Discord guild receives only approved read access.</p>
+      <p class="form-error" data-error hidden></p>
+      <p class="guidance-note" data-status>Sign in, create the request, link Discord, verify the guild, then wait for provider approval.</p>
+
+      <form class="stack-form" data-discord-access-form>
+        <label for="provider_community_id">Provider Community ID</label>
+        <input id="provider_community_id" name="provider_community_id" type="text" autocomplete="off" required>
+
+        <label for="game_instance_id">Genesis Instance ID</label>
+        <input id="game_instance_id" name="game_instance_id" type="text" autocomplete="off" required>
+
+        <label for="discord_user_id">Mattertrala Discord User ID</label>
+        <input id="discord_user_id" name="discord_user_id" type="text" inputmode="numeric" autocomplete="off" required>
+
+        <label for="discord_guild_id">LizzLive Discord Guild ID</label>
+        <input id="discord_guild_id" name="discord_guild_id" type="text" inputmode="numeric" autocomplete="off" required>
+
+        <label for="permissions">Verified Discord permission bitfield</label>
+        <input id="permissions" name="permissions" type="text" inputmode="numeric" autocomplete="off" value="32" required>
+
+        <label for="allowed_channel_ids">Allowed channel IDs</label>
+        <input id="allowed_channel_ids" name="allowed_channel_ids" type="text" autocomplete="off" placeholder="123,456">
+
+        <button class="primary-button" type="submit">Create Request</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/js/twe-api.js"></script>
+  <script src="/js/discord-access.js"></script>
+</body>
+</html>

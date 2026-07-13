@@ -148,6 +148,8 @@ Verify Game Query
 
 Mark Completed
 
+Discord adapters must not execute this workflow directly. A future authorized `instance.restart.execute` Discord request must create a Server Operation through the same application service used by other clients. The current Discord slice stops after authorization and reports that execution is not enabled.
+
 ---
 
 # Health Checks

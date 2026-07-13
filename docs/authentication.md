@@ -25,6 +25,7 @@ This document defines the initial rules required for the Cohorts in the Wild Gen
 - Authorize every protected request on the server.
 - Community access is determined through Community Membership.
 - Operation permissions are determined by role and capability.
+- Community invitation management is authorized by Community role in V1.
 - Begin with the simplest secure implementation needed for the first vertical slice.
 - Do not add public registration, external login providers, or account recovery until they are approved.
 
@@ -139,3 +140,19 @@ Server returns the current User
 ↓
 
 Browser receives the secure session cookie
+```
+
+---
+
+# Community Invitation Authorization
+
+Community owners, admins, and moderators may create, list, revoke, and approve Community Invitations in V1.
+
+Role safety applies:
+
+- owner may invite admin, moderator, or member;
+- admin may invite moderator or member;
+- moderator may invite member;
+- owner cannot be granted through an invitation.
+
+Accepting an invitation creates only Community Membership. It does not grant Game Instance access, Discord installation approval, Server Operations, restart, save, mods, or ownership.

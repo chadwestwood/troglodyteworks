@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+
 from twe.app import create_app as create_twe_app
 from routes.genesis import genesis_bp
 from routes.actions import actions_bp
@@ -14,4 +16,6 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8787)
+    host = os.environ.get("TWE_BIND_HOST", "0.0.0.0")
+    port = int(os.environ.get("TWE_BIND_PORT", "8787"))
+    app.run(host=host, port=port)

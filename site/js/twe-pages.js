@@ -19,7 +19,7 @@ async function initSignIn() {
           password: formData.get("password"),
         }),
       });
-      window.location.href = routes.communities;
+      window.location.href = pendingInvitePath() || routes.communities;
     } catch (error) {
       showError(error.message);
     }
@@ -41,7 +41,7 @@ async function initRegister() {
           password_confirmation: formData.get("password_confirmation"),
         }),
       });
-      window.location.href = routes.communities;
+      window.location.href = pendingInvitePath() || routes.communities;
     } catch (error) {
       showError(error.message);
     }
@@ -239,3 +239,8 @@ const initializers = {
 };
 
 initializers[page]?.().catch((error) => showError(error.message));
+
+function pendingInvitePath() {
+  const token = recall("twe.pending_invite_token");
+  return token ? `/invite/${token}/` : null;
+}

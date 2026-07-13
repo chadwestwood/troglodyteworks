@@ -219,6 +219,25 @@ Returns one Community when the authenticated user has an active Community Member
 
 ### Successful Response
 
+## Community Invitations
+
+```text
+POST /api/v1/communities/{community_id}/invitations
+GET /api/v1/communities/{community_id}/invitations
+POST /api/v1/communities/{community_id}/invitations/{invitation_id}/revoke
+GET /api/v1/community-invitations/{token}
+POST /api/v1/community-invitations/{token}/accept
+POST /api/v1/community-invitations/{token}/decline
+POST /api/v1/community-invitations/direct/{invitation_id}/accept
+POST /api/v1/community-invitations/direct/{invitation_id}/decline
+POST /api/v1/communities/{community_id}/invitation-redemptions/{redemption_id}/approve
+POST /api/v1/communities/{community_id}/invitation-redemptions/{redemption_id}/deny
+```
+
+Community Invitations let authorized Community leaders invite existing TWE users directly or create shareable links. Link tokens are returned only once on creation; later API responses never return token hashes or plaintext tokens.
+
+Accepting an invitation grants only the configured Community role. It does not grant Game Instance access, Discord installation authority, Server Operations, restart, save, mods, or ownership.
+
 ```json
 {
     "community": {
