@@ -4,67 +4,114 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Invitations | Cohorts in the Wild</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=invitation-workflow-v1">
 </head>
 <body class="app-page" data-page="community-invitations">
   <main class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/cohorts-in-the-wild/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
-      <div class="header-actions">
-        <span class="muted" data-current-user></span>
+      <nav class="header-actions" aria-label="User navigation">
+        <a class="header-link" href="/communities/">My Communities</a>
+        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
+        <a class="header-link" href="/explore/">Explore</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
-      </div>
+      </nav>
     </header>
+
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/communities/">My Communities</a> &gt; <a href="/communities/cohorts-in-the-wild/">Cohorts in the Wild</a> &gt; Invitations</nav>
 
     <section class="app-panel">
       <p class="eyebrow">Community Invitations</p>
       <h1>Bring someone into Cohorts.</h1>
       <p class="muted">Invitations create basic community membership only. They do not grant Genesis, Trog installation, restart, save, or mod access.</p>
-      <p class="form-error" data-error hidden></p>
-      <p class="guidance-note" data-created-link hidden></p>
+      <p class="form-error" data-error role="alert" hidden></p>
+      <p class="status-line" data-status role="status" hidden></p>
 
-      <div class="app-grid">
-        <form class="stack-form" data-direct-invite-form>
-          <h2>Invite existing user</h2>
-          <label for="direct_email">Exact email</label>
-          <input id="direct_email" name="email" type="email" autocomplete="off" required>
-          <label for="direct_role">Initial role</label>
+      <div class="app-grid invitation-methods">
+        <form class="stack-form invitation-method" data-direct-invite-form>
+          <div>
+            <p class="eyebrow">For an existing account</p>
+            <h2>Invite a TWE member</h2>
+            <p class="muted">Use the exact email on their Troglodyte Works account. They will accept from My Communities.</p>
+          </div>
+          <label for="direct_email">TWE account email</label>
+          <input id="direct_email" name="email" type="email" autocomplete="email" placeholder="person@example.com" required>
+          <label for="direct_role">Community role</label>
           <select id="direct_role" name="initial_role">
-            <option value="member">member</option>
-            <option value="moderator">moderator</option>
-            <option value="admin">admin</option>
+            <option value="member">Member</option>
           </select>
-          <button class="primary-button" type="submit">Send Invitation</button>
+          <small class="muted" data-role-description>Members can participate in the Community but cannot manage invitations.</small>
+          <button class="primary-button" type="submit">Send invitation</button>
         </form>
 
-        <form class="stack-form" data-link-invite-form>
-          <h2>Create invitation link</h2>
-          <label for="link_role">Initial role</label>
+        <form class="stack-form invitation-method" data-link-invite-form>
+          <div>
+            <p class="eyebrow">For sharing privately</p>
+            <h2>Create a signup link</h2>
+            <p class="muted">Send a limited-use link to someone who may not have a TWE account yet.</p>
+          </div>
+          <label for="link_role">Community role</label>
           <select id="link_role" name="initial_role">
-            <option value="member">member</option>
-            <option value="moderator">moderator</option>
-            <option value="admin">admin</option>
+            <option value="member">Member</option>
           </select>
-          <label for="maximum_uses">Maximum uses</label>
-          <input id="maximum_uses" name="maximum_uses" type="number" min="1" value="1" required>
-          <label for="expires_in_hours">Expires in hours</label>
-          <input id="expires_in_hours" name="expires_in_hours" type="number" min="1" value="168" required>
-          <label>
-            <input name="requires_approval" type="checkbox">
-            Leader approval required after redemption
+          <small class="muted" data-role-description>Members can participate in the Community but cannot manage invitations.</small>
+          <label for="maximum_uses">How many people may use it?</label>
+          <input id="maximum_uses" name="maximum_uses" type="number" min="1" max="100" value="1" required>
+          <label for="expires_in_hours">When should it expire?</label>
+          <select id="expires_in_hours" name="expires_in_hours">
+            <option value="24" selected>In 24 hours</option>
+            <option value="168">In 7 days</option>
+            <option value="720">In 30 days</option>
+          </select>
+          <label class="checkbox-label">
+            <input name="requires_approval" type="checkbox" checked>
+            Review each membership request before they join
           </label>
-          <button class="primary-button" type="submit">Create Link</button>
+          <button class="primary-button" type="submit">Create signup link</button>
         </form>
       </div>
+
+      <section class="created-link" data-created-link hidden aria-labelledby="created-link-title">
+        <div>
+          <h2 id="created-link-title">Signup link ready</h2>
+          <p class="muted">Copy it now. For security, the full link is shown only once.</p>
+        </div>
+        <div class="copy-link-row">
+          <input type="text" readonly data-created-link-value aria-label="Created signup link">
+          <button class="primary-button" type="button" data-copy-link>Copy link</button>
+        </div>
+        <p class="muted" data-copy-status role="status"></p>
+      </section>
     </section>
 
     <section class="app-panel">
-      <h2>Pending invitations</h2>
-      <div class="resource-list" data-invitations-list></div>
+      <div>
+        <p class="eyebrow">Needs attention</p>
+        <h2>Membership requests</h2>
+        <p class="muted">People who used a link that requires leader review.</p>
+      </div>
+      <div class="resource-list" data-approval-list></div>
+    </section>
+
+    <section class="app-panel">
+      <div>
+        <p class="eyebrow">Open access</p>
+        <h2>Active invitations</h2>
+      </div>
+      <div class="resource-list" data-active-invitations-list></div>
+    </section>
+
+    <section class="app-panel">
+      <details class="invitation-history">
+        <summary>Invitation history</summary>
+        <p class="muted">Accepted, declined, revoked, and expired invitations.</p>
+        <div class="resource-list" data-invitation-history-list></div>
+      </details>
     </section>
   </main>
 
-  <script src="/js/twe-api.js"></script>
-  <script src="/js/community-invitations.js"></script>
+  <script src="/js/twe-api.js?v=site-admin-v2"></script>
+  <script src="/js/community-invitations.js?v=invitation-workflow-v1"></script>
 </body>
 </html>

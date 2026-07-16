@@ -244,14 +244,14 @@ Interactions can be delivered or processed more than once across retries and res
 4. Register guild commands in development and promote the stable command tree to global commands.
 5. Add interaction-ID idempotency before enabling restart execution.
 6. Defer administrative interactions immediately and hand work to the Server Operation lifecycle.
-7. Build self-service Discord identity linking with OAuth2 `identify`, state validation, expiration, and explicit unlinking.
+7. Preserve the implemented OAuth2 identity-link and guild-install flows, including PKCE, one-time state, fixed guild binding, and bot-membership confirmation.
 8. Add rate-limit telemetry that records buckets and retry delays without recording tokens or message content.
 
 ## Verification Limits
 
 - Official documentation was reviewed, but no live Discord API requests were made.
 - No command registration, Gateway connection, permission calculation, or interaction webhook was exercised in this research task.
-- Current Trog behavior was evaluated from repository documentation, not end-to-end browser and Discord testing.
+- The guild-install workflow has automated tests with mocked Discord responses, but no live Discord OAuth or bot-install request was made during this research/implementation pass.
 - Privileged-intent availability depends on the application's installation reach and Discord review status and must be checked in the Developer Portal.
 
 ## Official Sources
@@ -264,4 +264,3 @@ Interactions can be delivered or processed more than once across retries and res
 - [Discord OAuth2 and permissions](https://docs.discord.com/developers/platform/oauth2-and-permissions)
 - [Discord permission reference](https://docs.discord.com/developers/topics/permissions)
 - [Discord rate limits](https://docs.discord.com/developers/topics/rate-limits)
-

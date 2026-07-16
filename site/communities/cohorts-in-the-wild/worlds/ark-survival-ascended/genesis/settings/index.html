@@ -3,96 +3,98 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Genesis Control | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/genesis-settings.css">
+  <title>Genesis Settings | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <main class="page">
-    <header class="topbar">
-      <div>
-        <div class="logo">TW</div>
-        <p class="crumbs">Cohorts in the Wild → ARK Survival Ascended</p>
-        <h1>Genesis Control</h1>
-        <p class="subtitle">A live experience profile for your Genesis map.</p>
-      </div>
-      <div class="status online">API Connected</div>
+<body class="app-page">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <nav class="header-actions" aria-label="User navigation">
+        <a class="header-link" href="/communities/">My Communities</a>
+        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
+        <a class="header-link" href="/explore/">Explore</a>
+        <button class="text-button" type="button" data-sign-out>Sign out</button>
+      </nav>
     </header>
+    <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild &gt; ARK Survival Ascended &gt; Genesis &gt; Settings</nav>
 
-    <section class="hero">
-      <div>
-        <h2>Genesis</h2>
-        <p class="big">Cohorts in the Wild -- Genesis</p>
-        <p>This page reads live settings from your ARK server and translates them into gameplay meaning.</p>
-      </div>
+    <main class="app-grid">
+      <section class="app-panel">
+        <p class="eyebrow">Genesis Settings</p>
+        <h1>Understand how Genesis feels to play.</h1>
+        <p class="muted">This page reads live settings and translates them into gameplay meaning.</p>
+        <p class="form-error" data-error hidden></p>
+      </section>
 
-      <aside class="trog-card">
-        <h3>Trog</h3>
-        <p id="trog-message">Loading your server experience profile...</p>
+      <aside class="app-panel">
+        <p class="eyebrow">Trog</p>
+        <h2>Experience profile</h2>
+        <p class="muted" id="trog-message">Loading your server experience profile...</p>
       </aside>
-    </section>
 
-    <section class="grid">
-      <article class="panel">
-        <h3>Harvesting</h3>
-        <p class="stars" data-setting="harvest-stars">☆☆☆☆☆</p>
-        <p class="label" data-setting="harvest-label">Loading...</p>
-        <p class="description" data-setting="harvest-description">Loading...</p>
-        <p class="raw">Raw value: <strong data-setting="harvest">Loading...</strong></p>
-      </article>
+      <section class="app-panel">
+        <h2>Harvesting</h2>
+        <p class="status-line" data-setting="harvest-stars">☆☆☆☆☆</p>
+        <p><strong data-setting="harvest-label">Loading...</strong></p>
+        <p class="muted" data-setting="harvest-description">Loading...</p>
+        <p class="muted">Raw value: <strong data-setting="harvest">Loading...</strong></p>
+      </section>
 
-      <article class="panel">
-        <h3>Taming</h3>
-        <p class="stars" data-setting="taming-stars">☆☆☆☆☆</p>
-        <p class="label" data-setting="taming-label">Loading...</p>
-        <p class="description" data-setting="taming-description">Loading...</p>
-        <p class="raw">Raw value: <strong data-setting="taming">Loading...</strong></p>
-      </article>
+      <section class="app-panel">
+        <h2>Taming</h2>
+        <p class="status-line" data-setting="taming-stars">☆☆☆☆☆</p>
+        <p><strong data-setting="taming-label">Loading...</strong></p>
+        <p class="muted" data-setting="taming-description">Loading...</p>
+        <p class="muted">Raw value: <strong data-setting="taming">Loading...</strong></p>
+      </section>
 
-      <article class="panel">
-        <h3>Baby Mature</h3>
-        <p class="stars" data-setting="mature-stars">☆☆☆☆☆</p>
-        <p class="label" data-setting="mature-label">Loading...</p>
-        <p class="description" data-setting="mature-description">Loading...</p>
-        <p class="raw">Raw value: <strong data-setting="mature">Loading...</strong></p>
-      </article>
+      <section class="app-panel">
+        <h2>Baby Mature</h2>
+        <p class="status-line" data-setting="mature-stars">☆☆☆☆☆</p>
+        <p><strong data-setting="mature-label">Loading...</strong></p>
+        <p class="muted" data-setting="mature-description">Loading...</p>
+        <p class="muted">Raw value: <strong data-setting="mature">Loading...</strong></p>
+      </section>
 
-      <article class="panel">
-        <h3>Egg Hatch</h3>
-        <p class="stars" data-setting="hatch-stars">☆☆☆☆☆</p>
-        <p class="label" data-setting="hatch-label">Loading...</p>
-        <p class="description" data-setting="hatch-description">Loading...</p>
-        <p class="raw">Raw value: <strong data-setting="hatch">Loading...</strong></p>
-      </article>
+      <section class="app-panel">
+        <h2>Egg Hatch</h2>
+        <p class="status-line" data-setting="hatch-stars">☆☆☆☆☆</p>
+        <p><strong data-setting="hatch-label">Loading...</strong></p>
+        <p class="muted" data-setting="hatch-description">Loading...</p>
+        <p class="muted">Raw value: <strong data-setting="hatch">Loading...</strong></p>
+      </section>
 
-      <article class="panel">
-        <h3>Max Players</h3>
-        <p class="label"><strong data-setting="maxPlayers">Loading...</strong> players</p>
-        <p class="description">Maximum players allowed on the Genesis server.</p>
-      </article>
+      <section class="app-panel">
+        <h2>Difficulty</h2>
+        <p class="status-line" data-setting="difficulty-stars">☆☆☆☆☆</p>
+        <p><strong data-setting="difficulty-label">Loading...</strong></p>
+        <p class="muted" data-setting="difficulty-description">Loading...</p>
+        <p class="muted">Raw value: <strong data-setting="difficulty">Loading...</strong></p>
+      </section>
 
-      <article class="panel">
-        <h3>Difficulty</h3>
-        <p class="stars" data-setting="difficulty-stars">☆☆☆☆☆</p>
-        <p class="label" data-setting="difficulty-label">Loading...</p>
-        <p class="description" data-setting="difficulty-description">Loading...</p>
-        <p class="raw">Raw value: <strong data-setting="difficulty">Loading...</strong></p>
-      </article>
-    </section>
+      <section class="app-panel">
+        <h2>Capacity</h2>
+        <p><strong data-setting="maxPlayers">Loading...</strong> players</p>
+        <p class="muted">Maximum players allowed on Genesis.</p>
+      </section>
 
-    <section class="quick">
-      <h2>Server Actions</h2>
-      <div class="button-row">
-        <button id="refresh-settings">Refresh Settings</button>
-        <button disabled>Restart Server</button>
-        <button disabled>Save World</button>
-        <button disabled>Backup Now</button>
-        <button disabled>Manage Mods</button>
-        <button disabled>View Console</button>
-      </div>
-      <p class="note">Only Refresh Settings is active. Other actions are still safely disabled.</p>
-    </section>
-  </main>
+      <section class="app-panel">
+        <h2>Server Actions</h2>
+        <div class="button-row">
+          <button class="primary-button" id="refresh-settings" type="button">Refresh Settings</button>
+        </div>
+        <div class="resource-list">
+          <div class="resource-row"><span><strong>Restart Server</strong><small>Safely disabled until restart execution is approved.</small></span><span>Unavailable</span></div>
+          <div class="resource-row"><span><strong>Save World</strong><small>Planned as a future Server Operation capability.</small></span><span>Planned</span></div>
+          <div class="resource-row"><span><strong>Manage Mods</strong><small>Requires a separate mod-management design.</small></span><span>Planned</span></div>
+        </div>
+      </section>
+    </main>
+  </div>
 
-  <script src="/js/genesis-settings.js"></script>
+  <script src="/js/twe-api.js?v=site-admin-v2"></script>
+  <script src="/js/genesis-settings.js?v=site-admin-v2"></script>
 </body>
 </html>

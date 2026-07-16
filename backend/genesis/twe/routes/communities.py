@@ -1,9 +1,11 @@
-from flask import Blueprint, current_app, g, jsonify
+from flask import Blueprint, current_app, g, jsonify, request
 
 from ..auth import require_user
 from ..authorization import membership_for_community
-from ..db import fetch_all, fetch_one
+from ..db import execute, fetch_all, fetch_one
 from ..responses import api_error
+from ..services.game_catalog import resolve_catalog_selection
+from ..services.instance_provisioning import begin_provisioning
 
 communities_bp = Blueprint("twe_communities", __name__)
 
@@ -62,3 +64,238 @@ def list_game_servers(community_id):
             (community_id,),
         )
     return jsonify({"game_servers": rows})
+
+
+@communities_bp.post("/communities/<community_id>/instances")
+@require_user
+def provision_instance(community_id):
+    payload = request.get_json(silent=True) or {}
+    game_key = str(payload.get("game_key") or "").strip()
+    map_key = str(payload.get("map_key") or "").strip()
+    idempotency_key = str(
+        payload.get("idempotency_key")
+        or request.headers.get("Idempotency-Key")
+        or ""
+    ).strip()
+    if not game_key or not map_key:
+        return api_error("VALIDATION_ERROR", "Game and map are required.", 400)
+    if idempotency_key and len(idempotency_key) > 120:
+        return api_error("VALIDATION_ERROR", "Idempotency key is too long.", 400)
+
+    game, game_map = resolve_catalog_selection(game_key, map_key)
+    if not game or not game_map:
+        return api_error("VALIDATION_ERROR", "Unsupported game or map selection.", 400)
+
+    with current_app.config["TWE_DB"].connect() as conn:
+        membership = membership_for_community(conn, g.current_user["id"], community_id)
+        if not membership or membership["role"] != "owner":
+            return api_error("FORBIDDEN", "Only Community owners can provision new Instances.", 403)
+
+        if idempotency_key:
+            existing_request = fetch_one(
+                conn,
+                """
+                SELECT ipr.id::text,
+                       gi.id::text AS instance_id,
+                       gi.game_server_id::text,
+                       gi.name,
+                       gi.slug,
+                       gi.instance_type,
+                       gi.game_identifier,
+                       gi.status,
+                       gi.hosting_provider,
+                       gi.provider_instance_id,
+                       gi.provider_state,
+                       gi.provisioning_error,
+                       so.id::text AS operation_id,
+                       so.capability,
+                       so.status AS operation_status,
+                       so.current_stage,
+                       so.requested_at,
+                       so.started_at,
+                       so.completed_at,
+                       so.result_message
+                FROM instance_provisioning_requests ipr
+                JOIN game_instances gi ON gi.id = ipr.game_instance_id
+                JOIN server_operations so ON so.id = ipr.server_operation_id
+                WHERE ipr.community_id = %s
+                  AND ipr.requested_by = %s
+                  AND ipr.idempotency_key = %s
+                """,
+                (community_id, g.current_user["id"], idempotency_key),
+            )
+            if existing_request:
+                return jsonify(
+                    {
+                        "instance": _instance_payload(existing_request),
+                        "server_operation": _operation_payload(existing_request),
+                        "idempotency_key": idempotency_key,
+                    }
+                ), 200
+
+        existing_instance = fetch_one(
+            conn,
+            """
+            SELECT gi.id::text
+            FROM game_instances gi
+            JOIN game_servers gs ON gs.id = gi.game_server_id
+            WHERE gs.community_id = %s
+              AND gs.game_type = %s
+              AND gi.game_identifier = %s
+              AND gi.status IN ('starting', 'degraded', 'online')
+            LIMIT 1
+            """,
+            (community_id, game["name"], map_key),
+        )
+        if existing_instance:
+            return api_error("INSTANCE_ALREADY_EXISTS", "A matching Instance already exists for this Community.", 409)
+
+        server_slug = game_key.replace("_", "-")
+        game_server = fetch_one(
+            conn,
+            """
+            SELECT id::text, name, slug
+            FROM game_servers
+            WHERE community_id = %s AND slug = %s
+            """,
+            (community_id, server_slug),
+        )
+        if not game_server:
+            game_server = fetch_one(
+                conn,
+                """
+                INSERT INTO game_servers (community_id, name, slug, game_type, management_adapter, status)
+                VALUES (%s, %s, %s, %s, 'hosting_provider', 'starting')
+                RETURNING id::text, name, slug
+                """,
+                (community_id, game["name"], server_slug, game["name"]),
+            )
+
+        instance = fetch_one(
+            conn,
+            """
+            INSERT INTO game_instances
+                (game_server_id, name, slug, instance_type, game_identifier, status, hosting_provider)
+            VALUES (%s, %s, %s, 'ark_map', %s, 'starting', 'pterodactyl')
+            RETURNING id::text, game_server_id::text, name, slug, instance_type, game_identifier,
+                      status, hosting_provider, provider_instance_id, provider_state, provisioning_error
+            """,
+            (game_server["id"], game_map["name"], map_key, map_key),
+        )
+        operation = fetch_one(
+            conn,
+            """
+            INSERT INTO server_operations (game_instance_id, requested_by, capability, status, current_stage)
+            VALUES (%s, %s, 'instance.provision', 'requested', 'requested')
+            RETURNING id::text, game_instance_id::text, capability, status, current_stage,
+                      requested_at, started_at, completed_at, result_message
+            """,
+            (instance["id"], g.current_user["id"]),
+        )
+        request_key = idempotency_key or operation["id"]
+        execute(
+            conn,
+            """
+            INSERT INTO instance_provisioning_requests
+                (community_id, requested_by, idempotency_key, game_key, map_key, game_instance_id, server_operation_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (community_id, g.current_user["id"], request_key, game_key, map_key, instance["id"], operation["id"]),
+        )
+        execute(
+            conn,
+            """
+            INSERT INTO audit_logs (user_id, community_id, action, target_type, target_id, details)
+            VALUES (%s, %s, %s, 'game_instance', %s,
+                    jsonb_build_object('game_key', %s::text, 'map_key', %s::text, 'operation_id', %s::text))
+            """,
+            (g.current_user["id"], community_id, "instance.provision.requested", instance["id"], game_key, map_key, operation["id"]),
+        )
+
+        begin_provisioning(
+            conn,
+            current_app.config["TWE_CONFIG"],
+            "pterodactyl",
+            {
+                "id": instance["id"],
+                "community_id": community_id,
+                "game_key": game_key,
+                "map_key": map_key,
+                "name": f"{game_map['name']} ({community_id[:8]})",
+            },
+            operation["id"],
+        )
+        refreshed_instance = fetch_one(
+            conn,
+            """
+            SELECT id::text AS instance_id,
+                   game_server_id::text,
+                   name,
+                   slug,
+                   instance_type,
+                   game_identifier,
+                   status,
+                   hosting_provider,
+                   provider_instance_id,
+                   provider_state,
+                   provisioning_error
+            FROM game_instances
+            WHERE id = %s
+            """,
+            (instance["id"],),
+        )
+        refreshed_operation = fetch_one(
+            conn,
+            """
+            SELECT id::text AS operation_id,
+                   game_instance_id::text,
+                   capability,
+                   status,
+                   current_stage,
+                   requested_at,
+                   started_at,
+                   completed_at,
+                   result_message
+            FROM server_operations
+            WHERE id = %s
+            """,
+            (operation["id"],),
+        )
+
+    return jsonify(
+        {
+            "instance": _instance_payload(refreshed_instance),
+            "server_operation": _operation_payload(refreshed_operation),
+            "idempotency_key": request_key,
+        }
+    ), 202
+
+
+def _instance_payload(row):
+    return {
+        "id": row.get("instance_id") or row.get("id"),
+        "game_server_id": row["game_server_id"],
+        "name": row["name"],
+        "slug": row["slug"],
+        "instance_type": row["instance_type"],
+        "game_identifier": row["game_identifier"],
+        "status": row["status"],
+        "hosting_provider": row.get("hosting_provider"),
+        "provider_instance_id": row.get("provider_instance_id"),
+        "provider_state": row.get("provider_state"),
+        "provisioning_error": row.get("provisioning_error"),
+    }
+
+
+def _operation_payload(row):
+    return {
+        "id": row.get("operation_id") or row.get("id"),
+        "instance_id": row["game_instance_id"],
+        "capability": row["capability"],
+        "status": row["operation_status"] if "operation_status" in row else row["status"],
+        "current_stage": row["current_stage"],
+        "requested_at": row["requested_at"].isoformat().replace("+00:00", "Z") if row.get("requested_at") else None,
+        "started_at": row["started_at"].isoformat().replace("+00:00", "Z") if row.get("started_at") else None,
+        "completed_at": row["completed_at"].isoformat().replace("+00:00", "Z") if row.get("completed_at") else None,
+        "result_message": row["result_message"],
+    }

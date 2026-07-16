@@ -1,7 +1,9 @@
 import secrets
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -9,14 +11,23 @@ sys.path.insert(0, str(ROOT))
 from twe.app import create_app
 from twe.config import load_config
 from twe.db import Database, execute, fetch_one
+from twe.discord_api import DiscordAPIError, DiscordOAuthResult
 from twe.discord_bot.authorization import authorize
+from twe.routes import discord_access
 from twe.routes.auth import create_session
 from twe.security import hash_password
 
 
 class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
     def setUp(self):
-        self.config = load_config()
+        self.config = replace(
+            load_config(),
+            discord_client_id="discord-client",
+            discord_client_secret="discord-secret",
+            discord_install_redirect_uri="https://example.test/api/v1/discord/oauth/callback",
+            discord_bot_token="bot-token",
+            discord_bot_permissions=274877975552,
+        )
         self.db = Database(self.config.database_url)
         self.suffix = secrets.token_hex(8)
         self.guild_id = str(secrets.randbelow(8_000_000_000_000_000_000) + 1_000_000_000_000_000_000)
@@ -60,9 +71,17 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
                 self._login(conn, self.matter_client, self.matter["id"])
                 self._login(conn, self.member_client, self.member["id"])
         except Exception as exc:
-            raise unittest.SkipTest(f"PostgreSQL unavailable for instance access integration test: {exc.__class__.__name__}")
+            raise unittest.SkipTest(f"PostgreSQL unavailable for instance access integration test: {exc.__class__.__name__}: {exc}")
+        self.original_exchange = discord_access.exchange_guild_authorization
+        self.original_installed = discord_access.installed_bot_guild
+        self.oauth_user_id = self.discord_user_id
+        self.oauth_permissions = 32
+        discord_access.exchange_guild_authorization = self._exchange_discord
+        discord_access.installed_bot_guild = lambda guild_id, _config: {"id": guild_id, "name": "LizzLive"}
 
     def tearDown(self):
+        discord_access.exchange_guild_authorization = self.original_exchange
+        discord_access.installed_bot_guild = self.original_installed
         with self.db.connect() as conn:
             execute(conn, "DELETE FROM communities WHERE id = %s", (self.community["id"],))
             execute(conn, "DELETE FROM users WHERE id IN (%s,%s,%s)", (self.owner["id"], self.matter["id"], self.member["id"]))
@@ -79,12 +98,8 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(denied.status_code, 403)
 
-        install = self.matter_client.post(
-            f"/api/v1/discord/instance-access-requests/{grant_id}/bot-installation",
-            json={"allowed_channel_ids": ["333"]},
-        )
-        self.assertEqual(install.status_code, 200)
-        self.assertEqual(install.get_json()["request"]["status"], "pending_provider_approval")
+        install = self._install_trog(grant_id)
+        self.assertIn("status=pending_provider_approval", install.headers["Location"])
 
         approval = self.owner_client.post(
             f"/api/v1/discord/instance-access-requests/{grant_id}/provider-approval",
@@ -121,34 +136,19 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
 
     def test_unlinked_discord_identity_cannot_complete_verification(self):
         grant_id = self._create_request()
-        state = self._oauth_state(grant_id)
-        response = self.matter_client.post(
-            f"/api/v1/discord/instance-access-requests/{grant_id}/discord-verification",
-            json={
-                "state": state,
-                "discord_user_id": self.discord_user_id,
-                "discord_guild_id": self.guild_id,
-                "permissions": 32,
-            },
-        )
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.get_json()["error"]["code"], "DISCORD_IDENTITY_NOT_LINKED")
+        state = self._oauth_state(grant_id, "guild_verification")
+        response = self.matter_client.get(f"/api/v1/discord/oauth/callback?state={state}&code=verify-code")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("same+Discord+account", response.headers["Location"])
 
     def test_user_without_discord_guild_management_is_rejected(self):
         grant_id = self._create_request()
         self._link_identity(self.discord_user_id)
-        state = self._oauth_state(grant_id)
-        response = self.matter_client.post(
-            f"/api/v1/discord/instance-access-requests/{grant_id}/discord-verification",
-            json={
-                "state": state,
-                "discord_user_id": self.discord_user_id,
-                "discord_guild_id": self.guild_id,
-                "permissions": 0,
-            },
-        )
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.get_json()["error"]["code"], "DISCORD_GUILD_AUTHORITY_REQUIRED")
+        self.oauth_permissions = 0
+        state = self._oauth_state(grant_id, "guild_verification")
+        response = self.matter_client.get(f"/api/v1/discord/oauth/callback?state={state}&code=verify-code")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("did+not+confirm", response.headers["Location"])
 
     def test_revoked_grant_stops_access(self):
         grant_id = self._active_grant()
@@ -158,6 +158,43 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
             decision = authorize(conn, self.guild_id, "333", "public-user", "instance.status.read")
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, "guild_not_connected")
+
+    def test_provider_can_deny_pending_request(self):
+        grant_id = self._create_request()
+        denied = self.owner_client.post(f"/api/v1/discord/instance-access-requests/{grant_id}/provider-denial")
+        self.assertEqual(denied.status_code, 200)
+        self.assertEqual(denied.get_json()["request"]["status"], "denied")
+        oauth = self.matter_client.post(
+            f"/api/v1/discord/instance-access-requests/{grant_id}/oauth-state",
+            json={"purpose": "guild_verification", "discord_guild_id": self.guild_id},
+        )
+        self.assertEqual(oauth.status_code, 409)
+
+    def test_installation_is_not_recorded_when_bot_cannot_confirm_guild(self):
+        grant_id = self._create_request()
+        self._verify_discord(grant_id, self.discord_user_id, permissions=32)
+
+        def missing_bot(_guild_id, _config):
+            raise DiscordAPIError("not installed")
+
+        discord_access.installed_bot_guild = missing_bot
+        callback = self._install_trog(grant_id)
+        self.assertEqual(callback.status_code, 302)
+        self.assertIn("could+not+confirm", callback.headers["Location"])
+        request_data = self.matter_client.get(f"/api/v1/discord/instance-access-requests/{grant_id}").get_json()["request"]
+        self.assertIsNone(request_data["discord_guild_installation_id"])
+
+    def test_browser_cannot_submit_unverified_discord_claims(self):
+        grant_id = self._create_request()
+        identity = self.matter_client.post("/api/v1/discord/identity/link", json={"discord_user_id": self.discord_user_id})
+        verification = self.matter_client.post(
+            f"/api/v1/discord/instance-access-requests/{grant_id}/discord-verification",
+            json={"discord_guild_id": self.guild_id, "permissions": 32},
+        )
+        installation = self.matter_client.post(f"/api/v1/discord/instance-access-requests/{grant_id}/bot-installation")
+        self.assertEqual(identity.status_code, 404)
+        self.assertEqual(verification.status_code, 404)
+        self.assertEqual(installation.status_code, 404)
 
     def test_cross_community_instance_is_rejected(self):
         with self.db.connect() as conn:
@@ -195,15 +232,15 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         response = self.matter_client.get("/discord/request-access/")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Trog Discord Access", response.data)
+        self.assertIn(b"data-discord-guild-select", response.data)
+        self.assertIn(b"Refresh Discord servers", response.data)
+        self.assertNotIn(b"paste the Discord server ID", response.data)
 
     def _active_grant(self):
         grant_id = self._create_request()
         self._verify_discord(grant_id, self.discord_user_id, permissions=32)
-        install = self.matter_client.post(
-            f"/api/v1/discord/instance-access-requests/{grant_id}/bot-installation",
-            json={"allowed_channel_ids": ["333"]},
-        )
-        self.assertEqual(install.status_code, 200)
+        install = self._install_trog(grant_id)
+        self.assertEqual(install.status_code, 302)
         approval = self.owner_client.post(
             f"/api/v1/discord/instance-access-requests/{grant_id}/provider-approval",
             json={"approved_capabilities": ["instance.status.read"]},
@@ -223,6 +260,7 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
                     "instance.players.names.read",
                 ],
                 "channel_scope": channel_scope,
+                "allowed_channel_ids": ["333"] if channel_scope == "allowlist" else [],
             },
         )
         self.assertEqual(response.status_code, 201)
@@ -230,31 +268,50 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
 
     def _verify_discord(self, grant_id, discord_user_id, permissions):
         self._link_identity(discord_user_id)
-        state = self._oauth_state(grant_id)
-        response = self.matter_client.post(
-            f"/api/v1/discord/instance-access-requests/{grant_id}/discord-verification",
-            json={
-                "state": state,
-                "discord_user_id": discord_user_id,
-                "discord_guild_id": self.guild_id,
-                "discord_guild_name": "LizzLive",
-                "permissions": permissions,
-            },
-        )
-        self.assertEqual(response.status_code, 200)
-        return response.get_json()
+        self.oauth_user_id = discord_user_id
+        self.oauth_permissions = permissions
+        state = self._oauth_state(grant_id, "guild_verification")
+        response = self.matter_client.get(f"/api/v1/discord/oauth/callback?state={state}&code=verify-code")
+        self.assertEqual(response.status_code, 302)
+        request_data = self.matter_client.get(f"/api/v1/discord/instance-access-requests/{grant_id}")
+        self.assertEqual(request_data.status_code, 200)
+        return request_data.get_json()
 
     def _link_identity(self, discord_user_id):
-        response = self.matter_client.post("/api/v1/discord/identity/link", json={"discord_user_id": discord_user_id})
-        self.assertEqual(response.status_code, 200)
+        with self.db.connect() as conn:
+            execute(
+                conn,
+                "INSERT INTO discord_identities (discord_user_id,user_id,linked_at) VALUES (%s,%s,now()) ON CONFLICT (discord_user_id) DO UPDATE SET user_id=EXCLUDED.user_id, linked_at=now()",
+                (discord_user_id, self.matter["id"]),
+            )
 
-    def _oauth_state(self, grant_id):
+    def _oauth_state(self, grant_id, purpose):
+        payload = {"purpose": purpose}
+        if purpose == "guild_verification":
+            payload["discord_guild_id"] = self.guild_id
         response = self.matter_client.post(
             f"/api/v1/discord/instance-access-requests/{grant_id}/oauth-state",
-            json={"purpose": "guild_verification"},
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
-        return response.get_json()["oauth"]["state"]
+        url = response.get_json()["oauth"]["authorization_url"]
+        params = parse_qs(urlparse(url).query)
+        self.assertEqual(params["redirect_uri"], [self.config.discord_install_redirect_uri])
+        self.assertEqual(params["code_challenge_method"], ["S256"])
+        if purpose == "bot_install":
+            self.assertEqual(params["guild_id"], [self.guild_id])
+            self.assertEqual(params["disable_guild_select"], ["true"])
+        return params["state"][0]
+
+    def _install_trog(self, grant_id):
+        state = self._oauth_state(grant_id, "bot_install")
+        return self.matter_client.get(f"/api/v1/discord/oauth/callback?state={state}&code=install-code")
+
+    def _exchange_discord(self, _code, _code_verifier, _config):
+        return DiscordOAuthResult(
+            user_id=self.oauth_user_id,
+            guilds=({"id": self.guild_id, "name": "LizzLive", "permissions": str(self.oauth_permissions)},),
+        )
 
     def _user(self, conn, label):
         return fetch_one(

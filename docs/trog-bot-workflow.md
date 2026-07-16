@@ -37,6 +37,7 @@ Examples:
 @Trog is the server up?
 @Trog how many players are online?
 @Trog who's on?
+@Trog what mods are installed?
 ```
 
 For external provider-owned access, replies identify the provider-owned instance:
@@ -45,4 +46,13 @@ For external provider-owned access, replies identify the provider-owned instance
 Cohorts in the Wild - Genesis is up and ready for players.
 ```
 
+Installed-mod questions require `instance.mods.names.read`. Trog reads the
+active launch list from the local ASA panel and responds with human-readable
+names in launch order. This is read-only; it does not grant mod management.
+
 Trog must not describe the instance as owned by the consumer Discord guild.
+
+Player-list responses contain display usernames only. RCON row numbers and
+immutable platform account IDs must be removed before composing a Discord reply.
+
+Discord account linking is handled through the provider-neutral external identity model. A User who signed up with Google or local credentials must connect Discord to the same TWE User before Discord guild authority can be verified. Linking Discord only proves the Discord user identity; Community Membership, provider approval, Instance Access Grants, and capability allowlists remain separate authorization steps.

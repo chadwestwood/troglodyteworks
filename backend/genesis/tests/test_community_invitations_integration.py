@@ -50,6 +50,9 @@ class CommunityInvitationIntegrationTests(unittest.TestCase):
     def test_authorized_leader_can_invite_existing_user_and_user_accepts(self):
         created = self._direct_invite(self.invitee["email"])
         invitation_id = created["invitation"]["id"]
+        pending = self.invitee_client.get("/api/v1/community-invitations/pending")
+        self.assertEqual(pending.status_code, 200)
+        self.assertEqual(pending.get_json()["invitations"][0]["id"], invitation_id)
         accepted = self.invitee_client.post(f"/api/v1/community-invitations/direct/{invitation_id}/accept")
         self.assertEqual(accepted.status_code, 200)
         with self.db.connect() as conn:
@@ -138,6 +141,16 @@ class CommunityInvitationIntegrationTests(unittest.TestCase):
         self.assertEqual(redeemed.status_code, 200)
         self.assertEqual(redeemed.get_json()["redemption"]["status"], "pending_approval")
         redemption_id = redeemed.get_json()["redemption"]["id"]
+        pending = self.owner_client.get(
+            f"/api/v1/communities/{self.community['id']}/invitation-redemptions/pending"
+        )
+        self.assertEqual(pending.status_code, 200)
+        self.assertEqual(pending.get_json()["redemptions"][0]["id"], redemption_id)
+        self.assertEqual(pending.get_json()["redemptions"][0]["user"]["email"], self.invitee["email"])
+        hidden_from_member = self.member_client.get(
+            f"/api/v1/communities/{self.community['id']}/invitation-redemptions/pending"
+        )
+        self.assertEqual(hidden_from_member.status_code, 403)
         denied = self.member_client.post(f"/api/v1/communities/{self.community['id']}/invitation-redemptions/{redemption_id}/approve")
         self.assertEqual(denied.status_code, 403)
         approved = self.owner_client.post(f"/api/v1/communities/{self.community['id']}/invitation-redemptions/{redemption_id}/approve")
@@ -145,6 +158,62 @@ class CommunityInvitationIntegrationTests(unittest.TestCase):
         with self.db.connect() as conn:
             membership = fetch_one(conn, "SELECT role FROM community_memberships WHERE user_id = %s AND community_id = %s", (self.invitee["id"], self.community["id"]))
         self.assertEqual(membership["role"], "member")
+
+    def test_link_defaults_to_24_hours_and_pending_request_survives_link_expiration(self):
+        created_response = self.owner_client.post(
+            f"/api/v1/communities/{self.community['id']}/invitations",
+            json={"invitation_type": "link", "initial_role": "member", "maximum_uses": 2},
+        )
+        self.assertEqual(created_response.status_code, 201)
+        created = created_response.get_json()["invitation"]
+        with self.db.connect() as conn:
+            invitation = fetch_one(
+                conn,
+                "SELECT expires_at, requires_approval FROM community_invitations WHERE id = %s",
+                (created["id"],),
+            )
+        remaining = invitation["expires_at"] - datetime.now(timezone.utc)
+        self.assertTrue(invitation["requires_approval"])
+        self.assertGreater(remaining, timedelta(hours=23, minutes=59))
+        self.assertLessEqual(remaining, timedelta(hours=24))
+
+        redeemed = self.invitee_client.post(f"/api/v1/community-invitations/{created['token']}/accept")
+        self.assertEqual(redeemed.status_code, 200)
+        redemption_id = redeemed.get_json()["redemption"]["id"]
+        with self.db.connect() as conn:
+            execute(
+                conn,
+                "UPDATE community_invitations SET expires_at = now() - interval '1 hour' WHERE id = %s",
+                (created["id"],),
+            )
+        approved = self.owner_client.post(
+            f"/api/v1/communities/{self.community['id']}/invitation-redemptions/{redemption_id}/approve"
+        )
+        self.assertEqual(approved.status_code, 200)
+        with self.db.connect() as conn:
+            membership = fetch_one(
+                conn,
+                "SELECT role FROM community_memberships WHERE user_id = %s AND community_id = %s",
+                (self.invitee["id"], self.community["id"]),
+            )
+        self.assertEqual(membership["role"], "member")
+
+    def test_invitation_list_describes_manager_permissions_and_input_limits(self):
+        listed = self.owner_client.get(f"/api/v1/communities/{self.community['id']}/invitations")
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.get_json()["current_user_role"], "owner")
+        self.assertEqual(listed.get_json()["grantable_roles"], ["member", "moderator", "admin"])
+
+        too_many_uses = self.owner_client.post(
+            f"/api/v1/communities/{self.community['id']}/invitations",
+            json={"invitation_type": "link", "maximum_uses": 101},
+        )
+        self.assertEqual(too_many_uses.status_code, 400)
+        invalid_expiration = self.owner_client.post(
+            f"/api/v1/communities/{self.community['id']}/invitations",
+            json={"invitation_type": "link", "expires_at": "not-a-date"},
+        )
+        self.assertEqual(invalid_expiration.status_code, 400)
 
     def test_decline_and_mattertrala_membership_do_not_grant_genesis_capability(self):
         declined = self._link_invite(maximum_uses=1)

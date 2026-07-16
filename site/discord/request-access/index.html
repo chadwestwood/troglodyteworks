@@ -10,10 +10,13 @@
   <main class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
-      <div class="header-actions">
-        <span class="muted" data-current-user></span>
+      <nav class="header-actions" aria-label="User navigation">
+        <a class="header-link" href="/communities/">My Communities</a>
+        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
+        <a class="header-link" href="/explore/">Explore</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
-      </div>
+      </nav>
     </header>
 
     <section class="app-panel">
@@ -21,33 +24,49 @@
       <h1>Expose one provider-owned instance.</h1>
       <p class="muted">This setup keeps Cohorts in the Wild as the owner of Genesis while a Discord guild receives only approved read access.</p>
       <p class="form-error" data-error hidden></p>
-      <p class="guidance-note" data-status>Sign in, create the request, link Discord, verify the guild, then wait for provider approval.</p>
+      <div class="guidance-note" data-status>We will walk through the minimum setup: choose the provider-owned instance, connect Discord, identify the Discord server, then wait for provider approval.</div>
 
       <form class="stack-form" data-discord-access-form>
-        <label for="provider_community_id">Provider Community ID</label>
-        <input id="provider_community_id" name="provider_community_id" type="text" autocomplete="off" required>
+        <label for="provider_community_id">Which Community owns the server?</label>
+        <select id="provider_community_id" name="provider_community_id" required data-provider-community-select>
+          <option value="">Loading your Communities...</option>
+        </select>
 
-        <label for="game_instance_id">Genesis Instance ID</label>
-        <input id="game_instance_id" name="game_instance_id" type="text" autocomplete="off" required>
+        <label for="game_instance_id">Which Instance should Trog expose?</label>
+        <select id="game_instance_id" name="game_instance_id" required data-game-instance-select>
+          <option value="">Choose a Community first</option>
+        </select>
 
-        <label for="discord_user_id">Mattertrala Discord User ID</label>
-        <input id="discord_user_id" name="discord_user_id" type="text" inputmode="numeric" autocomplete="off" required>
+        <p class="muted" data-linked-discord-summary>Checking your connected Discord account...</p>
 
-        <label for="discord_guild_id">LizzLive Discord Guild ID</label>
-        <input id="discord_guild_id" name="discord_guild_id" type="text" inputmode="numeric" autocomplete="off" required>
+        <label for="discord_guild_id">Which Discord server should receive Trog?</label>
+        <select id="discord_guild_id" name="discord_guild_id" required data-discord-guild-select>
+          <option value="">Loading servers managed by your Discord account...</option>
+        </select>
+        <small class="muted" data-discord-guild-help>Discord will provide servers where you are the owner or have Administrator or Manage Server permission.</small>
+        <div class="button-row">
+          <button class="primary-button secondary" type="button" data-refresh-discord-guilds>Refresh Discord servers</button>
+        </div>
 
-        <label for="permissions">Verified Discord permission bitfield</label>
-        <input id="permissions" name="permissions" type="text" inputmode="numeric" autocomplete="off" value="32" required>
+        <p class="muted">Discord will confirm that you are the owner or have Administrator or Manage Server permission. Troglodyte Works does not accept self-reported permissions.</p>
 
-        <label for="allowed_channel_ids">Allowed channel IDs</label>
+        <label for="allowed_channel_ids">Limit Trog to specific channels?</label>
         <input id="allowed_channel_ids" name="allowed_channel_ids" type="text" autocomplete="off" placeholder="123,456">
+        <small class="muted">Leave blank to allow approved read responses anywhere Trog is installed.</small>
 
         <button class="primary-button" type="submit">Create Request</button>
       </form>
     </section>
+
+    <section class="app-panel">
+      <p class="eyebrow">Access Requests</p>
+      <h2>Installation and provider approval</h2>
+      <p class="muted">Requesters can finish Discord installation here. Cohorts owners and admins can approve or revoke provider access.</p>
+      <div class="resource-list" data-discord-access-requests></div>
+    </section>
   </main>
 
-  <script src="/js/twe-api.js"></script>
-  <script src="/js/discord-access.js"></script>
+  <script src="/js/twe-api.js?v=trog-oauth-v1"></script>
+  <script src="/js/discord-access.js?v=discord-verification-retry-v2"></script>
 </body>
 </html>

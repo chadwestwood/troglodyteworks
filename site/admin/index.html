@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page" data-page="admin">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <nav class="header-actions" aria-label="Admin navigation">
+        <a class="header-link" href="/communities/">My Communities</a>
+        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
+        <a class="header-link" href="/explore/">Explore</a>
+        <button class="text-button" type="button" data-sign-out>Sign out</button>
+      </nav>
+    </header>
+    <nav class="breadcrumbs">Home &gt; Admin</nav>
+
+    <main class="app-grid admin-dashboard">
+      <section class="app-panel admin-intro">
+        <p class="eyebrow">Platform Admin</p>
+        <h1>People, communities, and access.</h1>
+        <p class="muted">See what is real, what is connected, and what needs attention. Automated test records stay available without obscuring the production picture.</p>
+        <p class="form-error" data-error hidden></p>
+      </section>
+
+      <section class="app-panel admin-overview-panel">
+        <div class="admin-section-heading">
+          <div>
+            <p class="eyebrow">Live Platform</p>
+            <h2>At a glance</h2>
+          </div>
+          <label class="admin-test-toggle"><input type="checkbox" data-admin-show-test> Show automated test data</label>
+        </div>
+        <div class="admin-stat-grid" data-admin-overview></div>
+      </section>
+
+      <section class="app-panel">
+        <div class="admin-section-heading">
+          <div>
+            <p class="eyebrow">Accounts</p>
+            <h2>People <span class="admin-count" data-admin-user-count></span></h2>
+          </div>
+        </div>
+        <label class="admin-search"><span class="sr-only">Search people</span><input type="search" placeholder="Search name, email, or Community" data-admin-search></label>
+        <div class="resource-list" data-admin-users></div>
+      </section>
+
+      <section class="app-panel">
+        <div class="admin-section-heading">
+          <div>
+            <p class="eyebrow">Spaces</p>
+            <h2>Communities <span class="admin-count" data-admin-community-count></span></h2>
+          </div>
+        </div>
+        <div class="resource-list" data-admin-communities></div>
+      </section>
+
+      <section class="app-panel admin-access-panel">
+        <div class="admin-section-heading">
+          <div>
+            <p class="eyebrow">Discord</p>
+            <h2>Trog access <span class="admin-count" data-admin-access-count></span></h2>
+          </div>
+          <a class="header-link" href="/discord/request-access/">Manage requests</a>
+        </div>
+        <div class="resource-list" data-admin-discord-access></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/js/twe-api.js?v=admin-operations-v1"></script>
+  <script src="/js/twe-pages.js?v=admin-operations-v1"></script>
+</body>
+</html>

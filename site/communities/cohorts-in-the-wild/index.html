@@ -1,16 +1,24 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cohorts in the Wild | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body class="app-page" data-page="community">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
-      <button class="text-button" type="button" data-sign-out>Sign out</button>
+      <nav class="header-actions" aria-label="User navigation">
+        <a class="header-link" href="/communities/">My Communities</a>
+        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
+        <a class="header-link" href="/explore/">Explore</a>
+        <button class="text-button" type="button" data-sign-out>Sign out</button>
+      </nav>
     </header>
     <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild</nav>
     <main class="app-grid">
@@ -24,6 +32,39 @@
         <h2>Game Servers</h2>
         <div class="resource-list" data-game-servers-list></div>
       </section>
+      <section class="app-panel" data-host-game-panel hidden>
+        <div>
+          <p class="eyebrow">Community owner action</p>
+          <h2>Host a Game</h2>
+          <p class="muted" data-host-game-note>Provision a new game Instance in managed hosting.</p>
+        </div>
+        <form data-host-game-form>
+          <label>
+            Supported game
+            <select data-host-game-select required></select>
+          </label>
+          <label>
+            Supported map
+            <select data-host-map-select required></select>
+          </label>
+          <div class="button-row">
+            <button class="primary-button" type="submit">Confirm and provision</button>
+          </div>
+        </form>
+        <p class="status-line" data-host-status hidden></p>
+        <p class="muted" data-host-details hidden></p>
+      </section>
+      <section class="app-panel" data-membership-approvals-panel hidden>
+        <div>
+          <p class="eyebrow">Needs attention</p>
+          <h2>Membership requests <span data-membership-approval-count></span></h2>
+          <p class="muted">People who used an approval-required Cohorts invitation link.</p>
+        </div>
+        <p class="status-line" data-membership-approval-status role="status" hidden></p>
+        <div class="resource-list" data-membership-approval-list></div>
+        <a class="primary-button secondary" href="/communities/cohorts-in-the-wild/invitations/">Manage all
+          invitations</a>
+      </section>
       <section class="app-panel muted-panel">
         <h2>Recent Activity</h2>
         <p>Unavailable for this milestone.</p>
@@ -35,7 +76,8 @@
       </section>
     </main>
   </div>
-  <script src="/js/twe-api.js"></script>
-  <script src="/js/twe-pages.js"></script>
+  <script src="/js/twe-api.js?v=site-admin-v2"></script>
+  <script src="/js/twe-pages.js?v=membership-approval-v1"></script>
 </body>
+
 </html>

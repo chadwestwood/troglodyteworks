@@ -21,11 +21,23 @@ async function requireCurrentUser() {
     document.querySelectorAll("[data-current-user]").forEach((node) => {
       node.textContent = data.user.display_name;
     });
+    revealAdminLinks().catch(() => {});
     return data.user;
   } catch (error) {
     window.location.href = "/auth/sign-in.html";
     return null;
   }
+}
+
+async function revealAdminLinks() {
+  const links = document.querySelectorAll("[data-admin-link]");
+  if (!links.length) {
+    return;
+  }
+  const data = await apiRequest("/account/identities");
+  links.forEach((link) => {
+    link.hidden = !data.admin?.available;
+  });
 }
 
 function setText(selector, value) {
@@ -41,6 +53,41 @@ function showError(message) {
     node.textContent = message;
     node.hidden = false;
   }
+}
+
+function clearNode(node) {
+  if (node) {
+    node.replaceChildren();
+  }
+}
+
+function createTextElement(tagName, text, className) {
+  const node = document.createElement(tagName);
+  if (className) {
+    node.className = className;
+  }
+  node.textContent = text ?? "";
+  return node;
+}
+
+function createResourceRow(title, detail, trailingText, options = {}) {
+  const row = document.createElement(options.href ? "a" : "div");
+  row.className = "resource-row";
+  if (options.href) {
+    row.href = options.href;
+  }
+
+  const content = document.createElement("span");
+  content.appendChild(createTextElement("strong", title));
+  if (detail) {
+    content.appendChild(createTextElement("small", detail));
+  }
+  row.appendChild(content);
+
+  if (trailingText) {
+    row.appendChild(createTextElement("span", trailingText));
+  }
+  return row;
 }
 
 function remember(key, value) {

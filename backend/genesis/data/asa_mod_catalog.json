@@ -1,0 +1,20 @@
+{
+  "source": "CurseForge API names resolved for the Genesis active mod IDs on 2026-07-14",
+  "mods": [
+    {"id": "929420", "name": "Super Spyglass Plus"},
+    {"id": "928548", "name": "Shiny! Dinos Ascended"},
+    {"id": "929578", "name": "AP: Death Recovery [Cross-platform]"},
+    {"id": "953154", "name": "Auto Engrams!"},
+    {"id": "935528", "name": "Visual Storage (Cross Platform)"},
+    {"id": "946694", "name": "Klinger Additional Rustic Building"},
+    {"id": "961601", "name": "Cliffans Wardrobe [Armor & Clothing]"},
+    {"id": "949521", "name": "MarniiMods Hairstyles"},
+    {"id": "928818", "name": "Egg Collector"},
+    {"id": "1015955", "name": "Astraeos - Trireme Ships"},
+    {"id": "942024", "name": "Dino Depot"},
+    {"id": "929800", "name": "TG Stacking Mod 1000-50"},
+    {"id": "941450", "name": "Awesome ARK Tools"},
+    {"id": "969021", "name": "Random Eggs"},
+    {"id": "927084", "name": "Love Ascended"}
+  ]
+}

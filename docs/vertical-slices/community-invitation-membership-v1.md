@@ -30,15 +30,18 @@ Shareable link:
 2. TWE returns the plaintext token once.
 3. Chad sends the link to Mattertrala.
 4. Mattertrala opens `/invite/{token}/`.
-5. If unauthenticated, the invite token is preserved through sign-in or account creation.
+5. If unauthenticated, the invite token is preserved through local sign-in, local account creation, or OAuth provider login.
 6. Mattertrala accepts or declines.
 7. Acceptance creates basic Community Membership unless leader approval is required.
 
 Approval-required flow:
 
-1. Redemption creates a pending membership request.
-2. An authorized Community leader approves or denies it.
-3. Approval creates the membership.
+1. The default shareable link expires 24 hours after creation and requires approval in the leader UI.
+2. Opening the link does not consume it; the authenticated invitee must submit the request before expiration.
+3. Submission creates a pending membership request. That request remains reviewable after the invitation itself expires.
+4. Pending requests appear on the Cohorts Community home, the Genesis instance dashboard, and the full Invitations page for authorized leaders.
+5. An authorized Community leader approves or denies the request.
+6. Approval creates the membership.
 
 ## Domain Model
 
@@ -110,6 +113,8 @@ Implemented endpoints:
 POST /api/v1/communities/{community_id}/invitations
 GET  /api/v1/communities/{community_id}/invitations
 POST /api/v1/communities/{community_id}/invitations/{invitation_id}/revoke
+GET  /api/v1/communities/{community_id}/invitation-redemptions/pending
+GET  /api/v1/community-invitations/pending
 GET  /api/v1/community-invitations/{token}
 POST /api/v1/community-invitations/{token}/accept
 POST /api/v1/community-invitations/{token}/decline
@@ -135,16 +140,39 @@ Invite landing page:
 /invite/{token}/
 ```
 
+`/invite/{token}/` is a client-side route. The production reverse proxy must
+serve `/invite/index.html` for token-shaped paths while preserving the original
+browser URL so `invite.js` can read the token. Without that rewrite, valid
+invitations return a static-site 404 before the invitation API is called.
+
 The landing page preserves `twe.pending_invite_token` through sign-in and account creation.
 
+OAuth sign-in and registration preserve the invite destination by passing a safe relative `next` path into the provider start route.
+
+Direct invitations for an existing TWE User appear on My Communities whether or not that User already belongs to another Community. The invited User can accept or decline the pending invitation from there.
+
+The leader page resolves Cohorts in the Wild by its exact Community slug and never falls back to a different Community. It separates open invitations, pending Membership Requests, and invitation history. Roles shown in the forms are limited to those the current manager may grant. Pending Membership Requests can be approved or denied from the same page.
+
 ## Mattertrala Path
+
+Direct invitation:
+
+1. Chad signs in.
+2. Chad opens the Cohorts invitations page.
+3. Chad invites Mattertrala's exact existing TWE account email.
+4. Mattertrala signs in.
+5. Mattertrala opens My Communities.
+6. Mattertrala accepts the pending Cohorts invitation.
+7. Mattertrala becomes a basic Cohorts member.
+
+Shareable link:
 
 1. Chad signs in.
 2. Chad opens the Cohorts invitations page.
 3. Chad creates a one-use or limited-use link with initial role `member`.
 4. Chad sends the link to Mattertrala.
 5. Mattertrala opens the link.
-6. Mattertrala creates or signs into a TWE account.
+6. Mattertrala creates or signs into a TWE account, including through Google.
 7. Mattertrala accepts.
 8. Mattertrala becomes a basic Cohorts member.
 9. Mattertrala can then start the separate Cohorts -> Genesis -> LizzLive Trog access request.
@@ -157,4 +185,3 @@ Mattertrala still cannot approve his own provider-side Instance Access Grant unl
 - Add formal Community-scoped capability grants if the platform needs non-role invitation permissions.
 - Replace exact-email direct lookup with verified username or privacy-preserving search if account identity expands.
 - Add a polished Members page after this slice.
-

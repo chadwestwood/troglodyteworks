@@ -178,6 +178,67 @@ Returns the currently authenticated user.
 ```
 ---
 
+## External Provider Login
+
+```text
+GET /api/v1/auth/google/start
+GET /api/v1/auth/google/callback
+GET /api/v1/auth/discord/start
+GET /api/v1/auth/discord/callback
+```
+
+The start routes create secure one-time OAuth state and redirect to the provider. The callback routes consume state, validate the provider response server-side, resolve the immutable provider subject, and create the normal TWE session.
+
+Provider email is metadata only and must not silently merge accounts.
+
+---
+
+## Connected Authentication Methods
+
+```text
+GET    /api/v1/account/identities
+POST   /api/v1/account/identities/google/connect
+POST   /api/v1/account/identities/discord/connect
+DELETE /api/v1/account/identities/{provider}
+```
+
+Account linking requires an active TWE session. Link state is bound to the current User and never creates a second TWE User. Disconnecting the final usable authentication method is rejected.
+
+## Trog Discord Instance Access
+
+```text
+GET  /api/v1/discord/managed-guilds
+POST /api/v1/discord/instance-access-requests
+GET  /api/v1/discord/instance-access-requests/{id}
+POST /api/v1/discord/instance-access-requests/{id}/oauth-state
+GET  /api/v1/discord/oauth/callback
+POST /api/v1/discord/instance-access-requests/{id}/provider-approval
+POST /api/v1/discord/instance-access-requests/{id}/provider-denial
+POST /api/v1/discord/instance-access-grants/{id}/revoke
+GET  /api/v1/discord/installations
+```
+
+`GET /discord/managed-guilds` exposes only unexpired server-side verification snapshots created during Discord account linking or refresh. Guild verification and installation remain separate OAuth redirect flows: the callback obtains the immutable Discord user and managed-guild permissions directly from Discord and re-verifies the selected guild. Bot installation is persisted only after the bot API confirms Trog is present in that guild. Direct browser endpoints for asserting Discord identity, permissions, or installation do not exist.
+
+---
+
+## Platform Admin
+
+```text
+GET /api/v1/admin/overview
+GET /api/v1/admin/users
+GET /api/v1/admin/communities
+GET /api/v1/admin/discord-access
+```
+
+Platform admin endpoints require an authenticated User whose email is listed in `TWE_ADMIN_EMAILS`.
+
+Community roles do not grant platform admin access.
+
+The admin surface is read-only and supports `/admin/`. It separates automated fixture accounts (`@example.test` and `@external.twe.invalid`) from production records, shows Community roles and recent session activity, summarizes Game Servers and Instances, and provides an operational view of pending and active Trog access grants. Test records remain visible through an explicit UI toggle; the admin view does not delete or alter them.
+
+---
+
 # Communities
 
 ## List My Communities
@@ -225,6 +286,8 @@ Returns one Community when the authenticated user has an active Community Member
 POST /api/v1/communities/{community_id}/invitations
 GET /api/v1/communities/{community_id}/invitations
 POST /api/v1/communities/{community_id}/invitations/{invitation_id}/revoke
+GET /api/v1/communities/{community_id}/invitation-redemptions/pending
+GET /api/v1/community-invitations/pending
 GET /api/v1/community-invitations/{token}
 POST /api/v1/community-invitations/{token}/accept
 POST /api/v1/community-invitations/{token}/decline
@@ -235,6 +298,8 @@ POST /api/v1/communities/{community_id}/invitation-redemptions/{redemption_id}/d
 ```
 
 Community Invitations let authorized Community leaders invite existing TWE users directly or create shareable links. Link tokens are returned only once on creation; later API responses never return token hashes or plaintext tokens.
+
+The invitation listing also returns the current manager role and the roles that manager may grant. Pending approval redemptions include the requesting User and are visible only to Community invitation managers. Share links allow 1–100 uses and may expire no more than one year after creation when a duration is supplied.
 
 Accepting an invitation grants only the configured Community role. It does not grant Game Instance access, Discord installation authority, Server Operations, restart, save, mods, or ownership.
 

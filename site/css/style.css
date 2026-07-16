@@ -1,6 +1,6 @@
 @import url("variables.css");
 @import url("typography.css");
 @import url("layout.css");
-@import url("components.css");
+@import url("components.css?v=account-auth-methods-v1");
 @import url("forms.css");
 @import url("utilities.css");

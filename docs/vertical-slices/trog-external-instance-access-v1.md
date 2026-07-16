@@ -29,6 +29,7 @@ Initial exposed capabilities:
 - `instance.status.read`
 - `instance.players.count.read`
 - `instance.players.names.read`
+- `instance.mods.names.read`
 
 Unavailable in this slice:
 
@@ -72,18 +73,9 @@ Channel Policy and Capability Allowlist
 
 "Instance" is the universal TWE concept. For ARK Survival Ascended, an Instance corresponds to a playable map such as Genesis.
 
-## Current Gap
+## Implemented V1 Boundary
 
-The current Discord foundation records a Discord guild against a TWE Community and Game Server through `discord_guild_installations`. Trog then serves status and player queries from the Game Server context, with a temporary read-only environment fallback through `TROG_DISCORD_GUILD_GAME_SERVER_MAP`.
-
-This is not precise enough for provider-owned external access because:
-
-- it does not identify the exact Instance;
-- it can make an external guild look like it owns the provider's server;
-- it cannot safely support Cohorts Discord and LizzLive Discord both consuming Cohorts-owned Genesis;
-- it leaves future multi-map behavior ambiguous.
-
-This slice moves authorization and response resolution to an exact active Instance Access Grant.
+Discord reads now resolve through an exact active Instance Access Grant. Account linking or refresh supplies a short-lived managed-guild dropdown, guild authority is re-verified from Discord OAuth managed-guild data, installation is bound to the selected fixed guild in the Discord authorization URL, and TWE confirms bot membership with Discord before persisting installation. The browser cannot directly assert a Discord identity, permission bitfield, guild name, guild ID, or completed installation. `TROG_DISCORD_GUILD_GAME_SERVER_MAP` remains only as a temporary read-only migration fallback for installations with no grant record.
 
 ## Resolution Rule
 
@@ -191,6 +183,7 @@ Initial allowed capability values:
 - `instance.status.read`
 - `instance.players.count.read`
 - `instance.players.names.read`
+- `instance.mods.names.read`
 
 Required constraints:
 
@@ -217,29 +210,32 @@ Future multi-instance support may require grant-specific channel policies. Do no
 Minimum setup flow:
 
 1. A Discord administrator creates or signs into a TWE account.
-2. The administrator joins the provider Community, such as Cohorts in the Wild. This membership may be established through `docs/vertical-slices/community-invitation-membership-v1.md`.
-3. The administrator requests access for one exact provider-owned Instance and one Discord guild they manage.
-4. TWE verifies the requested Instance belongs to the provider Community.
-5. A provider Community Owner or authorized manager approves:
+2. If the administrator used Google or local credentials first, the administrator connects Discord to the same TWE User through `docs/vertical-slices/multi-provider-authentication-and-account-linking-v1.md`.
+3. The administrator joins the provider Community, such as Cohorts in the Wild. This membership may be established through `docs/vertical-slices/community-invitation-membership-v1.md`.
+4. The administrator requests access for one exact provider-owned Instance and one Discord guild they manage.
+5. TWE verifies the requested Instance belongs to the provider Community.
+6. A provider Community Owner or authorized manager approves:
    - exact Instance;
    - exact read capabilities;
    - optional channel scope.
-6. The Discord administrator completes the Trog installation flow.
-7. TWE verifies that the approving Discord user can manage the selected Discord guild.
-8. The grant becomes active only after provider approval and Discord installation approval both exist.
-9. The portal or admin view displays provider Community, Instance, Discord guild, channels, exposed capabilities, and status.
+7. The Discord administrator completes the Trog installation flow.
+8. TWE verifies that the approving Discord user can manage the selected Discord guild.
+9. The grant becomes active only after provider approval and Discord installation approval both exist.
+10. The Trog request view displays provider Community, Instance, Discord guild, channels, exposed capabilities, and status, with provider approve, deny, and revoke controls.
 
-The first implementation may use a minimal backend/admin setup path instead of polished UI, but it must persist the same durable objects and enforce the same server-side checks.
+The request page implements the minimum requester and provider management surface. Durable objects and all approval checks remain server-side.
 
-Suggested API shape:
+Implemented API shape:
 
 ```text
+GET  /api/v1/discord/managed-guilds
 POST /api/v1/discord/instance-access-requests
 GET  /api/v1/discord/instance-access-requests/{id}
+POST /api/v1/discord/instance-access-requests/{id}/oauth-state
+GET  /api/v1/discord/oauth/callback
 POST /api/v1/discord/instance-access-requests/{id}/provider-approval
-POST /api/v1/discord/instance-access-requests/{id}/discord-approval
+POST /api/v1/discord/instance-access-requests/{id}/provider-denial
 POST /api/v1/discord/instance-access-grants/{id}/revoke
-PATCH /api/v1/discord/instance-access-grants/{id}/capabilities
 GET  /api/v1/discord/installations
 ```
 
@@ -253,6 +249,7 @@ Preserve mention support:
 @Trog is the server up?
 @Trog how many players are online?
 @Trog who's on?
+@Trog what mods are installed?
 ```
 
 Supported slash commands remain:
@@ -260,6 +257,7 @@ Supported slash commands remain:
 ```text
 /server status
 /server players
+/server mods
 ```
 
 `/server restart` must remain denied or explicitly not enabled for this external read-only grant.
@@ -321,9 +319,9 @@ Migration path:
 6. Insert a pending `discord_instance_access_grants` row for Cohorts-owned Genesis.
 7. Record provider approval by a Cohorts provider owner.
 8. Record Discord installation approval by a verified Discord guild administrator.
-9. Insert the three read-only capability rows.
+9. Insert the four read-only capability rows.
 10. Activate the grant.
-11. Verify status, count, and player-list requests use the database-backed Instance grant.
+11. Verify status, count, player-list, and installed-mod requests use the database-backed Instance grant.
 12. Remove the Cohorts guild from the environment fallback only after database-backed behavior is verified.
 
 The live database inspected for this planning pass contains `Cohorts in the Wild -> ARK Survival Ascended -> Genesis`, but no Discord installation row should be assumed from that fact alone.

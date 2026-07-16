@@ -9,6 +9,7 @@ PUBLIC_CAPABILITIES = frozenset(
         "instance.status.read",
         "instance.players.count.read",
         "instance.players.names.read",
+        "instance.mods.names.read",
     }
 )
 ADMINISTRATIVE_CAPABILITIES = frozenset({"instance.restart.execute"})

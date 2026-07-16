@@ -1,6 +1,8 @@
+import json
 import socket
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 CAPABILITIES = [
@@ -40,6 +42,39 @@ CAPABILITIES = [
 
 def capabilities():
     return [cap.copy() for cap in CAPABILITIES]
+
+
+def installed_mods(config):
+    """Return active ASA mods in launch order without calling an external API."""
+    if not config.asa_panel_config_path:
+        raise RuntimeError("ASA panel configuration path is not configured.")
+    panel_path = Path(config.asa_panel_config_path)
+    panel = json.loads(panel_path.read_text(encoding="utf-8"))
+    active_ids = [str(value).strip() for value in panel.get("active_mod_ids", []) if str(value).strip()]
+
+    catalog_paths = [Path(__file__).resolve().parents[2] / "data" / "asa_mod_catalog.json"]
+    catalog_paths.append(panel_path.parent / "mod_catalog.json")
+    catalog_paths.extend(Path(value) for value in panel.get("mod_catalog_files", []))
+    names = {}
+    for catalog_path in catalog_paths:
+        if not catalog_path.exists():
+            continue
+        try:
+            payload = json.loads(catalog_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        items = payload.get("mods", payload) if isinstance(payload, dict) else payload
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            mod_id = str(item.get("id") or item.get("modId") or "").strip()
+            name = str(item.get("name") or item.get("title") or "").strip()
+            if mod_id and name and (mod_id not in names or not name.startswith("Mod ")):
+                names[mod_id] = name
+
+    return [{"id": mod_id, "name": names.get(mod_id, f"Mod {mod_id}")} for mod_id in active_ids]
 
 
 def capability_for(key: str):

@@ -492,6 +492,14 @@ The Genesis Instance page should show:
 - unavailable Capabilities and reasons
 - recent Server Operations
 
+This detailed operational view is capability-aware. A Community member with no
+Genesis Server Operation capabilities sees a simplified read-only status view,
+not disabled controls, internal health-check identifiers, or Server Operation
+history. The member view explains that Trog Discord access is separate and
+links to the Trog access request workflow. Authorized operators retain the
+detailed health checks, available controls, unavailable controls with reasons,
+and recent Server Operations.
+
 The Restart control must require confirmation.
 
 The active Server Operation page should show progress without requiring the user to inspect server logs.

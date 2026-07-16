@@ -17,6 +17,7 @@ from twe.discord_bot.core import (
     respond_to_request,
     player_count_reply,
     player_list_reply,
+    mod_list_reply,
     server_status_reply,
     should_respond,
 )
@@ -57,6 +58,9 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(classify_intent("<@123> who’s on?"), "player_list")
         self.assertEqual(classify_intent("<@123> is anyone on the server?"), "player_list")
         self.assertEqual(classify_intent("<@123> is anyone online"), "player_list")
+        self.assertEqual(classify_intent("<@123> what mods are installed?"), "mod_list")
+        self.assertEqual(classify_intent("<@123> what mod's are installed?"), "mod_list")
+        self.assertEqual(classify_intent("<@123> list active mods"), "mod_list")
         self.assertIsNone(classify_intent("<@123> tell me a joke"))
 
     def test_parse_guild_mapping(self):
@@ -166,6 +170,26 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(reply.code, "player_list")
         self.assertIn("No players are currently online", reply.text)
         self.assertIn("**Cohorts in the Wild**", reply.text)
+
+    def test_mod_list_response_uses_names_in_launch_order(self):
+        reply = mod_list_reply(
+            self.server,
+            self.config,
+            mods_provider=lambda _config: [
+                {"id": "1", "name": "First Mod"},
+                {"id": "2", "name": "Second Mod"},
+            ],
+        )
+        self.assertEqual(reply.code, "mod_list")
+        self.assertIn("**2** active mods", reply.text)
+        self.assertLess(reply.text.index("- First Mod"), reply.text.index("- Second Mod"))
+
+    def test_mod_list_reports_provider_failure(self):
+        def unavailable(_config):
+            raise OSError("unavailable")
+
+        reply = mod_list_reply(self.server, self.config, mods_provider=unavailable)
+        self.assertEqual(reply.code, "mods_unavailable")
 
     @patch("twe.discord_bot.core.authorize")
     def test_authorized_restart_is_recognized_but_not_executed(self, authorize_mock):
@@ -277,6 +301,19 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
             guild=FakeGuild(222),
             channel=FakeChannel(333),
             mentions=[],
+        )
+        handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
+        self.assertTrue(handled)
+        self.assertEqual(len(message.channel.sent), 1)
+        self.assertIn("not connected", message.channel.sent[0])
+
+    async def test_answers_mod_list_question_with_direct_mention(self):
+        message = FakeMessage(
+            content="<@999> what mod's are installed?",
+            author=self.author,
+            guild=FakeGuild(222),
+            channel=FakeChannel(333),
+            mentions=[self.bot],
         )
         handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
         self.assertTrue(handled)

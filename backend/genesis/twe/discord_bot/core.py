@@ -26,7 +26,7 @@ class BotReply:
 
 
 HELP_REPLY = BotReply(
-    "Mention me and ask `is the server up?`, `how many players are online?`, or `who's on?`.",
+    "Mention me and ask `is the server up?`, `how many players are online?`, `who's on?`, or `what mods are installed?`.",
     "unsupported_question",
 )
 
@@ -72,6 +72,10 @@ def classify_intent(message: str) -> str | None:
     normalized = normalized.replace("\u201c", '"').replace("\u201d", '"')
     normalized = re.sub(r"<@!?\d+>", " ", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
+    if re.search(r"\bmod(?:'s|s)?\b", normalized) and re.search(
+        r"\b(installed|active|loaded|running|using|enabled|list)\b", normalized
+    ):
+        return "mod_list"
     if re.search(r"\b(server|genesis|ark)\b", normalized) and re.search(r"\b(up|online|running|status)\b", normalized):
         return "server_status"
     if re.search(r"\b(who(?:\s+is|'s)|anyone)\b", normalized) and re.search(r"\b(on|online|server|players?)\b", normalized):
@@ -186,6 +190,27 @@ def player_list_reply(game_server: GameServerRef | None, config: Config, health_
     )
 
 
+def mod_list_reply(game_server: GameServerRef | None, config: Config, mods_provider=None) -> BotReply:
+    if not game_server:
+        return BotReply("This Discord server is not connected to a Troglodyte Works game server yet.", "guild_not_connected")
+    adapter = adapter_for(game_server.management_adapter)
+    provider = mods_provider or (getattr(adapter, "installed_mods", None) if adapter else None)
+    if not provider:
+        return BotReply("I cannot read the installed mods because that server does not expose a mod list.", "mods_unavailable")
+    try:
+        mods = provider(config)
+    except Exception:
+        return BotReply("I cannot read the installed mods right now because the mod service is unavailable.", "mods_unavailable")
+    names = [str(mod.get("name") or "").strip() for mod in mods if str(mod.get("name") or "").strip()]
+    if not names:
+        return BotReply(f"**{game_server.name}** has no active mods configured.", "mod_list")
+    lines = "\n".join(f"- {name}" for name in names)
+    return BotReply(
+        f"**{game_server.name}** has **{len(names)}** active mods configured:\n{lines}",
+        "mod_list",
+    )
+
+
 def respond_to_message(message: str, guild_id: str, conn, config: Config, guild_map: dict[str, str] | None = None) -> BotReply | None:
     intent = classify_intent(message)
     if not intent:
@@ -197,6 +222,8 @@ def respond_to_message(message: str, guild_id: str, conn, config: Config, guild_
         return player_list_reply(game_server, config)
     if intent == "player_count":
         return player_count_reply(game_server, config)
+    if intent == "mod_list":
+        return mod_list_reply(game_server, config)
     return None
 
 
@@ -205,6 +232,7 @@ def capability_for_intent(intent: str) -> str:
         "server_status": "instance.status.read",
         "player_count": "instance.players.count.read",
         "player_list": "instance.players.names.read",
+        "mod_list": "instance.mods.names.read",
         "server_restart": "instance.restart.execute",
     }[intent]
 
@@ -215,7 +243,12 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
     decision = authorize(conn, guild_id, channel_id, discord_user_id, capability)
     if not decision.context and guild_map:
         # Temporary compatibility for read-only installations not migrated to PostgreSQL yet.
-        if capability in {"instance.status.read", "instance.players.count.read", "instance.players.names.read"}:
+        if capability in {
+            "instance.status.read",
+            "instance.players.count.read",
+            "instance.players.names.read",
+            "instance.mods.names.read",
+        }:
             game_server = game_server_for_guild(conn, guild_id, guild_map)
             return _read_reply(intent, game_server, config)
     if not decision.allowed:
@@ -223,6 +256,8 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
             return BotReply("This Discord server is not connected to a Troglodyte Works game server yet.", "guild_not_connected")
         if decision.reason == "channel_disabled":
             return BotReply("Trog is not enabled for that capability in this channel.", "channel_disabled")
+        if capability.endswith(".read"):
+            return BotReply("That read capability has not been approved for this Discord server.", "read_not_approved")
         return BotReply("You are not authorized to restart this server.", "restart_denied")
     if intent == "server_restart":
         return BotReply(
@@ -243,6 +278,8 @@ def _read_reply(intent: str, game_server: GameServerRef | None, config: Config) 
         return server_status_reply(game_server, config)
     if intent == "player_list":
         return player_list_reply(game_server, config)
+    if intent == "mod_list":
+        return mod_list_reply(game_server, config)
     return player_count_reply(game_server, config)
 
 

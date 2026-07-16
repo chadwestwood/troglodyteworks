@@ -1,6 +1,9 @@
 async function loadGenesisSettings() {
   const response = await fetch('/api/genesis/settings');
   const data = await response.json();
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error?.message || 'Genesis settings could not be loaded.');
+  }
   renderGenesisSettings(data);
 }
 
@@ -13,10 +16,12 @@ async function loadPlayers() {
   const list = document.getElementById('players-list');
   if (!list) return;
 
-  list.innerHTML = '';
+  clearNode(list);
 
   if (!data.success || !data.players || data.players.length === 0) {
-    list.innerHTML = '<li>No players online</li>';
+    const item = document.createElement('li');
+    item.textContent = 'No players online';
+    list.appendChild(item);
     return;
   }
 
@@ -101,8 +106,11 @@ function setTrogMessage(profile) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadGenesisSettings().catch(console.error);
-  loadPlayers().catch(console.error);
+  loadGenesisSettings().catch((error) => {
+    showError(error.message);
+    setTrog('I could not read Genesis settings yet. Check the API connection and try refreshing.');
+  });
+  loadPlayers().catch(() => {});
 
   const refreshButton = document.getElementById('refresh-settings');
   if (refreshButton) {

@@ -14,6 +14,7 @@ It is the source of truth for future PostgreSQL migrations and application model
 - A community may have multiple game servers.
 - A game server may have multiple instances.
 - An instance represents a playable space such as an ARK map or Minecraft world.
+- A user may authenticate through local credentials and multiple external identities.
 
 ## Entities
 
@@ -29,6 +30,24 @@ Fields:
 - display_name
 - created_at
 - updated_at
+
+`password_hash` may be null when the User was created through an external provider and has not configured a local password.
+
+### External Identity
+
+Links one immutable external provider identity to one TWE User.
+
+Fields: `id`, `user_id`, `provider`, `provider_subject`, `provider_username`, `provider_email`, `provider_email_verified`, `linked_at`, `last_authenticated_at`, `created_at`, `updated_at`.
+
+Supported providers in this slice are `google` and `discord`. `(provider, provider_subject)` is unique. `(user_id, provider)` is unique. Provider email is metadata and must not be treated as proof of account ownership.
+
+### OAuth State
+
+Stores one-time OAuth login/link state.
+
+Fields: `state_hash`, `provider`, `purpose`, `user_id`, `redirect_path`, `code_verifier`, `nonce`, `nonce_hash`, `created_at`, `expires_at`, `consumed_at`.
+
+Purposes are `login` and `link`. Link states are bound to the signed-in TWE User. Redirect paths are same-origin relative paths only.
 
 ### Community
 
@@ -123,6 +142,8 @@ Fields: `id`, `discord_user_id`, `user_id`, `created_at`, `linked_at`, `updated_
 
 Discord user IDs and linked TWE user IDs are unique. Unlinked identities provide a durable path for a later verification workflow without granting authority.
 
+For authentication and account linking, the provider-neutral `user_external_identities` table is authoritative. `discord_identities` remains Discord integration metadata used by Trog authorization and is synchronized when Discord OAuth login/linking succeeds.
+
 ### Discord Channel Policy
 
 Enables or disables Trog capability categories for one channel in an installed guild.
@@ -135,7 +156,7 @@ Categories in this slice are `read` and `administrative`. The installation, chan
 
 Represents provider-approved Discord access to one exact provider-owned Game Instance.
 
-Fields: `id`, `discord_guild_installation_id`, `provider_community_id`, `game_server_id`, `game_instance_id`, `requested_by`, `requester_discord_user_id`, `consumer_discord_guild_id`, `consumer_discord_guild_name`, `status`, `channel_scope`, approval timestamps, installation timestamps, denial/revocation timestamps, `created_at`, `updated_at`.
+Fields: `id`, `discord_guild_installation_id`, `provider_community_id`, `game_server_id`, `game_instance_id`, `requested_by`, `requester_discord_user_id`, `consumer_discord_guild_id`, `consumer_discord_guild_name`, `status`, `channel_scope`, `requested_channel_ids`, approval timestamps, installation timestamps, denial/revocation timestamps, `created_at`, `updated_at`.
 
 Statuses in this slice are `pending_discord_verification`, `pending_provider_approval`, `pending_bot_installation`, `active`, `denied`, `revoked`, and `configuration_error`.
 
@@ -147,7 +168,7 @@ Stores the provider-approved read capability allowlist for one Instance Access G
 
 Fields: `id`, `discord_instance_access_grant_id`, `capability`, `granted_by`, `created_at`, `revoked_at`.
 
-Initial allowed values are `instance.status.read`, `instance.players.count.read`, and `instance.players.names.read`. A revoked capability no longer authorizes Discord reads.
+Allowed values are `instance.status.read`, `instance.players.count.read`, `instance.players.names.read`, and `instance.mods.names.read`. A revoked capability no longer authorizes Discord reads. Migration `0009_discord_mod_names_capability.sql` adds the mod-name capability and backfills only grants that had already been provider-approved for the complete original read bundle.
 
 ### Discord Guild Authority Verification
 
@@ -155,7 +176,11 @@ Records that a linked TWE user proved Discord authority for a consumer guild dur
 
 Fields: `id`, `user_id`, `discord_user_id`, `discord_guild_id`, `discord_guild_name`, `can_manage_guild`, `authority_source`, `verified_at`, `expires_at`.
 
-Authority sources are `owner`, `administrator`, and `manage_guild`. This verification proves Discord-side installation authority only; it does not grant provider Community ownership or server administration.
+Authority sources are `owner`, `administrator`, and `manage_guild`. Discord account linking or refresh stores a one-hour snapshot used to populate the verified server dropdown; the dedicated installation flow re-verifies the selected guild before use. This verification proves Discord-side installation authority only; it does not grant provider Community ownership or server administration.
+
+### Discord Installation OAuth State
+
+Stores one-time, expiring state for guild verification or bot installation. The state is bound to the authenticated TWE User, Instance Access Grant, purpose, PKCE verifier, and selected immutable Discord guild ID. It is consumed before an authorization result is applied and cannot be reused.
 ### Game Server
 
 Represents a logical game environment belonging to a community.

@@ -13,6 +13,8 @@ community_invitations_bp = Blueprint("twe_community_invitations", __name__)
 
 ROLE_RANK = {"member": 1, "moderator": 2, "admin": 3, "owner": 4}
 INVITATION_STATUSES = {"pending", "accepted", "declined", "revoked", "expired"}
+MAX_INVITATION_USES = 100
+MAX_INVITATION_DURATION_HOURS = 24 * 365
 
 
 @community_invitations_bp.post("/communities/<community_id>/invitations")
@@ -21,15 +23,19 @@ def create_invitation(community_id):
     payload = request.get_json(silent=True) or {}
     invitation_type = str(payload.get("invitation_type") or "").strip()
     initial_role = normalize_role(payload.get("initial_role") or "member")
-    requires_approval = bool(payload.get("requires_approval", False))
+    requires_approval = bool(payload.get("requires_approval", invitation_type == "link"))
     maximum_uses = parse_positive_int(payload.get("maximum_uses"), default=1)
-    expires_at = parse_expiration(payload)
+    try:
+        default_duration_hours = 24 if invitation_type == "link" else 168
+        expires_at = parse_expiration(payload, default_hours=default_duration_hours)
+    except (OverflowError, TypeError, ValueError):
+        return api_error("VALIDATION_ERROR", "Invitation expiration is not valid.", 400)
     if invitation_type not in {"direct", "link"}:
         return api_error("VALIDATION_ERROR", "Invitation type must be direct or link.", 400)
     if not initial_role:
         return api_error("VALIDATION_ERROR", "Initial role is not allowed.", 400)
-    if maximum_uses is None:
-        return api_error("VALIDATION_ERROR", "Maximum uses must be a positive integer.", 400)
+    if maximum_uses is None or maximum_uses > MAX_INVITATION_USES:
+        return api_error("VALIDATION_ERROR", f"Maximum uses must be between 1 and {MAX_INVITATION_USES}.", 400)
 
     with current_app.config["TWE_DB"].connect() as conn:
         actor = require_invitation_manager(conn, community_id)
@@ -123,7 +129,12 @@ def list_invitations(community_id):
             """,
             (community_id,),
         )
-    return jsonify({"invitations": [safe_invitation_row(row) for row in rows]})
+    grantable_roles = [role for role in ("member", "moderator", "admin") if can_grant_role(actor["role"], role)]
+    return jsonify({
+        "current_user_role": actor["role"],
+        "grantable_roles": grantable_roles,
+        "invitations": [safe_invitation_row(row) for row in rows],
+    })
 
 
 @community_invitations_bp.post("/communities/<community_id>/invitations/<invitation_id>/revoke")
@@ -147,6 +158,53 @@ def revoke_invitation(community_id, invitation_id):
             return api_error("NOT_FOUND", "Pending invitation was not found.", 404)
         audit(conn, g.current_user["id"], community_id, "community.invitation.revoke", "community_invitation", invitation_id, {})
     return jsonify({"invitation": invitation})
+
+
+@community_invitations_bp.get("/community-invitations/pending")
+@require_user
+def list_my_pending_invitations():
+    with current_app.config["TWE_DB"].connect() as conn:
+        rows = fetch_all(
+            conn,
+            """
+            SELECT ci.id::text, ci.community_id::text, ci.invitation_type,
+                   ci.initial_role, ci.requires_approval, ci.expires_at,
+                   effective_invitation_status(ci.status, ci.expires_at) AS status,
+                   ci.created_at, c.name AS community_name, c.slug AS community_slug
+            FROM community_invitations ci
+            JOIN communities c ON c.id = ci.community_id
+            WHERE ci.invited_user_id = %s
+              AND ci.invitation_type = 'direct'
+              AND effective_invitation_status(ci.status, ci.expires_at) = 'pending'
+            ORDER BY ci.created_at DESC
+            """,
+            (g.current_user["id"],),
+        )
+    return jsonify({"invitations": [pending_direct_invitation_response(row) for row in rows]})
+
+
+@community_invitations_bp.get("/communities/<community_id>/invitation-redemptions/pending")
+@require_user
+def list_pending_redemptions(community_id):
+    with current_app.config["TWE_DB"].connect() as conn:
+        actor = require_invitation_reader(conn, community_id)
+        if not actor:
+            return api_error("FORBIDDEN", "You are not authorized to view membership requests.", 403)
+        rows = fetch_all(
+            conn,
+            """
+            SELECT cir.id::text, cir.invitation_id::text, cir.user_id::text, cir.status,
+                   cir.redeemed_at, u.display_name AS user_display_name, u.email AS user_email,
+                   ci.initial_role, ci.invitation_type
+            FROM community_invitation_redemptions cir
+            JOIN community_invitations ci ON ci.id = cir.invitation_id
+            JOIN users u ON u.id = cir.user_id
+            WHERE ci.community_id = %s AND cir.status = 'pending_approval'
+            ORDER BY cir.redeemed_at ASC
+            """,
+            (community_id,),
+        )
+    return jsonify({"redemptions": [pending_redemption_response(row) for row in rows]})
 
 
 @community_invitations_bp.get("/community-invitations/<token>")
@@ -310,13 +368,15 @@ def parse_positive_int(value, default: int):
     return parsed if parsed > 0 else None
 
 
-def parse_expiration(payload):
+def parse_expiration(payload, default_hours=168):
     expires_at = payload.get("expires_at")
     if expires_at:
         text = str(expires_at).strip().replace("Z", "+00:00")
         return datetime.fromisoformat(text)
-    duration_hours = parse_positive_int(payload.get("expires_in_hours"), default=168)
-    return datetime.now(timezone.utc) + timedelta(hours=duration_hours or 168)
+    duration_hours = parse_positive_int(payload.get("expires_in_hours"), default=default_hours)
+    if duration_hours is None or duration_hours > MAX_INVITATION_DURATION_HOURS:
+        raise ValueError("expiration duration is outside the allowed range")
+    return datetime.now(timezone.utc) + timedelta(hours=duration_hours)
 
 
 def resolve_invited_user(conn, payload):
@@ -473,6 +533,35 @@ def public_invitation_response(invitation):
         "remaining_uses": max(0, invitation["maximum_uses"] - invitation["use_count"]),
         "expires_at": invitation["expires_at"],
         "status": invitation["status"],
+    }
+
+
+def pending_direct_invitation_response(invitation):
+    return {
+        "id": invitation["id"],
+        "community": {"id": invitation["community_id"], "name": invitation["community_name"], "slug": invitation["community_slug"]},
+        "invitation_type": invitation["invitation_type"],
+        "initial_role": invitation["initial_role"],
+        "requires_approval": invitation["requires_approval"],
+        "expires_at": invitation["expires_at"],
+        "status": invitation["status"],
+        "created_at": invitation["created_at"],
+    }
+
+
+def pending_redemption_response(redemption):
+    return {
+        "id": redemption["id"],
+        "invitation_id": redemption["invitation_id"],
+        "user": {
+            "id": redemption["user_id"],
+            "display_name": redemption["user_display_name"],
+            "email": redemption["user_email"],
+        },
+        "initial_role": redemption["initial_role"],
+        "invitation_type": redemption["invitation_type"],
+        "status": redemption["status"],
+        "redeemed_at": redemption["redeemed_at"],
     }
 
 

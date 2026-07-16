@@ -21,6 +21,10 @@
       <h1>Start with identity.</h1>
       <p class="muted">Creating an account does not join a Community or create hosting.</p>
       <p class="form-error" data-error hidden></p>
+      <div class="button-row">
+        <a class="primary-button" href="/api/v1/auth/google/start" data-oauth-start="google">Continue with Google</a>
+        <a class="primary-button secondary" href="/api/v1/auth/discord/start" data-oauth-start="discord">Continue with Discord</a>
+      </div>
       <form class="stack-form" data-register-form>
         <label for="display_name">Display name</label>
         <input id="display_name" name="display_name" type="text" autocomplete="name" required>
@@ -35,7 +39,7 @@
       <p class="muted">Already have an account? <a class="header-link" href="/auth/sign-in.html">Sign In</a>.</p>
     </section>
   </main>
-  <script src="/js/twe-api.js"></script>
-  <script src="/js/twe-pages.js"></script>
+  <script src="/js/twe-api.js?v=site-admin-v2"></script>
+  <script src="/js/twe-pages.js?v=site-admin-v2"></script>
 </body>
 </html>

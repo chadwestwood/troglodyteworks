@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account Settings | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=account-auth-methods-v1">
+</head>
+<body class="app-page" data-page="account">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <nav class="header-actions" aria-label="User navigation">
+        <a class="header-link" href="/communities/">My Communities</a>
+        <a class="header-link" href="/explore/">Explore</a>
+        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
+        <button class="text-button" type="button" data-sign-out>Sign out</button>
+      </nav>
+    </header>
+    <nav class="breadcrumbs">Home &gt; Account Settings</nav>
+    <main class="app-panel">
+      <p class="eyebrow">Account Settings</p>
+      <h1>Connected Accounts for <span data-current-user></span></h1>
+      <p class="muted">Your TWE User is the canonical account. Google and Discord are sign-in methods linked to that one account.</p>
+      <p class="form-error" data-error hidden></p>
+      <section>
+        <h2>Authentication methods</h2>
+        <div class="resource-list" data-identities-list></div>
+      </section>
+      <section data-admin-entry hidden>
+        <h2>Platform Admin</h2>
+        <div class="resource-list">
+          <a class="resource-row" href="/admin/">
+            <span><strong>Users and Communities</strong><small>Open the read-only admin view.</small></span>
+            <span>Admin</span>
+          </a>
+        </div>
+      </section>
+      <section class="guidance-note">
+        <span class="guidance-note__mark">D</span>
+        <p>Connect Discord to verify the Discord servers you manage and configure Trog. Discord linking does not grant Community membership, provider approval, instance capabilities, or server ownership.</p>
+      </section>
+    </main>
+  </div>
+  <script src="/js/twe-api.js?v=site-admin-v2"></script>
+  <script src="/js/twe-pages.js?v=account-auth-methods-v1"></script>
+</body>
+</html>

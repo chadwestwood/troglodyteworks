@@ -29,7 +29,7 @@ def login():
             "SELECT id::text, email, display_name, password_hash FROM users WHERE lower(email) = %s",
             (email,),
         )
-        if not user or not verify_password(user["password_hash"], password):
+        if not user or not user["password_hash"] or not verify_password(user["password_hash"], password):
             return api_error("INVALID_CREDENTIALS", "Invalid email or password.", 401)
 
         token = create_session(conn, user["id"], config)

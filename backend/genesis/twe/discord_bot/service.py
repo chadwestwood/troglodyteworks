@@ -56,6 +56,10 @@ def main():
     async def server_players(interaction):
         await handle_interaction(interaction, "player_list", database, config, guild_map)
 
+    @server_group.command(name="mods", description="List active mods on the connected server")
+    async def server_mods(interaction):
+        await handle_interaction(interaction, "mod_list", database, config, guild_map)
+
     @server_group.command(name="restart", description="Request a server restart")
     async def server_restart(interaction):
         await handle_interaction(interaction, "server_restart", database, config, guild_map)

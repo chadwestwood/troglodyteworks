@@ -26,21 +26,26 @@ This document defines the initial rules required for the Cohorts in the Wild Gen
 - Community access is determined through Community Membership.
 - Operation permissions are determined by role and capability.
 - Community invitation management is authorized by Community role in V1.
-- Begin with the simplest secure implementation needed for the first vertical slice.
-- Do not add public registration, external login providers, or account recovery until they are approved.
+- TWE User is the canonical account; external providers are linked authentication methods.
+- Do not automatically merge accounts solely because provider emails match.
+- Begin with the simplest secure implementation needed for the active vertical slice.
 
 ---
 
 # Authentication Model
 
-TWE will initially use:
+TWE supports:
 
 - email address
 - password
+- Google OAuth/OIDC identity
+- Discord OAuth identity
 - secure server-managed session
 - HTTP-only session cookie
 
 The browser should not store raw passwords or long-lived authentication credentials.
+
+Google and Discord identities are stored in `user_external_identities`. The immutable provider subject is the identity key. Provider email and display name are metadata only. Google OpenID Connect ID tokens are cryptographically verified against Google's published signing keys; issuer, audience, expiration, and nonce must all be valid before an identity is accepted.
 
 ---
 
@@ -50,11 +55,11 @@ A User represents a person with a TWE account.
 
 Initial fields are defined in `docs/database-schema.md`.
 
-Required authentication fields:
+Core user fields:
 
 - id
 - email
-- password_hash
+- password_hash, nullable when the User has only external authentication methods
 - display_name
 - created_at
 - updated_at
@@ -87,6 +92,41 @@ Passwords must never appear in:
 - database seed files
 - source control
 - error messages
+
+---
+
+# External Identity and Account Linking
+
+Google and Discord sign-in use provider-neutral external identities. A signed-in User may connect Google or Discord from Account Settings.
+
+Rules:
+
+- login may create a new TWE User when the provider identity is not linked;
+- linking never creates a new TWE User;
+- link state is bound to the currently signed-in User;
+- an identity already linked to the same User is idempotent;
+- an identity linked to another User is a conflict;
+- users cannot unlink their final usable authentication method;
+- Google or Discord email matching an existing TWE email is not proof of ownership.
+
+See:
+
+```text
+docs/vertical-slices/multi-provider-authentication-and-account-linking-v1.md
+```
+
+---
+
+# Platform Admin Access
+
+Platform admin access is separate from Community roles.
+
+Rules:
+
+- platform admins are configured through `TWE_ADMIN_EMAILS`;
+- Community owner/admin/moderator roles do not grant platform admin access;
+- the first admin surface is read-only and shows Users and Communities;
+- admin endpoints must still require an authenticated TWE session.
 
 ---
 

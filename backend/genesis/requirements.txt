@@ -2,3 +2,4 @@ flask
 psycopg[binary]
 pytest
 discord.py
+google-auth[requests]

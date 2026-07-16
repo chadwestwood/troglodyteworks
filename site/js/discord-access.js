@@ -3,8 +3,63 @@
 
   const form = document.querySelector("[data-discord-access-form]");
   const status = document.querySelector("[data-status]");
+  const communitySelect = document.querySelector("[data-provider-community-select]");
+  const instanceSelect = document.querySelector("[data-game-instance-select]");
+  const discordGuildSelect = document.querySelector("[data-discord-guild-select]");
+  const discordGuildHelp = document.querySelector("[data-discord-guild-help]");
+  const refreshDiscordGuilds = document.querySelector("[data-refresh-discord-guilds]");
+  const linkedDiscordSummary = document.querySelector("[data-linked-discord-summary]");
+  const requestList = document.querySelector("[data-discord-access-requests]");
   if (!form) {
     return;
+  }
+  remember("twe.trog_return_to", "/discord/request-access/");
+  const identities = await apiRequest("/account/identities");
+  if (!identities.identities.discord.connected) {
+    clearNode(status);
+    const copy = document.createElement("span");
+    copy.textContent = "Connect Discord before requesting Trog access so TWE can verify the Discord servers you manage.";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "primary-button";
+    button.textContent = "Connect Discord";
+    button.addEventListener("click", async () => {
+      try {
+        const data = await apiRequest("/account/identities/discord/connect", {
+          method: "POST",
+          body: JSON.stringify({ return_to: "/discord/request-access/" }),
+        });
+        window.location.href = data.oauth.authorization_url;
+      } catch (error) {
+        showError(error.message);
+      }
+    });
+    status.appendChild(copy);
+    status.appendChild(document.createTextNode(" "));
+    status.appendChild(button);
+    form.hidden = true;
+    return;
+  }
+  if (linkedDiscordSummary) {
+    linkedDiscordSummary.textContent = `Discord connected: ${identities.identities.discord.provider_username || "linked account"}.`;
+  }
+  await populateManagedGuildChoices(discordGuildSelect, discordGuildHelp);
+  refreshDiscordGuilds?.addEventListener("click", () => refreshManagedDiscordGuilds(refreshDiscordGuilds));
+  await populateProviderChoices(communitySelect, instanceSelect);
+  communitySelect?.addEventListener("change", () => populateInstanceChoices(communitySelect.value, instanceSelect));
+  await renderAccessRequests(requestList);
+
+  const callback = new URLSearchParams(window.location.search);
+  if (callback.get("discord_error")) {
+    showError(callback.get("discord_error"));
+  } else if (callback.get("verified") === "1" && callback.get("request")) {
+    status.textContent = "Discord confirmed that you manage the selected server. Continue in Discord to install Trog.";
+    await startDiscordAuthorization(callback.get("request"), "bot_install");
+    return;
+  } else if (callback.get("installed") === "1") {
+    status.textContent = callback.get("status") === "active"
+      ? "Trog is installed and the Cohorts provider grant is active."
+      : "Trog is installed. A Cohorts owner or admin must approve the provider grant before read access becomes active.";
   }
 
   form.addEventListener("submit", async (event) => {
@@ -12,9 +67,7 @@
     const data = new FormData(form);
     const providerCommunityId = data.get("provider_community_id").trim();
     const gameInstanceId = data.get("game_instance_id").trim();
-    const discordUserId = data.get("discord_user_id").trim();
     const discordGuildId = data.get("discord_guild_id").trim();
-    const permissions = data.get("permissions").trim();
     const allowedChannelIds = data.get("allowed_channel_ids")
       .split(",")
       .map((value) => value.trim())
@@ -32,37 +85,213 @@
             "instance.players.names.read",
           ],
           channel_scope: allowedChannelIds.length ? "allowlist" : "all",
+          allowed_channel_ids: allowedChannelIds,
         }),
       });
 
       const requestId = requestData.request.id;
-      await apiRequest("/discord/identity/link", {
-        method: "POST",
-        body: JSON.stringify({ discord_user_id: discordUserId }),
-      });
-      const oauth = await apiRequest(`/discord/instance-access-requests/${requestId}/oauth-state`, {
-        method: "POST",
-        body: JSON.stringify({ purpose: "guild_verification" }),
-      });
-      await apiRequest(`/discord/instance-access-requests/${requestId}/discord-verification`, {
-        method: "POST",
-        body: JSON.stringify({
-          state: oauth.oauth.state,
-          discord_user_id: discordUserId,
-          discord_guild_id: discordGuildId,
-          discord_guild_name: "LizzLive",
-          permissions,
-        }),
-      });
-
-      await apiRequest(`/discord/instance-access-requests/${requestId}/bot-installation`, {
-        method: "POST",
-        body: JSON.stringify({ allowed_channel_ids: allowedChannelIds }),
-      });
-
-      status.textContent = "Request created and Discord side verified. A Cohorts owner still needs to approve the provider grant before it becomes active.";
+      await startDiscordAuthorization(requestId, "guild_verification", discordGuildId);
     } catch (error) {
       showError(error.message);
     }
   });
 })();
+
+async function startDiscordAuthorization(requestId, purpose, discordGuildId = null) {
+  const oauth = await apiRequest(`/discord/instance-access-requests/${requestId}/oauth-state`, {
+    method: "POST",
+    body: JSON.stringify({ purpose, discord_guild_id: discordGuildId }),
+  });
+  window.location.href = oauth.oauth.authorization_url;
+}
+
+async function refreshManagedDiscordGuilds(button) {
+  button.disabled = true;
+  button.textContent = "Opening Discord...";
+  try {
+    const data = await apiRequest("/account/identities/discord/connect", {
+      method: "POST",
+      body: JSON.stringify({ return_to: "/discord/request-access/" }),
+    });
+    window.location.href = data.oauth.authorization_url;
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Refresh Discord servers";
+    showError(error.message);
+  }
+}
+
+async function populateManagedGuildChoices(select, help) {
+  if (!select) {
+    return;
+  }
+  const data = await apiRequest("/discord/managed-guilds");
+  clearNode(select);
+  if (!data.guilds.length) {
+    select.appendChild(new Option("Refresh Discord to find servers", ""));
+    select.disabled = true;
+    if (help) {
+      help.textContent = "No verified manageable servers are available yet. Refresh Discord servers and authorize the guilds scope. If the list remains empty, ask a server owner to grant you Administrator or Manage Server permission, or have that administrator complete this setup.";
+    }
+    return;
+  }
+  select.disabled = false;
+  select.appendChild(new Option("Choose a verified Discord server", ""));
+  data.guilds.forEach((guild) => {
+    const authority = guild.authority_source === "owner"
+      ? "owner"
+      : guild.authority_source === "administrator" ? "administrator" : "manage server";
+    select.appendChild(new Option(`${guild.name} (${authority})`, guild.id));
+  });
+  if (help) {
+    help.textContent = "Only servers Discord confirms you can manage are shown. TWE will verify the selected server again before installation.";
+  }
+}
+
+async function renderAccessRequests(list) {
+  if (!list) {
+    return;
+  }
+  const data = await apiRequest("/discord/installations");
+  clearNode(list);
+  if (!data.installations.length) {
+    list.appendChild(createResourceRow("No Trog access requests yet.", "Create a request above to begin."));
+    return;
+  }
+  data.installations.forEach((request) => {
+    const guild = request.consumer_discord_guild_name || request.consumer_discord_guild_id || "Discord verification pending";
+    const channels = request.requested_channel_ids.length
+      ? `${request.requested_channel_ids.length} allowed channel(s)`
+      : "all visible channels";
+    const row = createResourceRow(
+      `${request.provider_community_name} - ${request.instance_name}`,
+      `${guild} · ${request.status.replaceAll("_", " ")} · ${channels}`,
+    );
+    if (request.is_requester && !request.discord_approved_at && !["denied", "revoked"].includes(request.status)) {
+      const verify = document.createElement("button");
+      verify.type = "button";
+      verify.textContent = "Verify Discord server";
+      verify.addEventListener("click", () => {
+        const selectedGuildId = document.querySelector("[data-discord-guild-select]")?.value;
+        if (!selectedGuildId) {
+          showError("Choose a verified Discord server above, then try again.");
+          return;
+        }
+        startDiscordAuthorization(request.id, "guild_verification", selectedGuildId)
+          .catch((error) => showError(error.message));
+      });
+      row.appendChild(verify);
+    }
+    if (request.is_requester && request.discord_approved_at && !request.installed_at && !["denied", "revoked"].includes(request.status)) {
+      const install = document.createElement("button");
+      install.type = "button";
+      install.textContent = "Install Trog";
+      install.addEventListener("click", () => startDiscordAuthorization(request.id, "bot_install").catch((error) => showError(error.message)));
+      row.appendChild(install);
+    }
+    if (request.can_manage_provider && request.discord_approved_at && !request.provider_approved_at && !["denied", "revoked"].includes(request.status)) {
+      const approve = document.createElement("button");
+      approve.type = "button";
+      approve.textContent = "Approve Read Access";
+      approve.addEventListener("click", async () => {
+        try {
+          await apiRequest(`/discord/instance-access-requests/${request.id}/provider-approval`, {
+            method: "POST",
+            body: JSON.stringify({
+              approved_capabilities: request.capabilities,
+              channel_scope: request.channel_scope,
+            }),
+          });
+          await renderAccessRequests(list);
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+      row.appendChild(approve);
+    }
+    if (request.can_manage_provider && !request.provider_approved_at && !["denied", "revoked"].includes(request.status)) {
+      const deny = document.createElement("button");
+      deny.type = "button";
+      deny.textContent = "Deny";
+      deny.addEventListener("click", async () => {
+        if (!window.confirm(`Deny Trog access for ${guild}?`)) {
+          return;
+        }
+        try {
+          await apiRequest(`/discord/instance-access-requests/${request.id}/provider-denial`, { method: "POST" });
+          await renderAccessRequests(list);
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+      row.appendChild(deny);
+    }
+    if (request.can_manage_provider && request.status === "active") {
+      const revoke = document.createElement("button");
+      revoke.type = "button";
+      revoke.textContent = "Revoke";
+      revoke.addEventListener("click", async () => {
+        if (!window.confirm(`Revoke Trog read access for ${guild}?`)) {
+          return;
+        }
+        try {
+          await apiRequest(`/discord/instance-access-grants/${request.id}/revoke`, { method: "POST" });
+          await renderAccessRequests(list);
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+      row.appendChild(revoke);
+    }
+    list.appendChild(row);
+  });
+}
+
+async function populateProviderChoices(communitySelect, instanceSelect) {
+  if (!communitySelect || !instanceSelect) {
+    return;
+  }
+  const data = await apiRequest("/communities");
+  clearNode(communitySelect);
+  if (!data.communities.length) {
+    communitySelect.appendChild(new Option("Join a provider Community first", ""));
+    instanceSelect.appendChild(new Option("No Communities available", ""));
+    return;
+  }
+  data.communities.forEach((community) => {
+    communitySelect.appendChild(new Option(`${community.name} (${community.role})`, community.id));
+  });
+  const rememberedCommunity = recall("twe.community_id");
+  if (rememberedCommunity && data.communities.some((community) => community.id === rememberedCommunity)) {
+    communitySelect.value = rememberedCommunity;
+  }
+  await populateInstanceChoices(communitySelect.value, instanceSelect);
+}
+
+async function populateInstanceChoices(communityId, instanceSelect) {
+  clearNode(instanceSelect);
+  if (!communityId) {
+    instanceSelect.appendChild(new Option("Choose a Community first", ""));
+    return;
+  }
+  remember("twe.community_id", communityId);
+  const serversData = await apiRequest(`/communities/${communityId}/game-servers`);
+  const options = [];
+  for (const server of serversData.game_servers) {
+    const instancesData = await apiRequest(`/game-servers/${server.id}/instances`);
+    instancesData.instances.forEach((instance) => {
+      options.push({ server, instance });
+    });
+  }
+  if (!options.length) {
+    instanceSelect.appendChild(new Option("No Instances found for this Community", ""));
+    return;
+  }
+  options.forEach(({ server, instance }) => {
+    instanceSelect.appendChild(new Option(`${server.name} - ${instance.name}`, instance.id));
+  });
+  const rememberedInstance = recall("twe.instance_id");
+  if (rememberedInstance && options.some(({ instance }) => instance.id === rememberedInstance)) {
+    instanceSelect.value = rememberedInstance;
+  }
+}

@@ -6,10 +6,13 @@ from werkzeug.exceptions import HTTPException
 from .config import load_config
 from .db import Database
 from .responses import api_error
+from .routes.account_identities import account_identities_bp
+from .routes.admin import admin_bp
 from .routes.auth import auth_bp
 from .routes.communities import communities_bp
 from .routes.community_invitations import community_invitations_bp
 from .routes.discord_access import discord_access_bp
+from .routes.game_catalog import game_catalog_bp
 from .routes.game_servers import game_servers_bp
 from .routes.instances import instances_bp
 from .routes.operations import operations_bp
@@ -22,9 +25,12 @@ def create_app(config=None, database=None):
     app.config["TWE_DB"] = database or Database(twe_config.database_url)
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1")
+    app.register_blueprint(account_identities_bp, url_prefix="/api/v1")
+    app.register_blueprint(admin_bp, url_prefix="/api/v1")
     app.register_blueprint(communities_bp, url_prefix="/api/v1")
     app.register_blueprint(community_invitations_bp, url_prefix="/api/v1")
     app.register_blueprint(discord_access_bp, url_prefix="/api/v1")
+    app.register_blueprint(game_catalog_bp, url_prefix="/api/v1")
     app.register_blueprint(game_servers_bp, url_prefix="/api/v1")
     app.register_blueprint(instances_bp, url_prefix="/api/v1")
     app.register_blueprint(operations_bp, url_prefix="/api/v1")

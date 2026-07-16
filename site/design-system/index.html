@@ -1,62 +1,70 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Troglodyte Works Design System</title>
-
-    <link rel="stylesheet" href="../css/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design System | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="app-page">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <nav class="header-actions" aria-label="Reference navigation">
+        <a class="header-link" href="/explore/">Explore</a>
+        <a class="header-link" href="/auth/sign-in.html">Sign In</a>
+      </nav>
+    </header>
+    <nav class="breadcrumbs">Home &gt; Design System</nav>
 
-    <main class="page-container">
+    <main class="app-grid">
+      <section class="app-panel">
+        <p class="eyebrow">Design System</p>
+        <h1>Calm. Simple. Powerful.</h1>
+        <p class="muted">This reference uses the same components as the working site so future slices do not drift into one-off UI.</p>
+      </section>
 
-        <h1>Troglodyte Works Design System</h1>
+      <section class="app-panel">
+        <h2>Actions</h2>
+        <div class="button-row">
+          <a class="primary-button" href="/explore/">Primary action</a>
+          <button class="primary-button secondary" type="button">Secondary action</button>
+          <button class="primary-button" type="button" disabled>Unavailable action</button>
+        </div>
+      </section>
 
-        <p>
-            Calm. Simple. Powerful.
-        </p>
+      <section class="app-panel">
+        <h2>Resource rows</h2>
+        <div class="resource-list">
+          <div class="resource-row"><span><strong>Cohorts in the Wild</strong><small>Community workspace</small></span><span>owner</span></div>
+          <div class="resource-row"><span><strong>Genesis</strong><small>ARK Survival Ascended instance</small></span><span>online</span></div>
+          <div class="resource-row"><span><strong>Restart Server</strong><small>Disabled until execution is approved.</small></span><span>Unavailable</span></div>
+        </div>
+      </section>
 
-        <section>
-            <h2>Buttons</h2>
+      <section class="app-panel">
+        <h2>Forms</h2>
+        <form class="stack-form">
+          <label for="sample_email">Email</label>
+          <input id="sample_email" type="email" placeholder="member@example.com">
+          <label for="sample_role">Role</label>
+          <select id="sample_role">
+            <option>member</option>
+            <option>moderator</option>
+            <option>admin</option>
+          </select>
+          <button class="primary-button" type="button">Save example</button>
+        </form>
+      </section>
 
-            <button>Primary Button</button>
-            <button>Secondary Button</button>
-            <button>Danger Button</button>
-        </section>
-
-        <section>
-            <h2>Form Fields</h2>
-
-            <label for="sampleText">Text Field</label>
-            <input id="sampleText" type="text" placeholder="Example text field">
-
-            <label for="sampleEmail">Email Field</label>
-            <input id="sampleEmail" type="email" placeholder="name@example.com">
-
-            <label for="samplePassword">Password Field</label>
-            <input id="samplePassword" type="password" placeholder="Password">
-        </section>
-
-        <section>
-            <h2>Cards</h2>
-
-            <div class="card">
-                <h3>Genesis Server</h3>
-                <p>Status: Running</p>
-                <button>Manage Server</button>
-            </div>
-        </section>
-
-        <section>
-            <h2>Alerts</h2>
-
-            <p>Success: Your changes were saved.</p>
-            <p>Warning: Restarting will temporarily disconnect players.</p>
-            <p>Error: The server could not be restarted.</p>
-        </section>
-
+      <section class="app-panel">
+        <h2>Guidance</h2>
+        <div class="guidance-note">
+          <span class="guidance-note__mark">?</span>
+          <p>Guidance should appear when it helps someone decide the next useful step.</p>
+        </div>
+      </section>
     </main>
-
+  </div>
 </body>
 </html>

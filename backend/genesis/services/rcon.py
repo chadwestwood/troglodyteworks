@@ -1,4 +1,5 @@
 import os
+import re
 import socket
 import struct
 from pathlib import Path
@@ -74,5 +75,15 @@ def parse_players(response):
             continue
         if line.lower() in {"no players connected", "no players connected."}:
             continue
-        players.append(line)
+        players.append(parse_player_name(line))
     return players
+
+
+def parse_player_name(line):
+    """Remove the RCON row number and immutable platform ID from ListPlayers."""
+    numbered = re.match(r"^\d+\.\s*(.*)$", line.strip())
+    entry = numbered.group(1).strip() if numbered else line.strip()
+    name, separator, identifier = entry.rpartition(",")
+    if separator and re.fullmatch(r"[A-Za-z0-9:_-]{8,}", identifier.strip()):
+        return name.strip()
+    return entry

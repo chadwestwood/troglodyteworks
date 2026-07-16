@@ -8,6 +8,7 @@ from ..db import execute, fetch_all, fetch_one
 from ..responses import api_error
 from ..serializers import operation_summary, operation_with_requester
 from ..services.adapters import adapter_for
+from ..services.instance_provisioning import reconcile_instance
 
 instances_bp = Blueprint("twe_instances", __name__)
 
@@ -19,9 +20,19 @@ VALID_OPERATION_STATUSES = ACTIVE_STATUSES + ("completed", "failed", "cancelled"
 @require_user
 def get_instance(instance_id):
     with current_app.config["TWE_DB"].connect() as conn:
+        reconcile_instance(conn, current_app.config["TWE_CONFIG"], instance_id)
         row = instance_access(conn, g.current_user["id"], instance_id)
         if not row:
             return api_error("NOT_FOUND", "Game Instance was not found.", 404)
+        instance = fetch_one(
+            conn,
+            """
+            SELECT hosting_provider, provider_instance_id, provider_state, provisioning_error
+            FROM game_instances
+            WHERE id = %s
+            """,
+            (instance_id,),
+        )
     return jsonify(
         {
             "instance": {
@@ -32,6 +43,10 @@ def get_instance(instance_id):
                 "instance_type": row["instance_type"],
                 "game_identifier": row["game_identifier"],
                 "status": row["instance_status"],
+                "hosting_provider": instance["hosting_provider"],
+                "provider_instance_id": instance["provider_instance_id"],
+                "provider_state": instance["provider_state"],
+                "provisioning_error": instance["provisioning_error"],
             }
         }
     )
