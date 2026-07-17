@@ -44,3 +44,11 @@ The command is idempotent and preserves the existing Community, Game Server, Gam
 ## Secrets
 
 Provider Connection secrets are either an external secret reference or an authenticated encrypted payload envelope. Provider metadata is non-secret. Secret envelopes are not exposed through an API in this slice and their runtime value objects suppress secret material from representations.
+
+The authenticated payload implementation uses AES-256-GCM with a fresh 96-bit
+nonce for each write. Provider Connection ID and key version are authenticated as
+associated data. Versioned keys are supplied outside PostgreSQL through
+`TWE_PROVIDER_SECRET_KEYS_JSON`; `TWE_PROVIDER_SECRET_ACTIVE_KEY_VERSION` selects
+the key for new writes. Old keys remain readable during controlled rotation. With
+no complete key configuration, the application uses a fail-closed backend that
+refuses every secret operation.

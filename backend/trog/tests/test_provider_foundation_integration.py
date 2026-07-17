@@ -10,6 +10,10 @@ from scripts.backfill_genesis_provider import GenesisBackfillError, backfill_gen
 from twe.config import load_config
 from twe.db import Database, execute, fetch_all, fetch_one
 from twe.services.provider_resolution import resolve_game_server_provider
+from twe.services.provider_secret_storage import (
+    AesGcmProviderSecretCipher,
+    AuthenticatedProviderSecretStorage,
+)
 
 
 class ProviderFoundationIntegrationTests(unittest.TestCase):
@@ -204,6 +208,59 @@ class ProviderFoundationIntegrationTests(unittest.TestCase):
                         (resource["id"], second_server["id"]),
                     )
             conn.rollback()
+
+    def test_authenticated_provider_secret_storage_lifecycle(self):
+        suffix = secrets.token_hex(6)
+        key = secrets.token_bytes(32)
+        cipher = AesGcmProviderSecretCipher({"test-v1": key}, "test-v1")
+        storage = AuthenticatedProviderSecretStorage(self.db, cipher)
+        first_token = f"first-token-{suffix}".encode()
+        replacement_token = f"replacement-token-{suffix}".encode()
+
+        with self.db.connect() as conn:
+            community = self._community(conn, suffix)
+            connection = self._connection(conn, community["id"], suffix)
+            conn.commit()
+
+        try:
+            storage.store(connection["id"], first_token)
+            self.assertEqual(storage.read(connection["id"]), first_token)
+            with self.db.connect() as conn:
+                envelope = fetch_one(
+                    conn,
+                    """
+                    SELECT encrypted_payload, encryption_nonce, key_version
+                    FROM provider_connection_secrets
+                    WHERE provider_connection_id = %s
+                    """,
+                    (connection["id"],),
+                )
+            self.assertNotIn(first_token, bytes(envelope["encrypted_payload"]))
+            self.assertEqual(len(envelope["encryption_nonce"]), 12)
+            self.assertEqual(envelope["key_version"], "test-v1")
+
+            storage.replace(connection["id"], replacement_token)
+            self.assertEqual(storage.read(connection["id"]), replacement_token)
+            rotated_cipher = AesGcmProviderSecretCipher(
+                {"test-v1": key, "test-v2": secrets.token_bytes(32)},
+                "test-v2",
+            )
+            rotated_storage = AuthenticatedProviderSecretStorage(self.db, rotated_cipher)
+            rotated_storage.rotate(connection["id"])
+            self.assertEqual(rotated_storage.read(connection["id"]), replacement_token)
+            with self.db.connect() as conn:
+                rotated_envelope = fetch_one(
+                    conn,
+                    "SELECT key_version FROM provider_connection_secrets WHERE provider_connection_id = %s",
+                    (connection["id"],),
+                )
+            self.assertEqual(rotated_envelope["key_version"], "test-v2")
+            storage.delete(connection["id"])
+            self.assertIsNone(storage.read(connection["id"]))
+        finally:
+            with self.db.connect() as conn:
+                execute(conn, "DELETE FROM communities WHERE id = %s", (community["id"],))
+                conn.commit()
 
     def _genesis_snapshot(self, conn):
         topology = fetch_one(
