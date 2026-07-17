@@ -68,6 +68,12 @@ The goal is to maintain a single authoritative source of truth and minimize docu
 
 # Business Rules
 
+Naming rule:
+
+Treat Genesis as instance-level data only (for example Cohorts in the Wild -> ARK -> Genesis).
+
+Do not use Genesis to name platform packages, backend folders, shared infrastructure, or generic services.
+
 Never invent:
 
 - business entities

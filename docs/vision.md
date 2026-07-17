@@ -2,9 +2,9 @@
 
 Troglodyte Works helps gaming communities coordinate, automate, and manage their shared worlds.
 
-It is not only a game server hosting platform.
+It is not a traditional hosting provider or server control panel.
 
-Hosting is one capability within a larger system designed to support community owners, server admins, moderators, players, creators, and gaming groups.
+Connected services are one capability within a larger system designed to support community owners, server admins, moderators, players, creators, and gaming groups.
 
 ---
 

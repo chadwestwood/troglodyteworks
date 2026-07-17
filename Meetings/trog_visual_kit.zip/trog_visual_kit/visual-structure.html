@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Trog Visual Structure</title>
+  <link rel="stylesheet" href="trog-ui-tokens.css">
+  <link rel="stylesheet" href="trog-components.css">
+</head>
+<body>
+  <main class="trog-shell">
+    <header class="trog-page-header">
+      <div class="trog-kicker">Community Operations</div>
+      <h1>Cohorts in the Wild</h1>
+      <p class="trog-muted">41 members · 14 players online · all connected services healthy</p>
+    </header>
+
+    <section class="trog-grid trog-grid--3" aria-label="Community summary">
+      <article class="trog-card trog-stat"><span class="trog-muted">Needs attention</span><strong>2</strong></article>
+      <article class="trog-card trog-stat"><span class="trog-muted">Upcoming events</span><strong>4</strong></article>
+      <article class="trog-card trog-stat"><span class="trog-muted">Connected services</span><strong>3</strong></article>
+    </section>
+
+    <section class="trog-grid trog-grid--2" style="margin-top:1rem">
+      <article class="trog-card">
+        <div class="trog-kicker">Priority</div>
+        <h2>Needs attention</h2>
+        <ul class="trog-list">
+          <li class="trog-list-item">
+            <span class="trog-dot" style="background:var(--trog-warning)"></span>
+            <div><strong>Weekend boost begins tomorrow</strong><div class="trog-muted">Announcement still needs approval.</div></div>
+            <span class="trog-status trog-status--warning">Review</span>
+          </li>
+          <li class="trog-list-item">
+            <span class="trog-dot" style="background:var(--trog-danger)"></span>
+            <div><strong>Provider connection needs review</strong><div class="trog-muted">Genesis status is temporarily unavailable.</div></div>
+            <span class="trog-status trog-status--danger">Fix</span>
+          </li>
+        </ul>
+      </article>
+
+      <article class="trog-card">
+        <div class="trog-kicker">Calendar</div>
+        <h2>Coming up</h2>
+        <ul class="trog-list">
+          <li class="trog-list-item"><span class="trog-dot"></span><div><strong>Boss run</strong><div class="trog-muted">Tonight · 8:00 PM</div></div></li>
+          <li class="trog-list-item"><span class="trog-dot"></span><div><strong>Community vote closes</strong><div class="trog-muted">Saturday · 6:00 PM</div></div></li>
+        </ul>
+      </article>
+    </section>
+
+    <section style="margin-top:1rem">
+      <article class="trog-card">
+        <div class="trog-kicker">Integrations</div>
+        <h2>Connected services</h2>
+        <div class="trog-grid trog-grid--3">
+          <div class="trog-card trog-card--quiet">
+            <strong>ARK: Survival Ascended</strong>
+            <p class="trog-muted">Genesis · Nitrado</p>
+            <span class="trog-status">Running</span>
+          </div>
+          <div class="trog-card trog-card--quiet">
+            <strong>Discord</strong>
+            <p class="trog-muted">Community Hub</p>
+            <span class="trog-status">Connected</span>
+          </div>
+          <div class="trog-card trog-card--quiet">
+            <strong>Minecraft</strong>
+            <p class="trog-muted">Not connected</p>
+            <a class="trog-button trog-button--secondary" href="#">Connect</a>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,52 @@
+/* Troglodyte Works visual kit seed tokens. These augment the existing system tokens. */
+:root {
+    --trog-bg: #F4F1EA;
+    --trog-panel: #FCFBF7;
+    --trog-ink: #20231F;
+    --trog-muted: #6F746D;
+    --trog-border: #D8D4CA;
+    --trog-accent: #6F7F5F;
+    --trog-accent-dark: #4E5D43;
+    --trog-accent-soft: #E2E8DC;
+    --trog-warning: #B27A3B;
+    --trog-danger: #A45146;
+    --trog-info: #58768A;
+
+    --trog-radius-sm: 10px;
+    --trog-radius-md: 16px;
+    --trog-radius-lg: 24px;
+    --trog-radius-xl: 32px;
+
+    --trog-space-1: 0.25rem;
+    --trog-space-2: 0.5rem;
+    --trog-space-3: 0.75rem;
+    --trog-space-4: 1rem;
+    --trog-space-5: 1.5rem;
+    --trog-space-6: 2rem;
+    --trog-space-7: 3rem;
+    --trog-space-8: 4rem;
+
+    --trog-shadow-sm: 0 1px 2px rgba(32, 35, 31, .05);
+    --trog-shadow-md: 0 10px 30px rgba(32, 35, 31, .08);
+    --trog-content-width: 1180px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--trog-bg);
+    color: var(--trog-ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a {
+    color: inherit;
+}
+
+:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--trog-accent) 55%, white);
+    outline-offset: 3px;
+}

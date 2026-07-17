@@ -1,11 +1,14 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Create Account | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
+
 <body class="app-page" data-page="register">
   <main class="app-shell narrow">
     <a class="brand" href="/" aria-label="Troglodyte Works home">
@@ -18,12 +21,14 @@
     </nav>
     <section class="app-panel">
       <p class="eyebrow">Create Account</p>
-      <h1>Start with identity.</h1>
-      <p class="muted">Creating an account does not join a Community or create hosting.</p>
+      <h1>Set up your identity first.</h1>
+      <p class="muted">After creating an account, you can join a community through invitation and open its operations
+        workspace.</p>
       <p class="form-error" data-error hidden></p>
       <div class="button-row">
         <a class="primary-button" href="/api/v1/auth/google/start" data-oauth-start="google">Continue with Google</a>
-        <a class="primary-button secondary" href="/api/v1/auth/discord/start" data-oauth-start="discord">Continue with Discord</a>
+        <a class="primary-button secondary" href="/api/v1/auth/discord/start" data-oauth-start="discord">Continue with
+          Discord</a>
       </div>
       <form class="stack-form" data-register-form>
         <label for="display_name">Display name</label>
@@ -33,13 +38,16 @@
         <label for="password">Password</label>
         <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
         <label for="password_confirmation">Confirm password</label>
-        <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="8" required>
+        <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password"
+          minlength="8" required>
         <button class="primary-button" type="submit">Create Account</button>
       </form>
-      <p class="muted">Already have an account? <a class="header-link" href="/auth/sign-in.html">Sign In</a>.</p>
+      <p class="muted">Already have an account? <a class="header-link" href="/auth/sign-in.html">Sign In</a> and
+        continue where you left off.</p>
     </section>
   </main>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/twe-pages.js?v=site-admin-v2"></script>
 </body>
+
 </html>

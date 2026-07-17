@@ -1,42 +1,52 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>My Communities | Troglodyte Works</title>
+  <title>Operations | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css?v=invitation-workflow-v1">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
+
 <body class="app-page" data-page="communities">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/explore/">Explore</a>
-        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" href="/explore/">Events</a>
+        <a class="header-link" href="/account/">Settings</a>
         <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; My Communities</nav>
+    <nav class="breadcrumbs">Home &gt; Operations</nav>
     <main class="app-panel">
-      <p class="eyebrow">My Communities</p>
-      <h1>Communities for <span data-current-user></span></h1>
+      <p class="eyebrow">Community Operations</p>
+      <h1>Choose a Community workspace for <span data-current-user></span></h1>
+      <p class="muted">Each workspace highlights attention items, upcoming changes, recent activity, and connected
+        services.</p>
+      <p class="muted" data-community-chooser-hint hidden>You are in multiple Communities. Pick one to open its
+        operations home.</p>
       <p class="form-error" data-error hidden></p>
       <div class="resource-list" data-communities-list></div>
       <section class="pending-invitations" data-pending-invitations-section hidden>
-        <h2>Community invitations</h2>
-        <p class="muted">Accept or decline invitations sent to this account.</p>
+        <h2>Invitation decisions</h2>
+        <p class="muted">Accept or decline invitations sent to this account before entering those communities.</p>
         <div class="resource-list" data-pending-invitations></div>
       </section>
       <section class="empty-state" data-empty-communities hidden>
-        <h2>You have not joined any Communities yet.</h2>
-        <p class="muted">Your account is ready. Community Membership is separate from account creation.</p>
+        <h2>No Community workspaces yet.</h2>
+        <p class="muted">Your account is ready. Join through an invitation to begin operating with a community.</p>
+        <img src="/assets/illustrations/empty-community.svg" alt="Empty community illustration"
+          style="width:100%; height:auto; display:block; margin:var(--space-16) 0; border-radius:24px; border:1px solid var(--color-border);">
         <div class="button-row">
-          <a class="primary-button" href="/explore/">Explore public content</a>
+          <a class="primary-button" href="/explore/">Explore how Trog works</a>
         </div>
         <div class="resource-row">
           <span>
-            <strong>Create a Community</strong>
+            <strong>Create a Community workspace</strong>
             <small>Coming soon. For now, join through an invitation from a Community leader.</small>
           </span>
           <span>Planned</span>
@@ -44,7 +54,9 @@
       </section>
     </main>
   </div>
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/twe-pages.js?v=invitation-workflow-v1"></script>
 </body>
+
 </html>

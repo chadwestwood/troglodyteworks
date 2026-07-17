@@ -1,13 +1,15 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Community Invitation | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body class="app-page" data-page="invite-landing">
-  <main class="app-shell narrow">
+  <main class="app-shell narrow content-stack">
     <a class="brand" href="/" aria-label="Troglodyte Works home">
       <span class="brand-mark" aria-hidden="true">TW</span>
       <span>Troglodyte Works</span>
@@ -16,12 +18,14 @@
     <section class="app-panel">
       <p class="eyebrow">Community Invitation</p>
       <h1 data-invite-community>Loading invitation.</h1>
-      <p class="muted" data-invite-details></p>
+      <p class="muted" data-invite-details>This invitation can add you to a community workspace. Community membership
+        does not automatically grant provider or service-control access.</p>
       <p class="form-error" data-error hidden></p>
       <p class="status-line" data-invite-status role="status" hidden></p>
       <div class="button-row" data-auth-actions hidden>
         <a class="primary-button" href="/api/v1/auth/google/start" data-oauth-start="google">Continue with Google</a>
-        <a class="primary-button secondary" href="/api/v1/auth/discord/start" data-oauth-start="discord">Continue with Discord</a>
+        <a class="primary-button secondary" href="/api/v1/auth/discord/start" data-oauth-start="discord">Continue with
+          Discord</a>
         <a class="primary-button" href="/auth/register.html">Create Account</a>
         <a class="primary-button secondary" href="/auth/sign-in.html">Sign In</a>
       </div>
@@ -35,4 +39,5 @@
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/invite.js?v=membership-approval-v1"></script>
 </body>
+
 </html>

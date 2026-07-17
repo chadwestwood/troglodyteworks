@@ -13,69 +13,112 @@
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/">My Communities</a>
-        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/invitations/">Members</a>
+        <a class="header-link" href="/explore/">Events</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">Connected
+          Services</a>
+        <a class="header-link" href="/server-operations/">Activity</a>
+        <a class="header-link" href="/account/">Settings</a>
         <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <a class="header-link" href="/explore/">Explore</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild</nav>
+    <nav class="breadcrumbs">Home &gt; Operations &gt; Community workspace</nav>
     <main class="app-grid">
       <section class="app-panel">
-        <p class="eyebrow">Community</p>
+        <p class="eyebrow">Community Operations Home</p>
         <h1 data-community-name>Cohorts in the Wild</h1>
-        <p class="muted">Your role: <strong data-community-role></strong></p>
+        <p class="muted">Start here for operational awareness. Move from attention to upcoming work, then into service
+          and member detail.</p>
+        <p class="muted">Your role: <strong data-community-role></strong> · Members: <strong
+            data-summary-members></strong></p>
+        <div class="resource-list">
+          <div class="resource-row"><span><strong>Connected services</strong><small>Services attached to this
+                Community.</small></span><span data-summary-connected-services>0</span></div>
+          <div class="resource-row"><span><strong>Healthy services</strong><small>Services currently online or
+                stable.</small></span><span data-summary-healthy-services>0</span></div>
+          <div class="resource-row"><span><strong>Needs attention</strong><small>Issues that should be handled
+                first.</small></span><span data-summary-attention>0</span></div>
+        </div>
+        <div class="button-row">
+          <a class="primary-button" data-community-primary-action href="#">Open next action</a>
+        </div>
         <p class="form-error" data-error hidden></p>
       </section>
       <section class="app-panel">
-        <h2>Game Servers</h2>
-        <div class="resource-list" data-game-servers-list></div>
+        <h2>Needs attention</h2>
+        <p class="muted">Items requiring action from owners, admins, or moderators.</p>
+        <div class="resource-list" data-attention-list></div>
       </section>
-      <section class="app-panel" data-host-game-panel hidden>
-        <div>
-          <p class="eyebrow">Community owner action</p>
-          <h2>Host a Game</h2>
-          <p class="muted" data-host-game-note>Provision a new game Instance in managed hosting.</p>
+      <section class="app-panel">
+        <h2>Next action</h2>
+        <p class="muted">The next step worth handling.</p>
+        <div class="resource-list" data-next-action-list></div>
+      </section>
+      <details class="disclosure-panel secondary-ops">
+        <summary>
+          <span>Everything else</span>
+          <span>Recent activity, members, and owner tools</span>
+        </summary>
+        <div class="disclosure-panel__body">
+          <section>
+            <h2>Recent activity</h2>
+            <p class="muted">Operational and membership events across the community.</p>
+            <div class="resource-list" data-activity-list></div>
+          </section>
+          <section>
+            <h2>Members overview</h2>
+            <div class="resource-list">
+              <div class="resource-row"><span><strong>Community owners</strong><small>Members with primary
+                    stewardship.</small></span><span data-member-owners>0</span></div>
+              <div class="resource-row"><span><strong>Administrators</strong><small>Members managing day-to-day
+                    operations.</small></span><span data-member-admins>0</span></div>
+              <div class="resource-row"><span><strong>Moderators</strong><small>Members helping with community
+                    care.</small></span><span data-member-moderators>0</span></div>
+              <div class="resource-row"><span><strong>New this week</strong><small>Recently joined
+                    members.</small></span><span data-member-new>0</span></div>
+            </div>
+          </section>
+          <section data-host-game-panel hidden>
+            <div>
+              <p class="eyebrow">Community owner action</p>
+              <h2>Connect a new game service</h2>
+              <p class="muted" data-host-game-note>Provision a new game Instance through an approved provider
+                connection.</p>
+            </div>
+            <form class="content-stack" data-host-game-form>
+              <label>
+                Supported game
+                <select data-host-game-select required></select>
+              </label>
+              <label>
+                World profile
+                <select data-host-map-select required></select>
+              </label>
+              <div class="button-row">
+                <button class="primary-button" type="submit">Confirm and connect service</button>
+              </div>
+            </form>
+            <p class="status-line" data-host-status hidden></p>
+            <p class="muted" data-host-details hidden></p>
+          </section>
+          <section data-membership-approvals-panel hidden>
+            <div>
+              <p class="eyebrow">Needs attention</p>
+              <h2>Membership requests <span data-membership-approval-count></span></h2>
+              <p class="muted">People who used an approval-required Cohorts invitation link.</p>
+            </div>
+            <p class="status-line" data-membership-approval-status role="status" hidden></p>
+            <div class="resource-list" data-membership-approval-list></div>
+            <a class="primary-button secondary" href="/communities/cohorts-in-the-wild/invitations/">Manage all
+              invitations</a>
+          </section>
         </div>
-        <form data-host-game-form>
-          <label>
-            Supported game
-            <select data-host-game-select required></select>
-          </label>
-          <label>
-            Supported map
-            <select data-host-map-select required></select>
-          </label>
-          <div class="button-row">
-            <button class="primary-button" type="submit">Confirm and provision</button>
-          </div>
-        </form>
-        <p class="status-line" data-host-status hidden></p>
-        <p class="muted" data-host-details hidden></p>
-      </section>
-      <section class="app-panel" data-membership-approvals-panel hidden>
-        <div>
-          <p class="eyebrow">Needs attention</p>
-          <h2>Membership requests <span data-membership-approval-count></span></h2>
-          <p class="muted">People who used an approval-required Cohorts invitation link.</p>
-        </div>
-        <p class="status-line" data-membership-approval-status role="status" hidden></p>
-        <div class="resource-list" data-membership-approval-list></div>
-        <a class="primary-button secondary" href="/communities/cohorts-in-the-wild/invitations/">Manage all
-          invitations</a>
-      </section>
-      <section class="app-panel muted-panel">
-        <h2>Recent Activity</h2>
-        <p>Unavailable for this milestone.</p>
-      </section>
-      <section class="app-panel muted-panel">
-        <h2>Members and Settings</h2>
-        <p>Invite members into Cohorts without granting server or Trog access.</p>
-        <a class="primary-button" href="/communities/cohorts-in-the-wild/invitations/">Manage Invitations</a>
-      </section>
+      </details>
     </main>
   </div>
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/twe-pages.js?v=membership-approval-v1"></script>
 </body>

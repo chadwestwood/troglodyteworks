@@ -108,7 +108,7 @@ Create a forward-only migration after the currently applied Discord migrations. 
 Proposed migration name:
 
 ```text
-backend/genesis/migrations/0005_discord_instance_access_grants.sql
+backend/trog/migrations/0005_discord_instance_access_grants.sql
 ```
 
 Minimum durable schema:
@@ -366,13 +366,13 @@ Add or update tests for:
 Relevant test command:
 
 ```text
-backend/genesis/.venv/bin/python -m pytest backend/genesis/tests
+backend/trog/.venv/bin/python -m pytest backend/trog/tests
 ```
 
 Targeted Discord test command:
 
 ```text
-backend/genesis/.venv/bin/python -m pytest backend/genesis/tests/test_discord_bot.py backend/genesis/tests/test_discord_foundation_integration.py
+backend/trog/.venv/bin/python -m pytest backend/trog/tests/test_discord_bot.py backend/trog/tests/test_discord_foundation_integration.py
 ```
 
 ## Documentation Updates Required With Implementation

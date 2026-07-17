@@ -9,6 +9,7 @@ from ..responses import api_error
 from ..serializers import operation_summary, operation_with_requester
 from ..services.adapters import adapter_for
 from ..services.instance_provisioning import reconcile_instance
+from ..services.provider_resolution import read_game_server_health, resolve_game_server_provider
 
 instances_bp = Blueprint("twe_instances", __name__)
 
@@ -59,8 +60,9 @@ def get_health(instance_id):
         row = instance_access(conn, g.current_user["id"], instance_id)
         if not row:
             return api_error("NOT_FOUND", "Game Instance was not found.", 404)
-    adapter = adapter_for(row["management_adapter"])
-    if not adapter:
+        resolution = resolve_game_server_provider(conn, row["game_server_id"])
+    health = read_game_server_health(resolution, current_app.config["TWE_CONFIG"])
+    if health is None:
         return jsonify(
             {
                 "health": {
@@ -76,7 +78,7 @@ def get_health(instance_id):
                 }
             }
         )
-    return jsonify({"health": adapter.health(current_app.config["TWE_CONFIG"])})
+    return jsonify({"health": health})
 
 
 @instances_bp.get("/instances/<instance_id>/capabilities")
@@ -103,6 +105,7 @@ def create_operation(instance_id):
     if not isinstance(capability_key, str):
         return api_error("VALIDATION_ERROR", "Capability is required.", 400)
 
+    resolution = None
     with current_app.config["TWE_DB"].connect() as conn:
         access = instance_access(conn, g.current_user["id"], instance_id)
         if not access:
@@ -158,7 +161,27 @@ def create_operation(instance_id):
             (g.current_user["id"], access["community_id"], "server_operation.created", row["id"], capability_key),
         )
         if capability_key == "instance.status":
-            _complete_status_operation(conn, row["id"], adapter, current_app.config["TWE_CONFIG"])
+            resolution = resolve_game_server_provider(conn, access["game_server_id"])
+
+    if capability_key == "instance.status":
+        try:
+            health = read_game_server_health(resolution, current_app.config["TWE_CONFIG"])
+        except Exception:
+            health = None
+        if health is None:
+            health = {
+                "overall_status": "unknown",
+                "checked_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "checks": [
+                    {
+                        "name": "management_adapter",
+                        "status": "unknown",
+                        "message": "The status service could not complete the health check.",
+                    }
+                ],
+            }
+        with current_app.config["TWE_DB"].connect() as conn:
+            _complete_status_operation(conn, row["id"], health)
             row = _operation_by_id(conn, row["id"])
 
     return jsonify({"server_operation": operation_summary(row)}), 202
@@ -201,7 +224,7 @@ def list_operations(instance_id):
     return jsonify({"server_operations": [operation_with_requester(row) for row in rows]})
 
 
-def _complete_status_operation(conn, operation_id: str, adapter, config):
+def _complete_status_operation(conn, operation_id: str, health: dict):
     started = datetime.now(timezone.utc)
     execute(
         conn,
@@ -212,7 +235,6 @@ def _complete_status_operation(conn, operation_id: str, adapter, config):
         """,
         (started, operation_id),
     )
-    health = adapter.health(config)
     final_status = "completed" if health["overall_status"] == "ready" else "failed"
     message = "Instance health is ready." if final_status == "completed" else "Instance health is not ready."
     order = 1

@@ -11,5 +11,5 @@ def settings():
 def health():
     return jsonify({
         "status": "ok",
-        "service": "genesis-backend"
+        "service": "genesis-instance-service"
     })

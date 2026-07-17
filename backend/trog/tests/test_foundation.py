@@ -55,7 +55,7 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"Platform Admin", admin.data)
         community = client.get("/communities/cohorts-in-the-wild/")
         self.assertEqual(community.status_code, 200)
-        self.assertIn(b"Host a Game", community.data)
+        self.assertIn(b"Connect a new game service", community.data)
 
     def test_genesis_page_includes_capability_aware_member_view(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
@@ -243,6 +243,7 @@ class FoundationTests(unittest.TestCase):
         verified_installation_migration = (ROOT / "migrations" / "0008_discord_verified_installation.sql").read_text()
         mod_names_migration = (ROOT / "migrations" / "0009_discord_mod_names_capability.sql").read_text()
         provisioning_migration = (ROOT / "migrations" / "0010_hosting_instance_provisioning.sql").read_text()
+        provider_migration = (ROOT / "migrations" / "0011_provider_foundation.sql").read_text()
         for table in [
             "users",
             "sessions",
@@ -272,6 +273,16 @@ class FoundationTests(unittest.TestCase):
         self.assertIn("instance.mods.names.read", mod_names_migration)
         self.assertIn("CREATE TABLE IF NOT EXISTS instance_provisioning_requests", provisioning_migration)
         self.assertIn("ADD COLUMN IF NOT EXISTS provider_instance_id", provisioning_migration)
+        for table in [
+            "provider_connections",
+            "provider_connection_secrets",
+            "provider_oauth_states",
+            "provider_resources",
+        ]:
+            self.assertIn(f"CREATE TABLE IF NOT EXISTS {table}", provider_migration)
+        self.assertIn("ADD COLUMN IF NOT EXISTS provider_resource_id", provider_migration)
+        self.assertIn("ADD COLUMN IF NOT EXISTS game_key", provider_migration)
+        self.assertIn("enforce_game_server_provider_community", provider_migration)
 
     def test_seed_uses_environment_credentials(self):
         seed = (ROOT / "scripts" / "seed_initial.py").read_text()

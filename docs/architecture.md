@@ -12,6 +12,12 @@ Journeys support Communities.
 
 Communities create value.
 
+Genesis naming rule:
+
+Genesis is an ARK instance name under a Community game service path.
+
+Genesis is not the Troglodyte Works backend or platform name.
+
 ---
 
 # Layer 1 — Experience

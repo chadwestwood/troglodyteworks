@@ -6,6 +6,8 @@ const routes = {
   genesis: "/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/instances/genesis/",
 };
 
+const rolePriority = { owner: 4, admin: 3, moderator: 2, member: 1 };
+
 async function initSignIn() {
   configureOAuthStartLinks();
   const form = document.querySelector("[data-sign-in-form]");
@@ -20,7 +22,7 @@ async function initSignIn() {
           password: formData.get("password"),
         }),
       });
-      window.location.href = pendingInvitePath() || routes.communities;
+      window.location.href = pendingInvitePath() || await resolvePostAuthRoute();
     } catch (error) {
       showError(error.message);
     }
@@ -43,29 +45,74 @@ async function initRegister() {
           password_confirmation: formData.get("password_confirmation"),
         }),
       });
-      window.location.href = pendingInvitePath() || routes.communities;
+      window.location.href = pendingInvitePath() || await resolvePostAuthRoute();
     } catch (error) {
       showError(error.message);
     }
   });
 }
 
+async function resolvePostAuthRoute() {
+  try {
+    const data = await apiRequest("/communities");
+    const communities = data.communities || [];
+    if (communities.length === 1) {
+      remember("twe.community_id", communities[0].id);
+      return routes.community;
+    }
+    return routes.communities;
+  } catch (_error) {
+    return routes.communities;
+  }
+}
+
 async function initCommunities() {
   await requireCurrentUser();
   const list = document.querySelector("[data-communities-list]");
   const emptyState = document.querySelector("[data-empty-communities]");
+  const chooserHint = document.querySelector("[data-community-chooser-hint]");
   const data = await apiRequest("/communities");
   const pendingData = await apiRequest("/community-invitations/pending");
+  const communities = rankCommunitiesByRole(data.communities || []);
   clearNode(list);
   renderPendingInvitations(pendingData.invitations);
-  if (data.communities.length === 0) {
+  if (communities.length === 0) {
     emptyState.hidden = false;
+    if (chooserHint) {
+      chooserHint.hidden = true;
+    }
     return;
   }
   emptyState.hidden = true;
-  data.communities.forEach((community) => {
-    remember("twe.community_id", community.id);
-    list.appendChild(createResourceRow(community.name, community.slug, community.role, { href: routes.community }));
+  if (chooserHint) {
+    chooserHint.hidden = communities.length < 2;
+  }
+  if (communities.length === 1 && !window.location.search.includes("chooser=1")) {
+    remember("twe.community_id", communities[0].id);
+    window.location.href = routes.community;
+    return;
+  }
+  communities.forEach((community) => {
+    const detail = [
+      `${community.member_count || 0} members`,
+      `${community.connected_services || 0} connected services`,
+      `${community.attention_count || 0} needs attention`,
+    ].join(" · ");
+    const row = createResourceRow(community.name, detail, communityRoleLabel(community.role), { href: routes.community });
+    row.addEventListener("click", () => {
+      remember("twe.community_id", community.id);
+    });
+    list.appendChild(row);
+  });
+}
+
+function rankCommunitiesByRole(communities) {
+  return [...communities].sort((a, b) => {
+    const roleDelta = (rolePriority[b.role] || 0) - (rolePriority[a.role] || 0);
+    if (roleDelta !== 0) {
+      return roleDelta;
+    }
+    return String(a.name || "").localeCompare(String(b.name || ""));
   });
 }
 
@@ -354,14 +401,96 @@ function renderPendingInvitations(invitations) {
 async function initCommunity() {
   await requireCurrentUser();
   const communityId = recall("twe.community_id") || await findCommunityId();
-  const communityData = await apiRequest(`/communities/${communityId}`);
-  const serversData = await apiRequest(`/communities/${communityId}/game-servers`);
-  setText("[data-community-name]", communityData.community.name);
-  setText("[data-community-role]", communityData.community.current_user_role);
-  const list = document.querySelector("[data-game-servers-list]");
-  renderCommunityServers(list, serversData.game_servers);
-  await initHostGame(communityId, communityData.community.current_user_role);
-  await initMembershipApprovals(communityId, communityData.community.current_user_role);
+  if (!communityId) {
+    window.location.href = routes.communities;
+    return;
+  }
+  const operationsHome = await apiRequest(`/communities/${communityId}/operations-home`);
+  setText("[data-community-name]", operationsHome.community.name);
+  setText("[data-community-role]", communityRoleLabel(operationsHome.community.viewer_role));
+  setText("[data-summary-connected-services]", operationsHome.summary.connected_services || 0);
+  setText("[data-summary-healthy-services]", operationsHome.summary.healthy_services || 0);
+  setText("[data-summary-attention]", operationsHome.summary.attention_count || 0);
+  setText("[data-summary-members]", operationsHome.community.member_count || 0);
+  renderPrimaryCommunityAction(operationsHome);
+  renderOperationsHomeRows("[data-attention-list]", operationsHome.attention_items, "No urgent items", "Your services and operations are currently stable.");
+  renderNextAction("[data-next-action-list]", operationsHome);
+  renderOperationsHomeRows("[data-activity-list]", operationsHome.recent_activity, "No recent activity", "Operations and membership activity will appear here.");
+  renderConnectedServiceCards(operationsHome.connected_services || []);
+  setText("[data-member-owners]", operationsHome.member_summary.owners || 0);
+  setText("[data-member-admins]", operationsHome.member_summary.administrators || 0);
+  setText("[data-member-moderators]", operationsHome.member_summary.moderators || 0);
+  setText("[data-member-new]", operationsHome.member_summary.new_members || 0);
+  await initHostGame(communityId, operationsHome.community.viewer_role);
+  await initMembershipApprovals(communityId, operationsHome.community.viewer_role);
+}
+
+function renderPrimaryCommunityAction(operationsHome) {
+  const action = document.querySelector("[data-community-primary-action]");
+  if (!action) {
+    return;
+  }
+  const nextItem = operationsHome.attention_items?.[0] || operationsHome.upcoming_items?.[0] || operationsHome.connected_services?.[0];
+  if (!nextItem) {
+    action.hidden = true;
+    return;
+  }
+  const label = operationsHome.attention_items?.length
+    ? "Review next action"
+    : operationsHome.upcoming_items?.length
+      ? "Open next change"
+      : "Open connected services";
+  if (!nextItem.href || nextItem.href === "#") {
+    action.hidden = true;
+    return;
+  }
+  action.hidden = false;
+  action.textContent = label;
+  action.href = nextItem.href;
+}
+
+function renderOperationsHomeRows(selector, items, emptyTitle, emptyDetail) {
+  const list = document.querySelector(selector);
+  clearNode(list);
+  if (!items?.length) {
+    list?.appendChild(createResourceRow(emptyTitle, emptyDetail));
+    return;
+  }
+  items.forEach((item) => {
+    const detail = item.summary
+      || [item.service, item.instance, item.next_action, item.scheduled_for ? formatDashboardDate(item.scheduled_for) : null].filter(Boolean).join(" · ");
+    const trailing = item.status || "Open";
+    list?.appendChild(createResourceRow(item.title || item.summary || "Community activity", detail, trailing, { href: item.href }));
+  });
+}
+
+function renderNextAction(selector, operationsHome) {
+  const list = document.querySelector(selector);
+  clearNode(list);
+  const nextItem = operationsHome.attention_items?.[0] || operationsHome.upcoming_items?.[0];
+  if (!nextItem) {
+    list?.appendChild(createResourceRow("No immediate action", "Things are calm right now. Review connected services only if you want to make a change."));
+    return;
+  }
+  const detail = nextItem.next_action || nextItem.summary || [nextItem.service, nextItem.instance].filter(Boolean).join(" · ");
+  list?.appendChild(createResourceRow(nextItem.title || "Next action", detail, nextItem.status || "Open", { href: nextItem.href }));
+}
+
+function renderConnectedServiceCards(services) {
+  const list = document.querySelector("[data-connected-services-list]");
+  clearNode(list);
+  if (!services.length) {
+    list?.appendChild(createResourceRow("No connected services", "Add a game service to begin operating this Community."));
+    return;
+  }
+  services.forEach((service) => {
+    const detail = [
+      service.provider,
+      service.world ? `World: ${service.world}` : null,
+      service.scheduled_change ? `${service.scheduled_change} (${service.scheduled_change_status || "Planned"})` : null,
+    ].filter(Boolean).join(" · ");
+    list?.appendChild(createResourceRow(service.service_name, detail, service.connection_status, { href: service.href }));
+  });
 }
 
 function renderCommunityServers(list, servers) {
@@ -429,7 +558,7 @@ async function initHostGame(communityId, role) {
       remember("twe.instance_id", data.instance.id);
       remember("twe.operation_id", data.server_operation.id);
       status.textContent = "Provisioning requested.";
-      details.textContent = "Waiting for the hosting provider to finish provisioning.";
+      details.textContent = "Waiting for the connected service provisioning to finish.";
       await trackProvisioningProgress(communityId, data.instance.id, data.server_operation.id, status, details);
     } catch (error) {
       showError(error.message);
@@ -496,14 +625,17 @@ function populateMapOptions(mapSelect, maps) {
 async function trackProvisioningProgress(communityId, instanceId, operationId, statusNode, detailNode) {
   const terminal = new Set(["completed", "failed", "cancelled"]);
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const [instanceData, operationData, serversData] = await Promise.all([
+    const [instanceData, operationData, operationsHome] = await Promise.all([
       apiRequest(`/instances/${instanceId}`),
       apiRequest(`/server-operations/${operationId}`),
-      apiRequest(`/communities/${communityId}/game-servers`),
+      apiRequest(`/communities/${communityId}/operations-home`),
     ]);
     const operation = operationData.server_operation;
     const instance = instanceData.instance;
-    renderCommunityServers(document.querySelector("[data-game-servers-list]"), serversData.game_servers);
+    renderConnectedServiceCards(operationsHome.connected_services || []);
+    setText("[data-summary-connected-services]", operationsHome.summary.connected_services || 0);
+    setText("[data-summary-healthy-services]", operationsHome.summary.healthy_services || 0);
+    setText("[data-summary-attention]", operationsHome.summary.attention_count || 0);
     statusNode.textContent = `Provisioning status: ${humanizeKey(operation.status)}`;
     detailNode.textContent = operation.result_message || `Current stage: ${humanizeKey(operation.current_stage)}`;
     if (terminal.has(operation.status)) {
@@ -544,11 +676,12 @@ async function initGameServer() {
   setText("[data-server-name]", serverData.game_server.name);
   setText("[data-server-game-type]", serverData.game_server.game_type);
   setText("[data-server-status]", serverData.game_server.status);
+  setText("[data-server-connected-service-name]", serverData.game_server.name);
   const list = document.querySelector("[data-instances-list]");
   clearNode(list);
   instancesData.instances.forEach((instance) => {
     remember("twe.instance_id", instance.id);
-    list.appendChild(createResourceRow(instance.name, instance.game_identifier, instance.status, { href: routes.genesis }));
+    list.appendChild(createResourceRow(instance.name, instance.game_identifier, humanizeKey(instance.status), { href: routes.genesis }));
   });
 }
 
@@ -567,7 +700,7 @@ async function initGenesis() {
   );
   const hasOperatorAccess = visibleCapabilities.length > 0;
   setText("[data-instance-name]", instanceData.instance.name);
-  setText("[data-instance-summary]", "ARK: Survival Ascended · Genesis map");
+  setText("[data-instance-summary]", "Connected service world and operations status");
   renderGenesisHealth(healthData.health, hasOperatorAccess);
   configureGenesisAccessView(hasOperatorAccess);
   if (hasOperatorAccess) {
@@ -664,7 +797,7 @@ function createMembershipDecisionButton(label, communityId, redemptionId, decisi
 }
 
 function communityRoleLabel(role) {
-  return ({ member: "Member", moderator: "Moderator", admin: "Administrator" })[role] || role;
+  return ({ member: "Member", moderator: "Moderator", admin: "Administrator", owner: "Community Owner" })[role] || role;
 }
 
 function formatDashboardDate(value) {
@@ -681,9 +814,9 @@ async function initOperation() {
   }
   const data = await apiRequest(`/server-operations/${operationId}`);
   const op = data.server_operation;
-  setText("[data-operation-capability]", op.capability);
-  setText("[data-operation-status]", op.status);
-  setText("[data-operation-stage]", op.current_stage || "none");
+  setText("[data-operation-capability]", capabilityLabel(op.capability));
+  setText("[data-operation-status]", humanizeKey(op.status));
+  setText("[data-operation-stage]", humanizeKey(op.current_stage || "none"));
   setText("[data-operation-result]", op.result_message || "Pending");
   const list = document.querySelector("[data-operation-checks]");
   clearNode(list);

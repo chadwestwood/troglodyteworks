@@ -123,10 +123,14 @@ Properties include:
 
 A capability provided by Troglodyte Works.
 
+Services are community operations capabilities, not isolated hosting products.
+
+Troglodyte Works connects to and coordinates the game servers and tools a Community already uses.
+
 Examples:
 
-- Server Hosting
 - Server Management
+- Connected Service Management
 - Discord Integration
 - Polls
 - Scheduling

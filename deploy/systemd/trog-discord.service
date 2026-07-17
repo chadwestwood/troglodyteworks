@@ -6,9 +6,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=cdubbs
-WorkingDirectory=/srv/troglodyteworks/backend/genesis
-EnvironmentFile=/srv/troglodyteworks/backend/genesis/.env
-ExecStart=/srv/troglodyteworks/backend/genesis/.venv/bin/python -m twe.discord_bot.service
+WorkingDirectory=/srv/troglodyteworks/backend/trog
+EnvironmentFile=/srv/troglodyteworks/backend/trog/.env
+ExecStart=/srv/troglodyteworks/backend/trog/.venv/bin/python -m twe.discord_bot.service
 Restart=on-failure
 RestartSec=10
 

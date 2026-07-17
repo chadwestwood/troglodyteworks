@@ -1,0 +1,36 @@
+.muted-panel {
+    border-style: dashed;
+    background: color-mix(in srgb, var(--color-surface-muted) 80%, white);
+}
+
+.status-success {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+}
+
+.status-warning {
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+}
+
+.status-danger {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+}
+
+.status-info {
+    background: var(--color-info-soft);
+    color: var(--color-info);
+}
+
+.flow-stack {
+    display: grid;
+    gap: var(--space-12);
+}
+
+.split-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-10);
+}

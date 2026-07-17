@@ -1,80 +1,271 @@
 .landing-page {
     min-height: 100vh;
     background:
-        linear-gradient(135deg, rgba(255, 255, 255, .76), rgba(243, 241, 236, .35)),
-        var(--color-background);
+        radial-gradient(circle at 86% -20%, rgba(40, 92, 99, 0.18), transparent 42%),
+        radial-gradient(circle at -12% 120%, rgba(159, 109, 61, 0.16), transparent 46%),
+        linear-gradient(180deg, #f8faf7 0%, var(--color-background) 100%);
+}
+
+.site-shell,
+.app-shell {
+    width: min(var(--content-max), calc(100% - 2rem));
+    margin: 0 auto;
 }
 
 .site-shell {
-    width: min(1120px, calc(100% - 32px));
     min-height: 100vh;
-    margin: 0 auto;
-    padding: 24px 0 40px;
+    padding: var(--space-24) 0 var(--space-48);
 }
 
-.site-header {
+.site-header,
+.app-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    min-height: 48px;
+    gap: var(--space-20);
+}
+
+.site-header {
+    min-height: 56px;
 }
 
 .landing-main {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 470px);
-    gap: 48px;
-    align-items: center;
-    padding: 84px 0 48px;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+    grid-template-areas:
+        "intro preview"
+        "question preview";
+    gap: clamp(2rem, 4vw, 4rem);
+    row-gap: var(--space-24);
+    align-items: start;
+    padding: clamp(3rem, 8vw, 6rem) 0 var(--space-24);
 }
 
 .landing-intro {
-    max-width: 620px;
+    grid-area: intro;
+    display: grid;
+    gap: var(--space-20);
+    max-width: 640px;
 }
 
-.question-stack {
-    display: grid;
-    gap: 10px;
+.landing-main>.journey-panel[aria-label="Community operations preview"] {
+    grid-area: preview;
 }
 
-.journey-choices {
+.landing-main>.journey-panel[aria-labelledby="journey-question"] {
+    grid-area: question;
+}
+
+.landing-intro .subtitle {
+    max-width: 50ch;
+}
+
+.question-stack,
+.journey-choices,
+.next-step {
     display: grid;
-    gap: 12px;
-    margin-top: 28px;
+    gap: var(--space-12);
 }
 
 .next-step {
-    display: grid;
-    gap: 10px;
-    margin-top: 24px;
-    padding-top: 22px;
+    margin-top: var(--space-20);
+    padding-top: var(--space-20);
     border-top: 1px solid var(--color-border);
 }
 
 .guidance-note {
     grid-column: 2;
     display: flex;
-    align-items: center;
-    gap: 12px;
+    align-items: flex-start;
+    gap: var(--space-12);
 }
 
-@media (max-width: 860px) {
-    .site-shell {
-        width: min(100% - 24px, 640px);
-        padding-top: 16px;
+.app-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(40, 92, 99, 0.08), transparent 32%),
+        linear-gradient(180deg, #f5f8f4 0%, var(--color-background) 100%);
+}
+
+.app-shell {
+    padding: var(--space-24) 0 var(--space-48);
+}
+
+.app-shell.narrow {
+    width: min(var(--content-narrow), calc(100% - 1.5rem));
+}
+
+.app-header {
+    margin-bottom: var(--space-20);
+}
+
+.breadcrumbs {
+    margin-bottom: var(--space-16);
+}
+
+.app-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--space-16);
+}
+
+.app-grid>.app-panel {
+    grid-column: span 6;
+}
+
+.app-grid>.app-panel:first-child {
+    grid-column: span 12;
+}
+
+.app-grid>.app-panel.full-width {
+    grid-column: span 12;
+}
+
+.secondary-ops {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: var(--space-16);
+    margin-top: var(--space-8);
+    padding-top: var(--space-8);
+}
+
+@media (max-width: 960px) {
+
+    .site-shell,
+    .app-shell {
+        width: min(calc(100% - 1.5rem), 760px);
+    }
+
+    .site-header,
+    .app-header {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .landing-main {
         grid-template-columns: 1fr;
-        gap: 28px;
-        padding: 48px 0 32px;
+        grid-template-areas:
+            "intro"
+            "question"
+            "preview";
+        gap: var(--space-24);
+        padding: var(--space-24) 0 var(--space-20);
     }
 
-    .landing-intro {
+    .landing-intro .subtitle {
         max-width: none;
     }
 
     .guidance-note {
         grid-column: auto;
+    }
+}
+
+@media (min-width: 961px) and (max-height: 800px) {
+    .landing-main {
+        row-gap: var(--space-16);
+        padding-top: var(--space-40);
+    }
+
+    .landing-intro {
+        gap: var(--space-16);
+    }
+}
+
+@media (max-width: 800px) {
+
+    .site-header,
+    .app-header {
+        gap: var(--space-12);
+    }
+
+    .site-shell,
+    .app-shell {
+        width: calc(100% - 1rem);
+        max-width: none;
+    }
+
+    .app-shell.narrow {
+        width: calc(100% - 1rem);
+    }
+
+    .landing-main>.journey-panel[aria-label="Community operations preview"] {
+        display: none;
+    }
+
+    .landing-main>.journey-panel[aria-labelledby="journey-question"] {
+        padding: var(--space-16);
+        gap: var(--space-10);
+    }
+
+    .landing-main .question-summary {
+        display: none;
+    }
+
+    .landing-main .journey-choices {
+        gap: var(--space-8);
+    }
+
+    .landing-main .journey-card {
+        padding: var(--space-12);
+    }
+
+    .landing-main .journey-card__copy {
+        display: none;
+    }
+
+    .landing-main .subtitle {
+        display: none;
+    }
+
+    .app-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .app-grid>.app-panel,
+    .app-grid>.app-panel:first-child,
+    .app-grid>.app-panel.full-width {
+        grid-column: auto;
+    }
+
+    .app-grid>.app-panel:first-child .resource-list {
+        gap: var(--space-8);
+    }
+
+    .app-grid>.app-panel:first-child .resource-row {
+        min-height: auto;
+        padding: var(--space-10) var(--space-12);
+    }
+
+    .app-grid>.app-panel:first-child .resource-row small {
+        display: none;
+    }
+
+    .app-grid>.app-panel:first-child .button-row {
+        margin-top: calc(var(--space-4) * -1);
+    }
+
+    .secondary-ops {
+        gap: var(--space-12);
+    }
+
+    .secondary-ops .disclosure-panel__body {
+        gap: var(--space-12);
+    }
+
+    .secondary-ops section {
+        gap: var(--space-10);
+    }
+
+    .invitation-methods {
+        grid-template-columns: 1fr;
+    }
+
+    .invitation-disclosure {
+        padding: var(--space-14);
+    }
+
+    .invitation-disclosure>summary small {
+        display: none;
     }
 }

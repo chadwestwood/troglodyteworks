@@ -4,6 +4,7 @@ import re
 from ..config import Config
 from ..db import fetch_one
 from ..services.adapters import adapter_for
+from ..services.provider_resolution import read_game_server_health, resolve_game_server_provider
 from .authorization import authorize, resolve_guild
 
 
@@ -250,7 +251,8 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
             "instance.mods.names.read",
         }:
             game_server = game_server_for_guild(conn, guild_id, guild_map)
-            return _read_reply(intent, game_server, config)
+            health_provider = _resolved_health_provider(conn, game_server) if _uses_health(intent) else None
+            return _read_reply(intent, game_server, config, health_provider=health_provider)
     if not decision.allowed:
         if decision.reason == "guild_not_connected":
             return BotReply("This Discord server is not connected to a Troglodyte Works game server yet.", "guild_not_connected")
@@ -270,17 +272,32 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
         slug=decision.context.game_server_slug,
         management_adapter=decision.context.management_adapter,
     )
-    return _read_reply(intent, game_server, config)
+    health_provider = _resolved_health_provider(conn, game_server) if _uses_health(intent) else None
+    return _read_reply(intent, game_server, config, health_provider=health_provider)
 
 
-def _read_reply(intent: str, game_server: GameServerRef | None, config: Config) -> BotReply:
+def _read_reply(intent: str, game_server: GameServerRef | None, config: Config, health_provider=None) -> BotReply:
     if intent == "server_status":
-        return server_status_reply(game_server, config)
+        return server_status_reply(game_server, config, health_provider=health_provider)
     if intent == "player_list":
-        return player_list_reply(game_server, config)
+        return player_list_reply(game_server, config, health_provider=health_provider)
     if intent == "mod_list":
         return mod_list_reply(game_server, config)
-    return player_count_reply(game_server, config)
+    return player_count_reply(game_server, config, health_provider=health_provider)
+
+
+def _uses_health(intent: str) -> bool:
+    return intent in {"server_status", "player_count", "player_list"}
+
+
+def _resolved_health_provider(conn, game_server: GameServerRef | None):
+    if not game_server:
+        return None
+    resolution = resolve_game_server_provider(conn, game_server.id)
+    # Authorization and provider resolution are read-only. End that transaction
+    # before local probes or future provider status calls execute.
+    conn.commit()
+    return lambda config: read_game_server_health(resolution, config)
 
 
 def _status_service_unavailable(overall: str | None, checks: list[dict]) -> bool:

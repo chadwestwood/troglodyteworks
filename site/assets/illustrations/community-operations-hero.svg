@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+<title id="title">Community Operations interface illustration</title>
+<desc id="desc">A calm abstract operations center showing a community, members, events, and connected services.</desc>
+<rect width="1440" height="900" fill="#F4F1EA"/>
+<circle cx="1180" cy="140" r="220" fill="#E2E8DC"/>
+<circle cx="220" cy="760" r="260" fill="#E9E4D8"/>
+<rect x="150" y="110" width="1140" height="680" rx="36" fill="#FCFBF7" stroke="#D8D4CA" stroke-width="4"/>
+<rect x="150" y="110" width="250" height="680" rx="36" fill="#20231F"/>
+<circle cx="215" cy="175" r="28" fill="#6F7F5F"/>
+<rect x="255" y="153" width="95" height="14" rx="7" fill="#F4F1EA" opacity=".95"/>
+<rect x="255" y="178" width="72" height="10" rx="5" fill="#6F746D" opacity=".7"/>
+<g fill="#F4F1EA" opacity=".82">
+<rect x="195" y="255" width="160" height="18" rx="9"/>
+<rect x="195" y="315" width="130" height="16" rx="8"/>
+<rect x="195" y="370" width="145" height="16" rx="8"/>
+<rect x="195" y="425" width="125" height="16" rx="8"/>
+<rect x="195" y="480" width="152" height="16" rx="8"/>
+<rect x="195" y="535" width="112" height="16" rx="8"/>
+</g>
+<rect x="440" y="155" width="330" height="82" rx="20" fill="#E2E8DC"/>
+<text x="475" y="190" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#20231F">Cohorts in the Wild</text>
+<text x="475" y="220" font-family="Arial, sans-serif" font-size="15" fill="#6F746D">41 members · 14 online · all services healthy</text>
+<rect x="805" y="155" width="210" height="82" rx="20" fill="#F1EEE6" stroke="#D8D4CA"/>
+<text x="835" y="188" font-family="Arial, sans-serif" font-size="14" fill="#6F746D">Needs attention</text>
+<text x="835" y="220" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#B27A3B">2</text>
+<rect x="1040" y="155" width="210" height="82" rx="20" fill="#F1EEE6" stroke="#D8D4CA"/>
+<text x="1070" y="188" font-family="Arial, sans-serif" font-size="14" fill="#6F746D">Upcoming</text>
+<text x="1070" y="220" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#20231F">4</text>
+<rect x="440" y="275" width="500" height="220" rx="24" fill="#FFFDFC" stroke="#D8D4CA"/>
+<text x="475" y="318" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Needs attention</text>
+<rect x="475" y="350" width="430" height="54" rx="15" fill="#FAF3E7"/>
+<circle cx="502" cy="377" r="9" fill="#B27A3B"/>
+<text x="525" y="373" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#20231F">Weekend boost begins tomorrow</text>
+<text x="525" y="394" font-family="Arial, sans-serif" font-size="12" fill="#6F746D">Announcement still needs approval</text>
+<rect x="475" y="420" width="430" height="54" rx="15" fill="#F7ECE9"/>
+<circle cx="502" cy="447" r="9" fill="#A45146"/>
+<text x="525" y="443" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#20231F">Provider connection needs review</text>
+<text x="525" y="464" font-family="Arial, sans-serif" font-size="12" fill="#6F746D">Genesis status is temporarily unavailable</text>
+<rect x="970" y="275" width="280" height="220" rx="24" fill="#FFFDFC" stroke="#D8D4CA"/>
+<text x="1005" y="318" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Coming up</text>
+<circle cx="1020" cy="365" r="15" fill="#6F7F5F"/>
+<text x="1050" y="362" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#20231F">Boss run</text>
+<text x="1050" y="383" font-family="Arial, sans-serif" font-size="12" fill="#6F746D">Tonight · 8:00 PM</text>
+<circle cx="1020" cy="425" r="15" fill="#58768A"/>
+<text x="1050" y="422" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#20231F">Community vote closes</text>
+<text x="1050" y="443" font-family="Arial, sans-serif" font-size="12" fill="#6F746D">Saturday · 6:00 PM</text>
+<rect x="440" y="525" width="810" height="220" rx="24" fill="#FFFDFC" stroke="#D8D4CA"/>
+<text x="475" y="568" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Connected services</text>
+<rect x="475" y="600" width="230" height="110" rx="18" fill="#E2E8DC"/>
+<text x="500" y="632" font-family="Arial, sans-serif" font-size="13" fill="#6F746D">ARK: Survival Ascended</text>
+<text x="500" y="661" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Genesis</text>
+<text x="500" y="688" font-family="Arial, sans-serif" font-size="13" fill="#4E5D43">Running · 14 online</text>
+<rect x="730" y="600" width="230" height="110" rx="18" fill="#F1EEE6"/>
+<text x="755" y="632" font-family="Arial, sans-serif" font-size="13" fill="#6F746D">Discord</text>
+<text x="755" y="661" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Community Hub</text>
+<text x="755" y="688" font-family="Arial, sans-serif" font-size="13" fill="#4E5D43">Connected</text>
+<rect x="985" y="600" width="230" height="110" rx="18" fill="#F1EEE6"/>
+<text x="1010" y="632" font-family="Arial, sans-serif" font-size="13" fill="#6F746D">Minecraft</text>
+<text x="1010" y="661" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Future service</text>
+<text x="1010" y="688" font-family="Arial, sans-serif" font-size="13" fill="#6F746D">Not connected</text>
+</svg>

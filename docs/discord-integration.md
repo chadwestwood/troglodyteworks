@@ -32,7 +32,7 @@ Discord roles are not an authority source in this slice. They may supplement a l
 
 ## Verified setup workflow
 
-1. Apply migrations with `backend/genesis/.venv/bin/python backend/genesis/scripts/migrate.py`.
+1. Apply migrations with `backend/trog/.venv/bin/python backend/trog/scripts/migrate.py`.
 2. The requester signs in, links Discord through the account OAuth callback, and joins the provider Community.
 3. Discord account linking or **Refresh Discord servers** loads `/users/@me/guilds`, filters the result to servers where Discord reports owner, Administrator, or Manage Guild authority, and stores a one-hour verification snapshot. OAuth access and refresh tokens are not retained.
 4. The requester selects the exact provider-owned Instance and a verified consumer Discord guild by name, plus optional channel scope. The browser never requires a pasted guild ID.

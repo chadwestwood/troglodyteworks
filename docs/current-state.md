@@ -39,6 +39,12 @@ The product is organized around:
 
 The user experience is designed around asking one question at a time.
 
+Naming clarification:
+
+Genesis refers to one ARK instance/map.
+
+It does not name the platform backend or shared infrastructure.
+
 ---
 
 # Current Infrastructure

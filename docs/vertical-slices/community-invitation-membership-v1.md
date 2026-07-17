@@ -87,7 +87,7 @@ The current server-operation capability grant model is intentionally not reused 
 Migration:
 
 ```text
-backend/genesis/migrations/0006_community_invitations.sql
+backend/trog/migrations/0006_community_invitations.sql
 ```
 
 Tables:

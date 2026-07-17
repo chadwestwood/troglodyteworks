@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 440" role="img" aria-labelledby="title desc">
+<title id="title">Empty community illustration</title>
+<desc id="desc">A quiet camp-like circle waiting for a gaming community to gather.</desc>
+<rect width="720" height="440" rx="32" fill="#F4F1EA"/>
+<ellipse cx="360" cy="350" rx="210" ry="28" fill="#E2DDD2"/>
+<path d="M250 330c0-95 50-170 110-170s110 75 110 170" fill="none" stroke="#20231F" stroke-width="18" stroke-linecap="round"/>
+<rect x="305" y="190" width="110" height="140" rx="55" fill="#FCFBF7" stroke="#D8D4CA" stroke-width="4"/>
+<circle cx="360" cy="255" r="34" fill="#E2E8DC"/>
+<path d="M330 255h60M360 225v60" stroke="#4E5D43" stroke-width="10" stroke-linecap="round"/>
+<circle cx="230" cy="300" r="26" fill="#58768A" opacity=".8"/>
+<circle cx="490" cy="300" r="26" fill="#B27A3B" opacity=".75"/>
+<circle cx="165" cy="330" r="18" fill="#6F7F5F" opacity=".65"/>
+<circle cx="555" cy="330" r="18" fill="#A45146" opacity=".55"/>
+</svg>

@@ -77,7 +77,11 @@ Research/       Technical research
 
 ---
 
-## TWE Genesis V1 Development Setup
+## TWE Backend Development Setup
+
+Genesis is an ARK game instance name in Cohorts in the Wild.
+
+Genesis is not the platform/backend package name.
 
 The first approved vertical slice uses PostgreSQL persistence and a Flask API under `/api/v1`.
 
@@ -86,7 +90,7 @@ The first approved vertical slice uses PostgreSQL persistence and a Flask API un
 Copy the placeholder environment file and fill in local values outside source control:
 
 ```bash
-cp backend/genesis/.env.example backend/genesis/.env
+cp backend/trog/.env.example backend/trog/.env
 ```
 
 Required values:
@@ -107,17 +111,17 @@ Do not commit real database passwords, user passwords, session secrets, or RCON 
 ### Install Dependencies
 
 ```bash
-backend/genesis/.venv/bin/python -m pip install -r backend/genesis/requirements.txt
+backend/trog/.venv/bin/python -m pip install -r backend/trog/requirements.txt
 ```
 
 ### Migrations
 
 ```bash
 TWE_DATABASE_URL='postgresql://twe_app:password@localhost:5432/twe' \
-backend/genesis/.venv/bin/python backend/genesis/scripts/migrate.py
+backend/trog/.venv/bin/python backend/trog/scripts/migrate.py
 ```
 
-Migrations are version-controlled SQL files in `backend/genesis/migrations/`.
+Migrations are version-controlled SQL files in `backend/trog/migrations/`.
 
 ### Seed Initial Data
 
@@ -126,7 +130,7 @@ TWE_DATABASE_URL='postgresql://twe_app:password@localhost:5432/twe' \
 TWE_INITIAL_USER_EMAIL='chad@example.com' \
 TWE_INITIAL_USER_PASSWORD='replace-with-real-password' \
 TWE_INITIAL_USER_DISPLAY_NAME='Chad' \
-backend/genesis/.venv/bin/python backend/genesis/scripts/seed_initial.py
+backend/trog/.venv/bin/python backend/trog/scripts/seed_initial.py
 ```
 
 The seed is designed to be safe to run more than once.
@@ -135,7 +139,7 @@ The seed is designed to be safe to run more than once.
 
 ```bash
 TWE_DATABASE_URL='postgresql://twe_app:password@localhost:5432/twe' \
-backend/genesis/.venv/bin/python backend/genesis/app.py
+backend/trog/.venv/bin/python backend/trog/app.py
 ```
 
 The application binds to `127.0.0.1:8787` by default.
@@ -145,14 +149,14 @@ For local review, Flask serves the static files in `site/` and the API routes fr
 Production Apache/NGINX should serve `site/` as the public web root and proxy these API prefixes to the Flask application:
 
 - `/api/v1`
-- `/api/genesis`
+- `/api/genesis` (legacy compatibility endpoint for the Cohorts Genesis instance pages)
 
 Session cookies are HTTP-only and same-origin. If the browser is on the live domain, the live domain must serve the static site and proxy the API paths on that same domain for authentication to work.
 
 ### Run Tests
 
 ```bash
-backend/genesis/.venv/bin/python -m unittest discover backend/genesis/tests
+backend/trog/.venv/bin/python -m unittest discover backend/trog/tests
 ```
 
 ### Live Server Safety

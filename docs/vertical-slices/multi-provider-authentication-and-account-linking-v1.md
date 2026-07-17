@@ -20,7 +20,7 @@ Google-created users and Discord-created users are not separate account types. G
 Migration:
 
 ```text
-backend/genesis/migrations/0007_external_identities_oauth.sql
+backend/trog/migrations/0007_external_identities_oauth.sql
 ```
 
 New tables:
@@ -196,9 +196,9 @@ Automated tests use mocked provider responses and do not contact Google or Disco
 Run:
 
 ```text
-backend/genesis/.venv/bin/python backend/genesis/scripts/migrate.py
-backend/genesis/.venv/bin/python -m pytest backend/genesis/tests/test_multi_provider_auth_integration.py
-backend/genesis/.venv/bin/python -m pytest backend/genesis/tests
+backend/trog/.venv/bin/python backend/trog/scripts/migrate.py
+backend/trog/.venv/bin/python -m pytest backend/trog/tests/test_multi_provider_auth_integration.py
+backend/trog/.venv/bin/python -m pytest backend/trog/tests
 ```
 
 ## Rollback Implications

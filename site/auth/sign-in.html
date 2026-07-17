@@ -1,11 +1,14 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sign In | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
+
 <body class="app-page" data-page="signIn">
   <main class="app-shell narrow">
     <a class="brand" href="/" aria-label="Troglodyte Works home">
@@ -18,12 +21,13 @@
     </nav>
     <section class="app-panel">
       <p class="eyebrow">Sign in</p>
-      <h1>Welcome back.</h1>
-      <p class="muted">Use your TWE account to open your communities.</p>
+      <h1>Continue with your community.</h1>
+      <p class="muted">Sign in to see what needs attention, what is coming next, and where you can act.</p>
       <p class="form-error" data-error hidden></p>
       <div class="button-row">
         <a class="primary-button" href="/api/v1/auth/google/start" data-oauth-start="google">Continue with Google</a>
-        <a class="primary-button secondary" href="/api/v1/auth/discord/start" data-oauth-start="discord">Continue with Discord</a>
+        <a class="primary-button secondary" href="/api/v1/auth/discord/start" data-oauth-start="discord">Continue with
+          Discord</a>
       </div>
       <form class="stack-form" data-sign-in-form>
         <label for="email">Email</label>
@@ -32,10 +36,12 @@
         <input id="password" name="password" type="password" autocomplete="current-password" required>
         <button class="primary-button" type="submit">Sign in</button>
       </form>
-      <p class="muted">No account yet? <a class="header-link" href="/auth/register.html">Create Account</a>.</p>
+      <p class="muted">No account yet? <a class="header-link" href="/auth/register.html">Create Account</a> to set up
+        your identity before joining a community.</p>
     </section>
   </main>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/twe-pages.js?v=site-admin-v2"></script>
 </body>
+
 </html>

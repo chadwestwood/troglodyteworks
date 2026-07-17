@@ -1,33 +1,41 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Genesis | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body class="app-page" data-page="genesis">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/">My Communities</a>
-        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/invitations/">Members</a>
+        <a class="header-link" href="/explore/">Events</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">Connected
+          Services</a>
+        <a class="header-link" href="/server-operations/">Activity</a>
+        <a class="header-link" href="/account/">Settings</a>
         <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <a class="header-link" href="/explore/">Explore</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild &gt; ARK Survival Ascended &gt; Genesis</nav>
+    <nav class="breadcrumbs">Home &gt; Operations &gt; Connected Services &gt; Service World</nav>
     <main class="app-grid">
       <section class="app-panel">
-        <p class="eyebrow">Game Instance</p>
+        <p class="eyebrow">Service World</p>
         <h1 data-instance-name>Genesis</h1>
-        <p class="muted" data-instance-summary>ARK: Survival Ascended · Genesis map</p>
+        <p class="muted" data-instance-summary>Connected service world and operations status</p>
+        <p class="muted">Use this page to track world health, see recent operational activity, and run permitted
+          actions.</p>
         <p class="form-error" data-error hidden></p>
       </section>
       <section class="app-panel">
-        <h2>Genesis status</h2>
+        <h2>World status</h2>
         <p class="status-line" data-health-status>Loading</p>
         <p class="muted" data-health-summary>Checking whether Genesis is available.</p>
         <div class="resource-list" data-health-checks></div>
@@ -36,7 +44,8 @@
         <div>
           <p class="eyebrow">Your access</p>
           <h2>Read-only community view</h2>
-          <p class="muted">You can see whether Genesis is online. Server controls and operation history are shown only to authorized operators.</p>
+          <p class="muted">You can see service health and community context. Operational controls appear only for
+            authorized staff.</p>
         </div>
         <p class="muted">Trog access for a Discord server is requested separately from Community membership.</p>
         <a class="primary-button" href="/discord/request-access/">Request Trog access</a>
@@ -49,19 +58,24 @@
         </div>
         <p class="status-line" data-membership-approval-status role="status" hidden></p>
         <div class="resource-list" data-membership-approval-list></div>
-        <a class="primary-button secondary" href="/communities/cohorts-in-the-wild/invitations/">Manage all invitations</a>
+        <a class="primary-button secondary" href="/communities/cohorts-in-the-wild/invitations/">Manage all
+          invitations</a>
       </section>
       <section class="app-panel" data-capabilities-panel>
-        <h2>Server controls</h2>
+        <h2>Operations actions</h2>
+        <p class="muted">Only actions currently supported by this service connection are shown.</p>
         <div class="resource-list" data-capabilities></div>
       </section>
       <section class="app-panel" data-operations-panel>
-        <h2>Recent server activity</h2>
+        <h2>Recent operations activity</h2>
+        <p class="muted">Completed, in-progress, and failed operations for this world.</p>
         <div class="resource-list" data-operations></div>
       </section>
     </main>
   </div>
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/twe-pages.js?v=member-genesis-view-v1"></script>
 </body>
+
 </html>

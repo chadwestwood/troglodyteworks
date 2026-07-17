@@ -1,72 +1,100 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Trog Discord Access | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
+
 <body class="app-page" data-page="discord-access">
   <main class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/">My Communities</a>
-        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/invitations/">Members</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">Connected
+          Services</a>
+        <a class="header-link" href="/account/">Settings</a>
         <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <a class="header-link" href="/explore/">Explore</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
+    <nav class="breadcrumbs">Home &gt; Operations &gt; Connected Services &gt; Discord Access</nav>
 
     <section class="app-panel">
       <p class="eyebrow">Trog Discord Access</p>
-      <h1>Expose one provider-owned instance.</h1>
-      <p class="muted">This setup keeps Cohorts in the Wild as the owner of Genesis while a Discord guild receives only approved read access.</p>
+      <h1>Request read access for one Discord server.</h1>
+      <p class="muted">Use the provider-owned instance, confirm you manage the Discord server, and then request read
+        access.</p>
       <p class="form-error" data-error hidden></p>
-      <div class="guidance-note" data-status>We will walk through the minimum setup: choose the provider-owned instance, connect Discord, identify the Discord server, then wait for provider approval.</div>
+      <div class="guidance-note" data-status>Pick the community, pick the instance, then pick the Discord server.
+      </div>
 
       <form class="stack-form" data-discord-access-form>
-        <label for="provider_community_id">Which Community owns the server?</label>
+        <label for="provider_community_id">Community</label>
         <select id="provider_community_id" name="provider_community_id" required data-provider-community-select>
           <option value="">Loading your Communities...</option>
         </select>
 
-        <label for="game_instance_id">Which Instance should Trog expose?</label>
+        <label for="game_instance_id">Instance</label>
         <select id="game_instance_id" name="game_instance_id" required data-game-instance-select>
           <option value="">Choose a Community first</option>
         </select>
 
         <p class="muted" data-linked-discord-summary>Checking your connected Discord account...</p>
 
-        <label for="discord_guild_id">Which Discord server should receive Trog?</label>
+        <label for="discord_guild_id">Discord server</label>
         <select id="discord_guild_id" name="discord_guild_id" required data-discord-guild-select>
           <option value="">Loading servers managed by your Discord account...</option>
         </select>
-        <small class="muted" data-discord-guild-help>Discord will provide servers where you are the owner or have Administrator or Manage Server permission.</small>
+        <small class="muted" data-discord-guild-help>Discord will provide servers where you are the owner or have
+          Administrator or Manage Server permission.</small>
         <div class="button-row">
-          <button class="primary-button secondary" type="button" data-refresh-discord-guilds>Refresh Discord servers</button>
+          <button class="primary-button secondary" type="button" data-refresh-discord-guilds>Refresh Discord
+            servers</button>
         </div>
 
-        <p class="muted">Discord will confirm that you are the owner or have Administrator or Manage Server permission. Troglodyte Works does not accept self-reported permissions.</p>
+        <p class="muted">Only approved read access is requested here. Channel scoping is available below if you need it.
+        </p>
 
-        <label for="allowed_channel_ids">Limit Trog to specific channels?</label>
-        <input id="allowed_channel_ids" name="allowed_channel_ids" type="text" autocomplete="off" placeholder="123,456">
-        <small class="muted">Leave blank to allow approved read responses anywhere Trog is installed.</small>
+        <button class="primary-button" type="submit">Create access request</button>
 
-        <button class="primary-button" type="submit">Create Request</button>
+        <details class="disclosure-panel">
+          <summary>
+            <span>Advanced channel scope</span>
+            <span>Only if you need to limit where Trog can respond</span>
+          </summary>
+          <div class="disclosure-panel__body">
+            <label for="allowed_channel_ids">Allowed channel IDs</label>
+            <input id="allowed_channel_ids" name="allowed_channel_ids" type="text" autocomplete="off"
+              placeholder="123,456">
+            <small class="muted">Leave blank to allow approved read responses anywhere Trog is installed.</small>
+          </div>
+        </details>
       </form>
     </section>
 
-    <section class="app-panel">
-      <p class="eyebrow">Access Requests</p>
-      <h2>Installation and provider approval</h2>
-      <p class="muted">Requesters can finish Discord installation here. Cohorts owners and admins can approve or revoke provider access.</p>
-      <div class="resource-list" data-discord-access-requests></div>
-    </section>
+    <details class="disclosure-panel">
+      <summary>
+        <span>Request history</span>
+        <span>Provider approval and installation status</span>
+      </summary>
+      <div class="disclosure-panel__body">
+        <p class="muted">Requesters can finish Discord installation here. Cohorts owners and admins can approve or
+          revoke provider access.</p>
+        <p class="muted">Requests remain capability-aware so unsupported actions are not exposed in Discord.</p>
+        <div class="resource-list" data-discord-access-requests></div>
+      </div>
+    </details>
   </main>
 
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
   <script src="/js/twe-api.js?v=trog-oauth-v1"></script>
   <script src="/js/discord-access.js?v=discord-verification-retry-v2"></script>
 </body>
+
 </html>

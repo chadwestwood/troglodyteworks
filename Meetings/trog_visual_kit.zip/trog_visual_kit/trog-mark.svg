@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+<title id="title">Troglodyte Works mark</title>
+<desc id="desc">A rounded stone doorway forming a letter T.</desc>
+<rect width="256" height="256" rx="56" fill="#20231F"/>
+<path d="M50 182V104c0-37 30-67 67-67h22c37 0 67 30 67 67v78h-34v-76c0-19-15-34-34-34h-20c-19 0-34 15-34 34v76H50z" fill="#F4F1EA"/>
+<path d="M88 85h80v28H88z" fill="#6F7F5F"/>
+<path d="M114 85h28v97h-28z" fill="#6F7F5F"/>
+<circle cx="128" cy="206" r="12" fill="#E2E8DC"/>
+</svg>

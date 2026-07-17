@@ -4,7 +4,7 @@ import socket
 import struct
 from pathlib import Path
 
-ENV_PATH = Path("/srv/troglodyteworks/backend/genesis/.env")
+ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
 
 def load_env():
     values = {}

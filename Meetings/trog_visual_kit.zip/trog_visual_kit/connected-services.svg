@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+<title id="title">Connected services visual</title>
+<desc id="desc">A central Trog community connected to game hosting, Discord, and player services.</desc>
+<rect width="960" height="540" rx="36" fill="#F4F1EA"/>
+<circle cx="480" cy="270" r="105" fill="#20231F"/>
+<text x="480" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#F4F1EA">TROG</text>
+<text x="480" y="295" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#E2E8DC">Community Operations</text>
+<g stroke="#D8D4CA" stroke-width="5" fill="none">
+<path d="M380 220 C300 180, 260 140, 210 120"/>
+<path d="M580 220 C660 180, 700 140, 750 120"/>
+<path d="M380 320 C300 360, 260 400, 210 420"/>
+<path d="M580 320 C660 360, 700 400, 750 420"/>
+</g>
+<g>
+<rect x="90" y="70" width="240" height="100" rx="22" fill="#FCFBF7" stroke="#D8D4CA" stroke-width="3"/>
+<text x="210" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Game Host</text>
+<text x="210" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6F746D">Nitrado · Bisect · Others</text>
+
+<rect x="630" y="70" width="240" height="100" rx="22" fill="#FCFBF7" stroke="#D8D4CA" stroke-width="3"/>
+<text x="750" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Discord</text>
+<text x="750" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6F746D">Announcements · Roles</text>
+
+<rect x="90" y="370" width="240" height="100" rx="22" fill="#FCFBF7" stroke="#D8D4CA" stroke-width="3"/>
+<text x="210" y="412" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Staff</text>
+<text x="210" y="442" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6F746D">Owners · Admins · Mods</text>
+
+<rect x="630" y="370" width="240" height="100" rx="22" fill="#FCFBF7" stroke="#D8D4CA" stroke-width="3"/>
+<text x="750" y="412" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#20231F">Players</text>
+<text x="750" y="442" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6F746D">Events · Activity · Belonging</text>
+</g>
+</svg>

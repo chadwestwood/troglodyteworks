@@ -1,30 +1,38 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Genesis Settings | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body class="app-page">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/">My Communities</a>
-        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/invitations/">Members</a>
+        <a class="header-link" href="/explore/">Events</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">Connected
+          Services</a>
+        <a class="header-link" href="/server-operations/">Activity</a>
+        <a class="header-link" href="/account/">Settings</a>
         <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <a class="header-link" href="/explore/">Explore</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild &gt; ARK Survival Ascended &gt; Genesis &gt; Settings</nav>
+    <nav class="breadcrumbs">Home &gt; Operations &gt; Connected Services &gt; Service World &gt; Settings</nav>
 
     <main class="app-grid">
       <section class="app-panel">
         <p class="eyebrow">Genesis Settings</p>
         <h1>Understand how Genesis feels to play.</h1>
         <p class="muted">This page reads live settings and translates them into gameplay meaning.</p>
+        <p class="muted">Use this view to discuss world tuning with staff and members before changing gameplay behavior.
+        </p>
         <p class="form-error" data-error hidden></p>
       </section>
 
@@ -82,19 +90,25 @@
 
       <section class="app-panel">
         <h2>Server Actions</h2>
+        <p class="muted">Action availability follows current capability approvals and provider support.</p>
         <div class="button-row">
           <button class="primary-button" id="refresh-settings" type="button">Refresh Settings</button>
         </div>
         <div class="resource-list">
-          <div class="resource-row"><span><strong>Restart Server</strong><small>Safely disabled until restart execution is approved.</small></span><span>Unavailable</span></div>
-          <div class="resource-row"><span><strong>Save World</strong><small>Planned as a future Server Operation capability.</small></span><span>Planned</span></div>
-          <div class="resource-row"><span><strong>Manage Mods</strong><small>Requires a separate mod-management design.</small></span><span>Planned</span></div>
+          <div class="resource-row"><span><strong>Restart Server</strong><small>Safely disabled until restart execution
+                is approved.</small></span><span>Unavailable</span></div>
+          <div class="resource-row"><span><strong>Save World</strong><small>Planned as a future Server Operation
+                capability.</small></span><span>Planned</span></div>
+          <div class="resource-row"><span><strong>Manage Mods</strong><small>Requires a separate mod-management
+                design.</small></span><span>Planned</span></div>
         </div>
       </section>
     </main>
   </div>
 
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/genesis-settings.js?v=site-admin-v2"></script>
 </body>
+
 </html>

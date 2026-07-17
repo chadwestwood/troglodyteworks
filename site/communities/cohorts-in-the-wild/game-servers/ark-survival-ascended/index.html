@@ -1,38 +1,50 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ARK Survival Ascended | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body class="app-page" data-page="gameServer">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/">My Communities</a>
-        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/invitations/">Members</a>
+        <a class="header-link" href="/explore/">Events</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">Connected
+          Services</a>
+        <a class="header-link" href="/server-operations/">Activity</a>
+        <a class="header-link" href="/account/">Settings</a>
         <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <a class="header-link" href="/explore/">Explore</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild &gt; ARK Survival Ascended</nav>
+    <nav class="breadcrumbs">Home &gt; Operations &gt; Connected Services</nav>
     <main class="app-grid">
       <section class="app-panel">
-        <p class="eyebrow">Game Server</p>
+        <p class="eyebrow">Connected Service</p>
         <h1 data-server-game-type>ARK Survival Ascended</h1>
-        <p class="muted"><span data-server-name></span> · <strong data-server-status></strong></p>
+        <p class="muted"><span data-server-connected-service-name data-server-name></span> · <strong
+            data-server-status></strong></p>
+        <p class="muted">Service worlds and operations capabilities are shown below based on your role and provider
+          availability.</p>
         <p class="form-error" data-error hidden></p>
       </section>
       <section class="app-panel">
-        <h2>Game Instances</h2>
+        <h2>Service Worlds</h2>
+        <p class="muted">Open a world to check health, review activity, and run authorized actions.</p>
         <div class="resource-list" data-instances-list></div>
       </section>
     </main>
   </div>
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/twe-pages.js?v=site-admin-v2"></script>
 </body>
+
 </html>

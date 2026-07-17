@@ -1,16 +1,20 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Explore | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
+
 <body class="app-page" data-page="explore">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="Visitor navigation">
+        <a class="header-link" href="/">Home</a>
         <a class="header-link" href="/auth/sign-in.html">Sign In</a>
         <a class="header-link" href="/auth/register.html">Create Account</a>
       </nav>
@@ -18,19 +22,35 @@
     <nav class="breadcrumbs">Home &gt; Explore</nav>
     <main class="app-grid">
       <section class="app-panel">
-        <p class="eyebrow">Explore</p>
-        <h1>Community operations for shared worlds.</h1>
-        <p class="muted">Troglodyte Works helps gaming communities understand membership, hosting, and server operations without asking visitors to sign in first.</p>
+        <p class="eyebrow">What Troglodyte Works Is</p>
+        <h1>One operating environment for your community.</h1>
+        <p class="muted">Troglodyte Works helps gaming communities coordinate people, connected services, and
+          operational decisions without requiring a hosting migration.</p>
+        <img src="/assets/illustrations/connected-services.svg" alt="Connected services diagram"
+          style="width:100%; height:auto; display:block; margin-top:var(--space-16); border-radius:24px; border:1px solid var(--color-border);">
       </section>
       <section class="app-panel">
-        <h2>Public Preview</h2>
+        <h2>How it fits with your stack</h2>
         <div class="resource-list">
-          <div class="resource-row"><span><strong>Communities</strong><small>Organize members and roles around a shared space.</small></span><span>Preview</span></div>
-          <div class="resource-row"><span><strong>Game Servers</strong><small>Manage playable worlds through approved capabilities.</small></span><span>Preview</span></div>
-          <div class="resource-row"><span><strong>Hosting</strong><small>Hosting information will expand in a later slice.</small></span><span>Future</span></div>
+          <div class="resource-row"><span><strong>Hosting provider</strong><small>Runs game infrastructure and keeps the
+                service online.</small></span><span>External</span></div>
+          <div class="resource-row"><span><strong>Troglodyte Works</strong><small>Coordinates people, activity,
+                permissions, and service operations.</small></span><span>Core</span></div>
+          <div class="resource-row"><span><strong>Community channels</strong><small>Connect Discord and other tools
+                where members already collaborate.</small></span><span>Connected</span></div>
+        </div>
+      </section>
+      <section class="app-panel">
+        <h2>Start here</h2>
+        <p class="muted">Create or sign in to your account, then open your community operations workspace.</p>
+        <div class="button-row">
+          <a class="primary-button" href="/auth/register.html">Create Account</a>
+          <a class="primary-button secondary" href="/auth/sign-in.html">Sign In</a>
         </div>
       </section>
     </main>
   </div>
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
 </body>
+
 </html>

@@ -1,40 +1,52 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Server Operation | Troglodyte Works</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
+
 <body class="app-page" data-page="operation">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/">My Communities</a>
-        <a class="header-link" href="/account/">Account</a>
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/invitations/">Members</a>
+        <a class="header-link" href="/explore/">Events</a>
+        <a class="header-link" href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">Connected
+          Services</a>
+        <a class="header-link" href="/server-operations/">Activity</a>
+        <a class="header-link" href="/account/">Settings</a>
         <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <a class="header-link" href="/explore/">Explore</a>
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; My Communities &gt; Cohorts in the Wild &gt; ARK Survival Ascended &gt; Genesis &gt; Server Operation</nav>
+    <nav class="breadcrumbs">Home &gt; Operations &gt; Activity &gt; Operation detail</nav>
     <main class="app-grid">
       <section class="app-panel">
-        <p class="eyebrow">Server Operation</p>
+        <p class="eyebrow">Operation detail</p>
         <h1 data-operation-capability>Loading</h1>
+        <p class="muted">Follow this operation from request through verification to understand impact and next steps.
+        </p>
         <p>Status: <strong data-operation-status></strong></p>
         <p>Stage: <strong data-operation-stage></strong></p>
         <p class="muted" data-operation-result></p>
         <p class="form-error" data-error hidden></p>
       </section>
       <section class="app-panel">
-        <h2>Checks</h2>
+        <h2>Verification checks</h2>
+        <p class="muted">Checks show which steps passed, failed, or were skipped during execution.</p>
         <div class="resource-list" data-operation-checks></div>
       </section>
     </main>
   </div>
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/twe-pages.js?v=site-admin-v2"></script>
 </body>
+
 </html>

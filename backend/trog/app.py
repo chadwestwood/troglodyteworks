@@ -8,6 +8,7 @@ from routes.players import players_bp
 
 def create_app():
     app = create_twe_app()
+    # Legacy compatibility endpoints for the Cohorts Genesis instance pages.
     app.register_blueprint(genesis_bp, url_prefix="/api/genesis")
     app.register_blueprint(actions_bp, url_prefix="/api/genesis/actions")
     app.register_blueprint(players_bp, url_prefix="/api/genesis")

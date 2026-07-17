@@ -1,11 +1,14 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Troglodyte Works</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
+
 <body class="landing-page">
   <div class="site-shell">
     <header class="site-header" aria-label="Primary navigation">
@@ -22,45 +25,47 @@
 
     <main class="landing-main">
       <section class="landing-intro" aria-labelledby="landing-title">
-        <p class="eyebrow">Gaming community operations</p>
-        <h1 id="landing-title">Find the next step for your shared world.</h1>
+        <p class="eyebrow">Community Operations Platform</p>
+        <h1 id="landing-title">Run your gaming community from one trusted workspace.</h1>
         <p class="subtitle">
-          Troglodyte Works helps gaming communities join friends, manage servers, and organize what happens around the game.
+          Troglodyte Works connects the game services you already use, so owners, moderators, and members can see what
+          is happening, what needs attention, and what comes next.
         </p>
       </section>
 
       <section class="journey-panel" aria-labelledby="journey-question">
         <div class="question-stack">
-          <p class="step-label">First question</p>
-          <h2 id="journey-question">What are you here to do?</h2>
+          <p class="step-label">Get started</p>
+          <h2 id="journey-question">Choose your next step.</h2>
           <p id="journey-summary" class="question-summary">
-            Choose the path closest to your goal. We will only show the next useful step.
+            Start with the clearest path for you. Learn how Trog fits, or go straight to operations if you already
+            have an account.
           </p>
         </div>
 
         <div class="journey-choices" aria-label="Visitor journey choices">
-          <a class="journey-card" href="explore/">
-            <span class="journey-card__label">Continue to Explore</span>
-            <span class="journey-card__copy">Learn what Troglodyte Works helps communities do.</span>
+          <a class="journey-card is-selected" href="explore/">
+            <span class="journey-card__label">Understand the platform</span>
+            <span class="journey-card__copy">See how Troglodyte Works supports members, staff, events, and connected
+              services.</span>
           </a>
 
           <a class="journey-card" href="auth/sign-in.html">
-            <span class="journey-card__label">Sign In</span>
-            <span class="journey-card__copy">I already have a TWE account.</span>
+            <span class="journey-card__label">Open operations</span>
+            <span class="journey-card__copy">Sign in and continue with your communities.</span>
           </a>
 
-          <a class="journey-card" href="auth/register.html">
-            <span class="journey-card__label">Create Account</span>
-            <span class="journey-card__copy">Create an account without joining a Community yet.</span>
-          </a>
+          <p class="muted">Need an account? <a href="auth/register.html">Create one</a> before joining a community.</p>
         </div>
       </section>
 
-      <aside class="guidance-note" aria-label="Guidance note">
-        <span class="guidance-note__mark" aria-hidden="true">?</span>
-        <p>Guidance will be available when it helps, but this page works on its own.</p>
-      </aside>
+      <section class="journey-panel" aria-label="Community operations preview">
+        <img src="/assets/illustrations/community-operations-hero.svg" alt="Community operations dashboard preview"
+          style="width:100%; height:auto; display:block; border-radius:24px; border:1px solid var(--color-border);">
+      </section>
     </main>
   </div>
+  <script src="/js/navigation.js?v=responsive-layout-v1" defer></script>
 </body>
+
 </html>
