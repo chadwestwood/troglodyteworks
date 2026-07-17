@@ -1,5 +1,8 @@
+import base64
+import binascii
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 
@@ -46,6 +49,8 @@ class Config:
     pterodactyl_feature_allocations: int = 0
     pterodactyl_env_server_map: str | None = None
     pterodactyl_env_max_players: str | None = None
+    provider_secret_active_key_version: str | None = None
+    provider_secret_keys: dict[str, bytes] = field(default_factory=dict, repr=False)
 
     @property
     def session_lifetime(self) -> timedelta:
@@ -69,6 +74,9 @@ def load_config() -> Config:
     pterodactyl_feature_databases = os.environ.get("TWE_PTERODACTYL_FEATURE_DATABASES")
     pterodactyl_feature_backups = os.environ.get("TWE_PTERODACTYL_FEATURE_BACKUPS")
     pterodactyl_feature_allocations = os.environ.get("TWE_PTERODACTYL_FEATURE_ALLOCATIONS")
+    provider_secret_keys = parse_provider_secret_keys(
+        os.environ.get("TWE_PROVIDER_SECRET_KEYS_JSON")
+    )
     return Config(
         database_url=os.environ.get("TWE_DATABASE_URL", "postgresql://twe_app@localhost:5432/twe"),
         session_cookie_name=os.environ.get("TWE_SESSION_COOKIE_NAME", "twe_session"),
@@ -110,6 +118,8 @@ def load_config() -> Config:
         pterodactyl_feature_allocations=int(pterodactyl_feature_allocations) if pterodactyl_feature_allocations else 0,
         pterodactyl_env_server_map=os.environ.get("TWE_PTERODACTYL_ENV_SERVER_MAP", "TheIsland_WP"),
         pterodactyl_env_max_players=os.environ.get("TWE_PTERODACTYL_ENV_MAX_PLAYERS", "70"),
+        provider_secret_active_key_version=os.environ.get("TWE_PROVIDER_SECRET_ACTIVE_KEY_VERSION"),
+        provider_secret_keys=provider_secret_keys,
     )
 
 
@@ -135,3 +145,22 @@ def parse_csv(value: str | None) -> tuple[str, ...]:
     if not value:
         return ()
     return tuple(item.strip().lower() for item in value.split(",") if item.strip())
+
+
+def parse_provider_secret_keys(value: str | None) -> dict[str, bytes]:
+    if not value:
+        return {}
+    try:
+        encoded_keys = json.loads(value)
+        if not isinstance(encoded_keys, dict) or not encoded_keys:
+            raise ValueError
+        decoded = {
+            version: base64.b64decode(encoded, validate=True)
+            for version, encoded in encoded_keys.items()
+            if isinstance(version, str) and isinstance(encoded, str)
+        }
+        if len(decoded) != len(encoded_keys):
+            raise ValueError
+        return decoded
+    except (binascii.Error, json.JSONDecodeError, TypeError, ValueError):
+        raise ValueError("TWE provider secret key configuration is invalid.") from None

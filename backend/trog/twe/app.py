@@ -6,6 +6,7 @@ from werkzeug.exceptions import HTTPException
 from .config import load_config
 from .db import Database
 from .responses import api_error
+from .services.provider_secret_storage import build_provider_secret_storage
 from .routes.account_identities import account_identities_bp
 from .routes.admin import admin_bp
 from .routes.auth import auth_bp
@@ -23,6 +24,10 @@ def create_app(config=None, database=None):
     twe_config = config or load_config()
     app.config["TWE_CONFIG"] = twe_config
     app.config["TWE_DB"] = database or Database(twe_config.database_url)
+    app.config["TWE_PROVIDER_SECRET_STORAGE"] = build_provider_secret_storage(
+        twe_config,
+        app.config["TWE_DB"],
+    )
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1")
     app.register_blueprint(account_identities_bp, url_prefix="/api/v1")
