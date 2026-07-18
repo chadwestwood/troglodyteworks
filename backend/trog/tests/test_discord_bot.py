@@ -58,6 +58,8 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(classify_intent("<@123> who’s on?"), "player_list")
         self.assertEqual(classify_intent("<@123> is anyone on the server?"), "player_list")
         self.assertEqual(classify_intent("<@123> is anyone online"), "player_list")
+        self.assertEqual(classify_intent("@trog list online players"), "player_list")
+        self.assertEqual(classify_intent("<@123> show online players"), "player_list")
         self.assertEqual(classify_intent("<@123> what mods are installed?"), "mod_list")
         self.assertEqual(classify_intent("<@123> what mod's are installed?"), "mod_list")
         self.assertEqual(classify_intent("<@123> list active mods"), "mod_list")

@@ -81,6 +81,8 @@ def classify_intent(message: str) -> str | None:
         return "server_status"
     if re.search(r"\b(who(?:\s+is|'s)|anyone)\b", normalized) and re.search(r"\b(on|online|server|players?)\b", normalized):
         return "player_list"
+    if re.search(r"\b(list|show|name)\b", normalized) and re.search(r"\b(players?|online)\b", normalized):
+        return "player_list"
     if re.search(r"\b(how many|players?|online|count)\b", normalized) and re.search(r"\b(players?|online)\b", normalized):
         return "player_count"
     return None
