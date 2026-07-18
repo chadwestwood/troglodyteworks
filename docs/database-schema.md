@@ -181,6 +181,28 @@ Authority sources are `owner`, `administrator`, and `manage_guild`. Discord acco
 ### Discord Installation OAuth State
 
 Stores one-time, expiring state for guild verification or bot installation. The state is bound to the authenticated TWE User, Instance Access Grant, purpose, PKCE verifier, and selected immutable Discord guild ID. It is consumed before an authorization result is applied and cannot be reused.
+### Provider Connection and Provider Resource
+
+A Provider Connection represents one Community-owned relationship with a hosting
+provider. Its credential is stored separately as either an external reference or
+an authenticated encrypted envelope. Provider Resources represent discovered
+provider services by immutable external resource ID; metadata is a controlled
+non-secret JSON object.
+
+For Nitrado Slice 2B, one Community has at most one Nitrado Provider Connection.
+The credential envelope contains AES-256-GCM ciphertext, nonce, and key version.
+Nitrado service IDs are the Provider Resource external IDs. Repeated discovery
+updates the existing Resource and marks resources absent from the latest successful
+result unavailable. Unsupported game services have no canonical game key and
+cannot be selected.
+
+Slice 2C uses the existing nullable `game_servers.provider_resource_id` relation
+and `provider_resources.selected_at` timestamp. Selection fills the Game Server's
+canonical `game_key`. The provider-foundation trigger enforces same-Community
+ownership, and the partial unique index enforces one Game Server per selected
+Provider Resource. The API additionally prevents silently replacing a Game
+Server's existing Resource binding.
+
 ### Game Server
 
 Represents a logical game environment belonging to a community.

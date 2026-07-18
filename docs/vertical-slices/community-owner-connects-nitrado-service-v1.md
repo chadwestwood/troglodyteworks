@@ -2,8 +2,9 @@
 
 ## Status
 
-Secret-persistence prerequisite implemented on July 17, 2026. The broader Slice 2
-Nitrado journey remains deferred.
+Secret persistence and Slice 2B token validation/service discovery were implemented
+on July 17, 2026. Slice 2C explicit selection and Game Server binding were
+implemented on July 18, 2026. The browser UI and disconnection remain deferred.
 
 The provider-neutral foundation can represent a Nitrado Provider Connection,
 Provider Resource, and Game Server binding without a material schema redesign.
@@ -29,11 +30,11 @@ replacement.
 
 ## Intended Purpose and User Journey
 
-The remaining slice will allow a signed-in Community Owner to choose **Connect
-Hosting**, select Nitrado, create and submit a revocable
-long-life token, choose one discovered ARK: Survival Ascended service, and bind it
-to a Community Game Server. The connected summary will remain visible after
-refresh. That browser journey is not part of the secret-storage implementation.
+The remaining browser journey will allow a signed-in Community Owner to choose
+**Connect Hosting**, select Nitrado, create and submit a revocable long-life token,
+choose one discovered ARK: Survival Ascended service, and bind it to a Community
+Game Server. The Slice 2C API now performs and persists that selection, but the
+browser interface is not implemented.
 
 OAuth is explicitly deferred. The beta design uses user-generated, revocable
 Nitrado long-life tokens.
@@ -61,60 +62,87 @@ connection actions must require the exact Community `owner` role.
 
 ## Nitrado Token Scope Decision
 
-No scope has been hard-coded. The intended minimum is `service`; `user_info` may be
-added only if current official Nitrado validation or discovery endpoints require
-it. `rootserver`, `ssh_keys`, `user_edit`, and `service_order` are outside this
-slice and must not be requested.
+The exact required scope is `service`. Validation calls `GET /services` directly,
+so `user_info` is not required. `rootserver`, `ssh_keys`, `user_edit`, and
+`service_order` are outside this slice and must not be requested.
 
-Current official endpoint and scope behavior must be revalidated immediately
-before adapter implementation. The existing
-research document is not a substitute for that implementation-time validation.
+The current official endpoint catalog was revalidated before implementation on
+July 17, 2026.
 
-## Deferred Route Contracts
+## Slice 2B Route Contracts
 
-No Slice 2 routes are registered. The proposed `/api/v1` route family remains:
+The implemented `/api/v1` route family is:
 
-- create or replace a Community Nitrado hosting connection;
-- discover resources for that connection;
-- list its safe normalized resources;
-- explicitly select a resource and Game Server;
-- explicitly disconnect the connection.
+- `POST /communities/{community_id}/hosting-connections/nitrado` validates,
+  securely stores, and discovers;
+- `POST /communities/{community_id}/hosting-connections/{connection_id}/discover`
+  discovers with the stored credential;
+- `GET /communities/{community_id}/hosting-connections/{connection_id}/resources`
+  lists safe persisted resources.
 
-Stable requests, responses, error mappings, and CSRF behavior must be documented
-when implemented. Secret records and token values must never be API resources.
+Every route requires an authenticated Community Owner. POST requests also require
+`X-TWE-CSRF: 1`. Responses mask credential state and never expose secret records or
+token values. Disconnection remains deferred.
 
-## Deferred Provider Adapter and Normalization
+## Slice 2C Selection and Binding Contract
 
-No Nitrado HTTP client or provider adapter is registered. When implemented, all
-Nitrado-specific HTTP behavior must remain behind the unified provider registry,
-use explicit timeouts, and mock HTTP in automated tests. Only ARK: Survival
-Ascended may normalize to `ark_survival_ascended`. The Nitrado service ID—not an IP
-address or port—will be the external resource identifier. Only useful non-secret
-metadata may be retained, and raw provider responses will not be persisted.
+The implemented selection route is:
+
+```text
+POST /communities/{community_id}/hosting-connections/{connection_id}/resources/{resource_id}/select
+```
+
+The exact request is `{ "game_server_id": "..." }`. The Connection must be an
+active Community-owned Nitrado Connection. The Resource must belong to it, remain
+available, have type `game_server_service`, and normalize to
+`ark_survival_ascended`. The Game Server must belong to the same Community and
+already represent ARK: Survival Ascended or have the matching canonical game key.
+
+Selection transactionally assigns `game_servers.provider_resource_id`, fills the
+canonical `game_key`, timestamps the selected Resource, and emits one non-secret
+`provider.resource.selected` audit event. Repeating the same selection is
+idempotent and does not duplicate the audit event or selection timestamp. A
+Resource cannot be bound to multiple Game Servers, and a Game Server cannot be
+silently rebound to another Resource. Resource-list responses include the current
+safe Game Server binding so the selection remains visible after refresh.
+
+## Slice 2B Provider Adapter and Normalization
+
+The unified registry exposes Nitrado connection description, validation, and
+credential-based discovery. The client calls only `GET /services` with a bearer
+header and explicit timeout. Only an exact normalized ARK: Survival Ascended title
+maps to `ark_survival_ascended`; unsupported game services retain no canonical key,
+and non-game services are omitted and counted. The Nitrado service ID is the
+external identifier. Only allowlisted non-secret metadata is persisted; raw
+responses, websocket tokens, usernames, roles, and credentials are discarded.
 
 ## Database Effects and Audit Events
 
-No new migration is required. Authenticated storage writes the existing
+Migration `0012_nitrado_connection_uniqueness.sql` enforces one Nitrado Connection
+per Community. Authenticated storage writes the existing
 `provider_connection_secrets.encrypted_payload`, `encryption_nonce`, and
 `key_version` columns and maintains `rotated_at` and `updated_at` during replacement
 or rotation. It clears `secret_reference` when replacing an envelope. The Nitrado
-workflow still writes no Provider Connection, Provider Resource, Game Server
-binding, or audit event.
+Slice 2B writes the Provider Connection and Provider Resources. Slice 2C writes
+the existing Game Server binding and Resource selection timestamp; no new
+migration is required. Connection creation, token replacement, discovery, and
+selection emit non-secret audit events.
 
-When the slice proceeds, remote calls must occur outside database transactions;
-local connection, discovery, selection, binding, and disconnection mutations must
-be transactional and idempotent. Audit events will record connection creation,
-token replacement, completed discovery, selection, and disconnection without any
-secret material.
+Remote discovery calls occur outside database transactions. Local connection,
+discovery, selection, and binding mutations are transactional and idempotent.
+Connection creation, token replacement, completed discovery, and selection audit
+events contain no secret material. Disconnection remains deferred.
 
 ## Error Handling
 
 Secret-storage errors distinguish unavailable storage, invalid configuration,
 invalid input, missing credentials, and failed ciphertext authentication. Every
 message is deterministic and excludes credential and key material. Provider
-authentication, scope, rate-limit, timeout, malformed-response, availability,
-unsupported-game, disappearance, and binding-conflict errors remain deferred with
-the adapter and routes.
+authentication, scope, rate-limit, timeout, malformed-response, and availability
+errors are mapped to stable user-safe codes. Invalid stored credentials mark the
+Connection `reauthorization_required`. Slice 2C maps inactive Connections,
+unavailable or unsupported Resources, game mismatches, and both sides of a binding
+conflict to stable user-safe errors.
 
 ## Test Coverage
 
@@ -125,10 +153,14 @@ transactional re-encryption. The PostgreSQL integration test exercises the full
 store/read/replace/rotate/delete lifecycle when PostgreSQL is available. No live
 Nitrado account or token is used.
 
-The remaining Slice 2 test matrix includes Owner authorization, non-owner denial,
-CSRF, mocked Nitrado outcomes,
-idempotency, binding constraints, transaction boundaries, audit redaction,
-frontend behavior, and existing provider/Discord/operation regressions.
+Slice 2B tests cover Owner authorization, non-owner denial, CSRF, mocked valid and
+invalid Nitrado outcomes, timeouts, rate limits, malformed responses, no services,
+supported/unsupported/omitted services, duplicate normalization, idempotent
+persistence, encrypted storage, audit redaction, and reauthorization state.
+Slice 2C PostgreSQL tests cover Owner authorization, CSRF, supported selection,
+persisted binding reads, canonical game assignment, idempotency, single-event
+auditing, unsupported and unavailable Resources, game mismatch, and both Resource
+and Game Server binding conflicts. Frontend tests remain deferred.
 
 ## Live Validation Procedure
 
@@ -143,10 +175,7 @@ source control, fixtures, shell history, logs, screenshots, or documentation.
 
 - Key distribution, backup, access control, and retirement remain deployment
   responsibilities; keys must be injected by an approved runtime secret facility.
-- No Nitrado token scope has been implementation-validated.
-- There is no Nitrado client, adapter, registry entry, API, UI, persistence, audit
-  behavior, discovery, selection, binding, token revocation, or disconnect
-  workflow.
+- There is no Slice 2 UI, Nitrado-side token revocation, or disconnect workflow.
 - Existing self-hosted Genesis and Pterodactyl behavior is intentionally unchanged.
 
 ## Slice 3 Prerequisites

@@ -51,6 +51,8 @@ class Config:
     pterodactyl_env_max_players: str | None = None
     provider_secret_active_key_version: str | None = None
     provider_secret_keys: dict[str, bytes] = field(default_factory=dict, repr=False)
+    nitrado_api_base_url: str = "https://api.nitrado.net"
+    nitrado_timeout_seconds: float = 8.0
 
     @property
     def session_lifetime(self) -> timedelta:
@@ -120,6 +122,8 @@ def load_config() -> Config:
         pterodactyl_env_max_players=os.environ.get("TWE_PTERODACTYL_ENV_MAX_PLAYERS", "70"),
         provider_secret_active_key_version=os.environ.get("TWE_PROVIDER_SECRET_ACTIVE_KEY_VERSION"),
         provider_secret_keys=provider_secret_keys,
+        nitrado_api_base_url=os.environ.get("TWE_NITRADO_API_BASE_URL", "https://api.nitrado.net"),
+        nitrado_timeout_seconds=float(os.environ.get("TWE_NITRADO_TIMEOUT_SECONDS", "8")),
     )
 
 

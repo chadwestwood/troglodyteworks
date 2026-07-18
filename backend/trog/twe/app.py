@@ -15,11 +15,13 @@ from .routes.community_invitations import community_invitations_bp
 from .routes.discord_access import discord_access_bp
 from .routes.game_catalog import game_catalog_bp
 from .routes.game_servers import game_servers_bp
+from .routes.hosting_connections import hosting_connections_bp
 from .routes.instances import instances_bp
 from .routes.operations import operations_bp
+from .services.provider_registry import build_provider_registry
 
 
-def create_app(config=None, database=None):
+def create_app(config=None, database=None, provider_registry=None):
     app = Flask(__name__)
     twe_config = config or load_config()
     app.config["TWE_CONFIG"] = twe_config
@@ -28,6 +30,7 @@ def create_app(config=None, database=None):
         twe_config,
         app.config["TWE_DB"],
     )
+    app.config["TWE_PROVIDER_REGISTRY"] = provider_registry or build_provider_registry(twe_config)
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1")
     app.register_blueprint(account_identities_bp, url_prefix="/api/v1")
@@ -37,6 +40,7 @@ def create_app(config=None, database=None):
     app.register_blueprint(discord_access_bp, url_prefix="/api/v1")
     app.register_blueprint(game_catalog_bp, url_prefix="/api/v1")
     app.register_blueprint(game_servers_bp, url_prefix="/api/v1")
+    app.register_blueprint(hosting_connections_bp, url_prefix="/api/v1")
     app.register_blueprint(instances_bp, url_prefix="/api/v1")
     app.register_blueprint(operations_bp, url_prefix="/api/v1")
 

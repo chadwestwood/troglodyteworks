@@ -86,6 +86,19 @@ class DiscoveredResource:
 
 
 @dataclass(frozen=True)
+class CredentialValidation:
+    granted_scopes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CredentialDiscovery:
+    resources: tuple[DiscoveredResource, ...]
+    total_services: int
+    unsupported_services: int
+    omitted_services: int
+
+
+@dataclass(frozen=True)
 class ProviderStatusCheck:
     name: str
     status: str
@@ -117,6 +130,16 @@ class ConnectionDescriber(Protocol):
 
 class ResourceDiscoverer(Protocol):
     def discover_resources(self, context: ProviderContext) -> tuple[DiscoveredResource, ...]:
+        raise NotImplementedError
+
+
+class CredentialValidator(Protocol):
+    def validate_credential(self, credential: bytes) -> CredentialValidation:
+        raise NotImplementedError
+
+
+class CredentialResourceDiscoverer(Protocol):
+    def discover_resources_with_credential(self, credential: bytes) -> CredentialDiscovery:
         raise NotImplementedError
 
 

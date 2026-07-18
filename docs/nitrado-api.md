@@ -238,6 +238,19 @@ Nitrado routes sometimes require a particular service status. The adapter should
 
 ## Recommended Initial TWE Slice
 
+### Beta long-life-token discovery decision
+
+Slice 2B validates a user-generated long-life token by calling `GET /services`
+directly with an Authorization bearer header. The live official endpoint catalog
+was rechecked on July 17, 2026. Because validation and discovery use only this
+endpoint, the beta requires only the `service` scope. It does not call `GET /token`
+or request `user_info`.
+
+The service-list response supplies the service ID, type, status, display details,
+game title, slots, address, location, and suspension date needed here. Slice 2B
+avoids `GET /services/{id}/gameservers` because the official example includes
+credential fields outside this slice.
+
 Implement the smallest useful adapter in this order:
 
 1. OAuth account connection and revocation.
@@ -273,4 +286,3 @@ Recommended capability mapping:
 - [NitrAPI endpoint reference](https://doc.nitrado.net/)
 - [Nitrado overview of NitrAPI](https://server.nitrado.net/usa/news2/view/the-nitrapi-nitrados-programming-interface-for-ordering-managing-and-controlling-services/)
 - [Beacon's documented Nitrado authorization workflow](https://help.usebeacon.app/servers/importing/)
-

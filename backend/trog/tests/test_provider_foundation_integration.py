@@ -58,7 +58,11 @@ class ProviderFoundationIntegrationTests(unittest.TestCase):
         with self.db.connect() as conn:
             execute(conn, f'CREATE SCHEMA "{schema_name}"')
             execute(conn, f'SET LOCAL search_path TO "{schema_name}", public')
-            for name in ("0001_initial_twe.sql", "0011_provider_foundation.sql"):
+            for name in (
+                "0001_initial_twe.sql",
+                "0011_provider_foundation.sql",
+                "0012_nitrado_connection_uniqueness.sql",
+            ):
                 conn.execute((ROOT / "migrations" / name).read_text())
             tables = {
                 row["table_name"]

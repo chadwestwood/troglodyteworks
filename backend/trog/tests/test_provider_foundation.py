@@ -106,6 +106,12 @@ class ProviderFoundationTests(unittest.TestCase):
             registry.resource_discoverer("self_hosted")
         with self.assertRaises(ProviderCapabilityUnavailable):
             registry.status_reader("pterodactyl")
+        self.assertEqual(
+            registry.connection_describer("nitrado").describe_connection().provider_key,
+            "nitrado",
+        )
+        self.assertIsNotNone(registry.credential_validator("nitrado"))
+        self.assertIsNotNone(registry.credential_resource_discoverer("nitrado"))
 
     def test_secret_envelope_and_context_repr_redact_secret_material(self):
         secret = ProviderSecretEnvelope(

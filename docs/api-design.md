@@ -239,6 +239,39 @@ The admin surface is read-only and supports `/admin/`. It separates automated fi
 
 ---
 
+# Connected Hosting: Nitrado Discovery and Selection
+
+Slice 2B uses a user-generated Nitrado long-life token with only the `service`
+scope. Every route requires an authenticated Community Owner. State-changing
+requests additionally require `X-TWE-CSRF: 1`; cross-origin browser requests
+cannot supply this non-simple header without a CORS preflight, and TWE does not
+allow cross-origin API access.
+
+```text
+POST /api/v1/communities/{community_id}/hosting-connections/nitrado
+POST /api/v1/communities/{community_id}/hosting-connections/{connection_id}/discover
+GET  /api/v1/communities/{community_id}/hosting-connections/{connection_id}/resources
+POST /api/v1/communities/{community_id}/hosting-connections/{connection_id}/resources/{resource_id}/select
+```
+
+The connect request is `{ "token": "..." }`. TWE validates the token through
+Nitrado `GET /services` before opening a persistence transaction. Success creates
+or updates the single Community Nitrado Connection, encrypted credential envelope,
+and normalized resources. The token is never returned. Repeating the request
+updates the same records.
+
+Connection responses expose safe status, scope, and verification fields plus only
+`{ "configured": true, "masked": true }` for the credential. Discovery responses
+contain counts and safe resources. Provider failures use stable authentication,
+scope, rate-limit, unavailable, and malformed-response error codes.
+
+Slice 2C selection accepts exactly `{ "game_server_id": "..." }`. It binds one
+available supported Nitrado Resource to one compatible Community Game Server in a
+single transaction. Repeating the same selection returns success with
+`already_bound: true`; attempts to replace either side of an existing binding
+return a conflict. Resource representations include a safe `binding` summary and
+`selected_at` timestamp. The route never calls a Nitrado mutation endpoint.
+
 # Communities
 
 ## List My Communities

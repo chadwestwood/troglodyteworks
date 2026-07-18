@@ -1,8 +1,11 @@
 async function apiRequest(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const csrfHeaders = method === "GET" || method === "HEAD" ? {} : { "X-TWE-CSRF": "1" };
   const response = await fetch(`/api/v1${path}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...csrfHeaders,
       ...(options.headers || {}),
     },
     ...options,

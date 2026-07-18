@@ -80,6 +80,12 @@ class ProviderSecretStorage(Protocol):
     def rotate(self, provider_connection_id: str) -> None:
         raise NotImplementedError
 
+    def store_in_transaction(self, conn, provider_connection_id: str, secret: bytes) -> None:
+        raise NotImplementedError
+
+    def replace_in_transaction(self, conn, provider_connection_id: str, secret: bytes) -> None:
+        raise NotImplementedError
+
 
 class AesGcmProviderSecretCipher:
     """AES-256-GCM envelope cipher with versioned, database-external keys."""
@@ -149,48 +155,54 @@ class AuthenticatedProviderSecretStorage:
         self._cipher = cipher
 
     def store(self, provider_connection_id: str, secret: bytes) -> None:
+        with self._database.connect() as conn:
+            with conn.transaction():
+                self.store_in_transaction(conn, provider_connection_id, secret)
+
+    def store_in_transaction(self, conn, provider_connection_id: str, secret: bytes) -> None:
         encrypted_payload, nonce, key_version = self._cipher.encrypt(
             provider_connection_id,
             secret,
         )
-        with self._database.connect() as conn:
-            with conn.transaction():
-                execute(
-                    conn,
-                    """
-                    INSERT INTO provider_connection_secrets
-                        (provider_connection_id, storage_kind, encrypted_payload,
-                         encryption_nonce, key_version)
-                    VALUES (%s, 'encrypted_payload', %s, %s, %s)
-                    """,
-                    (provider_connection_id, encrypted_payload, nonce, key_version),
-                )
+        execute(
+            conn,
+            """
+            INSERT INTO provider_connection_secrets
+                (provider_connection_id, storage_kind, encrypted_payload,
+                 encryption_nonce, key_version)
+            VALUES (%s, 'encrypted_payload', %s, %s, %s)
+            """,
+            (provider_connection_id, encrypted_payload, nonce, key_version),
+        )
 
     def replace(self, provider_connection_id: str, secret: bytes) -> None:
+        with self._database.connect() as conn:
+            with conn.transaction():
+                self.replace_in_transaction(conn, provider_connection_id, secret)
+
+    def replace_in_transaction(self, conn, provider_connection_id: str, secret: bytes) -> None:
         encrypted_payload, nonce, key_version = self._cipher.encrypt(
             provider_connection_id,
             secret,
         )
-        with self._database.connect() as conn:
-            with conn.transaction():
-                updated = fetch_one(
-                    conn,
-                    """
-                    UPDATE provider_connection_secrets
-                    SET storage_kind = 'encrypted_payload',
-                        secret_reference = NULL,
-                        encrypted_payload = %s,
-                        encryption_nonce = %s,
-                        key_version = %s,
-                        rotated_at = now(),
-                        updated_at = now()
-                    WHERE provider_connection_id = %s
-                    RETURNING id::text
-                    """,
-                    (encrypted_payload, nonce, key_version, provider_connection_id),
-                )
-                if not updated:
-                    raise ProviderSecretNotFound()
+        updated = fetch_one(
+            conn,
+            """
+            UPDATE provider_connection_secrets
+            SET storage_kind = 'encrypted_payload',
+                secret_reference = NULL,
+                encrypted_payload = %s,
+                encryption_nonce = %s,
+                key_version = %s,
+                rotated_at = now(),
+                updated_at = now()
+            WHERE provider_connection_id = %s
+            RETURNING id::text
+            """,
+            (encrypted_payload, nonce, key_version, provider_connection_id),
+        )
+        if not updated:
+            raise ProviderSecretNotFound()
 
     def read(self, provider_connection_id: str) -> bytes | None:
         with self._database.connect() as conn:
@@ -277,6 +289,12 @@ class UnavailableProviderSecretStorage:
         self._raise_unavailable()
 
     def rotate(self, provider_connection_id: str) -> None:
+        self._raise_unavailable()
+
+    def store_in_transaction(self, conn, provider_connection_id: str, secret: bytes) -> None:
+        self._raise_unavailable()
+
+    def replace_in_transaction(self, conn, provider_connection_id: str, secret: bytes) -> None:
         self._raise_unavailable()
 
     @staticmethod

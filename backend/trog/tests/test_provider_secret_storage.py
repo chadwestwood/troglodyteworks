@@ -204,6 +204,8 @@ class ProviderSecretStorageTests(unittest.TestCase):
             lambda: storage.read("connection-id"),
             lambda: storage.delete("connection-id"),
             lambda: storage.rotate("connection-id"),
+            lambda: storage.store_in_transaction(self.database.connection, "connection-id", b"token"),
+            lambda: storage.replace_in_transaction(self.database.connection, "connection-id", b"token"),
         )
         for operation in operations:
             with self.subTest(operation=operation):

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
+from .nitrado_provider import NitradoProvider
 from .pterodactyl_provider import PterodactylHostingProvider
 from .self_hosted_provider import SelfHostedProvider
 
@@ -21,6 +22,8 @@ class ProviderRegistration:
     resource_discoverer_factory: Callable[[], object] | None = None
     status_reader_factory: Callable[[], object] | None = None
     provisioning_factory: Callable[[], object] | None = None
+    credential_validator_factory: Callable[[], object] | None = None
+    credential_resource_discoverer_factory: Callable[[], object] | None = None
 
 
 class ProviderRegistry:
@@ -44,6 +47,12 @@ class ProviderRegistry:
     def provisioner(self, provider_key: str):
         return self._capability(provider_key, "provisioning_factory")
 
+    def credential_validator(self, provider_key: str):
+        return self._capability(provider_key, "credential_validator_factory")
+
+    def credential_resource_discoverer(self, provider_key: str):
+        return self._capability(provider_key, "credential_resource_discoverer_factory")
+
     def _capability(self, provider_key: str, capability: str):
         registration = self._registrations.get(provider_key)
         if not registration:
@@ -56,7 +65,7 @@ class ProviderRegistry:
         return factory()
 
 
-def build_provider_registry(config) -> ProviderRegistry:
+def build_provider_registry(config, nitrado_transport=None) -> ProviderRegistry:
     registry = ProviderRegistry()
     registry.register(
         "self_hosted",
@@ -69,6 +78,14 @@ def build_provider_registry(config) -> ProviderRegistry:
         "pterodactyl",
         ProviderRegistration(
             provisioning_factory=lambda: PterodactylHostingProvider(config),
+        ),
+    )
+    registry.register(
+        "nitrado",
+        ProviderRegistration(
+            connection_describer_factory=lambda: NitradoProvider(config, nitrado_transport),
+            credential_validator_factory=lambda: NitradoProvider(config, nitrado_transport),
+            credential_resource_discoverer_factory=lambda: NitradoProvider(config, nitrado_transport),
         ),
     )
     return registry
