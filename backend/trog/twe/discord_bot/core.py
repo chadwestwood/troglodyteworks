@@ -27,7 +27,7 @@ class BotReply:
 
 
 HELP_REPLY = BotReply(
-    "Mention me and ask `is the server up?`, `how many players are online?`, `who's on?`, or `what mods are installed?`.",
+    "Mention me and ask `map settings`, `is the server up?`, `how many players are online?`, `who's on?`, or `what mods are installed?`.",
     "unsupported_question",
 )
 
@@ -73,6 +73,8 @@ def classify_intent(message: str) -> str | None:
     normalized = normalized.replace("\u201c", '"').replace("\u201d", '"')
     normalized = re.sub(r"<@!?\d+>", " ", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
+    if re.search(r"\bmap\s+settings\b", normalized):
+        return "server_settings"
     if re.search(r"\bmod(?:'s|s)?\b", normalized) and re.search(
         r"\b(installed|active|loaded|running|using|enabled|list)\b", normalized
     ):
@@ -214,11 +216,30 @@ def mod_list_reply(game_server: GameServerRef | None, config: Config, mods_provi
     )
 
 
+def server_settings_reply(status: BotReply, players: BotReply, mods: BotReply) -> BotReply:
+    return BotReply(
+        "\n\n".join(
+            (
+                f"**Server status**\n{status.text}",
+                f"**Online players**\n{players.text}",
+                f"**Active mods**\n{mods.text}",
+            )
+        ),
+        "server_settings",
+    )
+
+
 def respond_to_message(message: str, guild_id: str, conn, config: Config, guild_map: dict[str, str] | None = None) -> BotReply | None:
     intent = classify_intent(message)
     if not intent:
         return HELP_REPLY
     game_server = game_server_for_guild(conn, guild_id, guild_map)
+    if intent == "server_settings":
+        return server_settings_reply(
+            server_status_reply(game_server, config),
+            player_list_reply(game_server, config),
+            mod_list_reply(game_server, config),
+        )
     if intent == "server_status":
         return server_status_reply(game_server, config)
     if intent == "player_list":
@@ -242,6 +263,13 @@ def capability_for_intent(intent: str) -> str:
 
 def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user_id: str,
                        conn, config: Config, guild_map: dict[str, str] | None = None) -> BotReply:
+    if intent == "server_settings":
+        replies = [
+            respond_to_request(read_intent, guild_id, channel_id, discord_user_id, conn, config, guild_map)
+            for read_intent in ("server_status", "player_list", "mod_list")
+        ]
+        return server_settings_reply(*replies)
+
     capability = capability_for_intent(intent)
     decision = authorize(conn, guild_id, channel_id, discord_user_id, capability)
     if not decision.context and guild_map:

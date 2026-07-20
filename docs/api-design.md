@@ -249,9 +249,11 @@ allow cross-origin API access.
 
 ```text
 POST /api/v1/communities/{community_id}/hosting-connections/nitrado
+GET  /api/v1/communities/{community_id}/hosting-connections/nitrado
 POST /api/v1/communities/{community_id}/hosting-connections/{connection_id}/discover
 GET  /api/v1/communities/{community_id}/hosting-connections/{connection_id}/resources
 POST /api/v1/communities/{community_id}/hosting-connections/{connection_id}/resources/{resource_id}/select
+DELETE /api/v1/communities/{community_id}/hosting-connections/{connection_id}
 ```
 
 The connect request is `{ "token": "..." }`. TWE validates the token through
@@ -264,6 +266,9 @@ Connection responses expose safe status, scope, and verification fields plus onl
 `{ "configured": true, "masked": true }` for the credential. Discovery responses
 contain counts and safe resources. Provider failures use stable authentication,
 scope, rate-limit, unavailable, and malformed-response error codes.
+The matching GET route returns the existing safe Connection and its persisted
+Resources, or `null` and an empty list before setup, so the browser journey can
+resume after a reload without retaining an identifier or credential locally.
 
 Slice 2C selection accepts exactly `{ "game_server_id": "..." }`. It binds one
 available supported Nitrado Resource to one compatible Community Game Server in a
@@ -271,6 +276,11 @@ single transaction. Repeating the same selection returns success with
 `already_bound: true`; attempts to replace either side of an existing binding
 return a conflict. Resource representations include a safe `binding` summary and
 `selected_at` timestamp. The route never calls a Nitrado mutation endpoint.
+
+Disconnect deletes the locally stored credential, clears Game Server bindings,
+marks persisted Resources unavailable, and retains the revoked Connection and its
+audit history. It is idempotent and explicitly reports that the provider token was
+not revoked. The Owner must separately revoke the user-generated token in Nitrado.
 
 # Communities
 

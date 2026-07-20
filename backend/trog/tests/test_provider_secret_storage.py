@@ -196,6 +196,11 @@ class ProviderSecretStorageTests(unittest.TestCase):
             with self.assertRaises(ProviderSecretNotFound):
                 self.storage.replace("connection-id", secret)
 
+    def test_delete_can_join_an_existing_transaction(self):
+        with patch("twe.services.provider_secret_storage.execute") as execute_mock:
+            self.storage.delete_in_transaction(self.database.connection, "connection-id")
+        self.assertEqual(execute_mock.call_args.args[2], ("connection-id",))
+
     def test_every_unavailable_operation_refuses(self):
         storage = UnavailableProviderSecretStorage()
         operations = (
@@ -206,6 +211,7 @@ class ProviderSecretStorageTests(unittest.TestCase):
             lambda: storage.rotate("connection-id"),
             lambda: storage.store_in_transaction(self.database.connection, "connection-id", b"token"),
             lambda: storage.replace_in_transaction(self.database.connection, "connection-id", b"token"),
+            lambda: storage.delete_in_transaction(self.database.connection, "connection-id"),
         )
         for operation in operations:
             with self.subTest(operation=operation):

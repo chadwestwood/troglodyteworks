@@ -4,7 +4,9 @@
 
 Secret persistence and Slice 2B token validation/service discovery were implemented
 on July 17, 2026. Slice 2C explicit selection and Game Server binding were
-implemented on July 18, 2026. The browser UI and disconnection remain deferred.
+implemented on July 18, 2026. The owner-facing connection, discovery, and selection
+UI and local disconnect workflow were implemented on July 20, 2026. Nitrado-side
+token revocation remains an explicit Owner responsibility.
 
 The provider-neutral foundation can represent a Nitrado Provider Connection,
 Provider Resource, and Game Server binding without a material schema redesign.
@@ -30,11 +32,12 @@ replacement.
 
 ## Intended Purpose and User Journey
 
-The remaining browser journey will allow a signed-in Community Owner to choose
+The browser journey allows a signed-in Community Owner to choose
 **Connect Hosting**, select Nitrado, create and submit a revocable long-life token,
 choose one discovered ARK: Survival Ascended service, and bind it to a Community
-Game Server. The Slice 2C API now performs and persists that selection, but the
-browser interface is not implemented.
+Game Server. It can resume an existing connection after a reload without retaining
+the token or Connection ID in browser storage. The Slice 2C API performs and
+persists the selection.
 
 OAuth is explicitly deferred. The beta design uses user-generated, revocable
 Nitrado long-life tokens.
@@ -75,14 +78,19 @@ The implemented `/api/v1` route family is:
 
 - `POST /communities/{community_id}/hosting-connections/nitrado` validates,
   securely stores, and discovers;
+- `GET /communities/{community_id}/hosting-connections/nitrado` returns the safe
+  current Connection and persisted Resources for reload-safe browser setup;
 - `POST /communities/{community_id}/hosting-connections/{connection_id}/discover`
   discovers with the stored credential;
 - `GET /communities/{community_id}/hosting-connections/{connection_id}/resources`
-  lists safe persisted resources.
+  lists safe persisted resources;
+- `DELETE /communities/{community_id}/hosting-connections/{connection_id}` removes
+  the local credential and bindings while retaining revoked audit history.
 
-Every route requires an authenticated Community Owner. POST requests also require
-`X-TWE-CSRF: 1`. Responses mask credential state and never expose secret records or
-token values. Disconnection remains deferred.
+Every route requires an authenticated Community Owner. State-changing requests
+also require `X-TWE-CSRF: 1`. Responses mask credential state and never expose
+secret records or token values. Local disconnection is idempotent and states that
+it does not revoke the user-generated token at Nitrado.
 
 ## Slice 2C Selection and Binding Contract
 
@@ -126,12 +134,13 @@ or rotation. It clears `secret_reference` when replacing an envelope. The Nitrad
 Slice 2B writes the Provider Connection and Provider Resources. Slice 2C writes
 the existing Game Server binding and Resource selection timestamp; no new
 migration is required. Connection creation, token replacement, discovery, and
-selection emit non-secret audit events.
+selection emit non-secret audit events. Local disconnection deletes the secret
+envelope, clears Game Server bindings and Resource selection timestamps, marks
+Resources unavailable, and retains the Connection as `revoked`.
 
 Remote discovery calls occur outside database transactions. Local connection,
-discovery, selection, and binding mutations are transactional and idempotent.
-Connection creation, token replacement, completed discovery, and selection audit
-events contain no secret material. Disconnection remains deferred.
+discovery, selection, binding, and disconnection mutations are transactional and
+idempotent. Their audit events contain no secret material.
 
 ## Error Handling
 
@@ -160,7 +169,10 @@ persistence, encrypted storage, audit redaction, and reauthorization state.
 Slice 2C PostgreSQL tests cover Owner authorization, CSRF, supported selection,
 persisted binding reads, canonical game assignment, idempotency, single-event
 auditing, unsupported and unavailable Resources, game mismatch, and both Resource
-and Game Server binding conflicts. Frontend tests remain deferred.
+and Game Server binding conflicts. A static frontend smoke test verifies that the
+hosting page is served, uses a password input, calls the expected route family,
+does not use browser local storage, and renders without `innerHTML`. Interactive
+browser and viewport verification remain outstanding.
 
 ## Live Validation Procedure
 
@@ -175,7 +187,8 @@ source control, fixtures, shell history, logs, screenshots, or documentation.
 
 - Key distribution, backup, access control, and retirement remain deployment
   responsibilities; keys must be injected by an approved runtime secret facility.
-- There is no Slice 2 UI, Nitrado-side token revocation, or disconnect workflow.
+- Nitrado-side token revocation is not automated; after local disconnect, the
+  Owner must revoke the user-generated token in Nitrado.
 - Existing self-hosted Genesis and Pterodactyl behavior is intentionally unchanged.
 
 ## Slice 3 Prerequisites

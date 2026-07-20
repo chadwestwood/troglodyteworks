@@ -203,6 +203,11 @@ ownership, and the partial unique index enforces one Game Server per selected
 Provider Resource. The API additionally prevents silently replacing a Game
 Server's existing Resource binding.
 
+Local Nitrado disconnection preserves the Provider Connection as `revoked` for
+audit continuity, deletes its secret envelope, clears matching Game Server
+bindings, and marks its Provider Resources unavailable with no current selection.
+A later validated token reconnects through the same Connection record.
+
 ### Game Server
 
 Represents a logical game environment belonging to a community.

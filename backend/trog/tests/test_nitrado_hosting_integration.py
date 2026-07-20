@@ -1,20 +1,22 @@
 import json
 import secrets
 import sys
+import threading
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from twe.app import create_app
-from twe.config import load_config
 from twe.db import Database, execute, fetch_all, fetch_one
 from twe.routes.auth import create_session
 from twe.security import hash_password
 from twe.services.nitrado_provider import NitradoHttpResponse
 from twe.services.provider_registry import build_provider_registry
+from tests.integration_database import load_integration_config
 
 
 class _Transport:
@@ -23,9 +25,16 @@ class _Transport:
         self.status = status
         self.body = body
         self.calls = []
+        self.block = False
+        self.started = threading.Event()
+        self.release = threading.Event()
 
     def get(self, url, headers, timeout_seconds):
         self.calls.append((url, headers, timeout_seconds))
+        if self.block:
+            self.started.set()
+            if not self.release.wait(timeout=5):
+                raise RuntimeError("Test transport release timed out.")
         body = self.body
         if body is None:
             body = json.dumps({"status": "success", "data": {"services": self.services}}).encode()
@@ -34,7 +43,7 @@ class _Transport:
 
 class NitradoHostingIntegrationTests(unittest.TestCase):
     def setUp(self):
-        loaded = load_config()
+        loaded = load_integration_config()
         self.config = replace(
             loaded,
             provider_secret_active_key_version="integration-v1",
@@ -78,6 +87,12 @@ class NitradoHostingIntegrationTests(unittest.TestCase):
             execute(conn, "DELETE FROM users WHERE id IN (%s,%s)", (self.owner["id"], self.member["id"]))
 
     def test_owner_connects_discovers_and_retries_without_duplicates_or_secret_leaks(self):
+        empty_state = self.owner_client.get(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/nitrado"
+        )
+        self.assertEqual(empty_state.status_code, 200)
+        self.assertEqual(empty_state.get_json(), {"connection": None, "resources": []})
+
         token = f"nitrado-secret-{self.suffix}"
         first = self._connect(token)
         self.assertEqual(first.status_code, 201)
@@ -89,6 +104,14 @@ class NitradoHostingIntegrationTests(unittest.TestCase):
         self.assertEqual(data["discovery"]["unsupported_services"], 1)
         self.assertEqual(data["discovery"]["omitted_services"], 1)
         self.assertNotIn(token, first.get_data(as_text=True))
+
+        resumed = self.owner_client.get(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/nitrado"
+        )
+        self.assertEqual(resumed.status_code, 200)
+        self.assertEqual(resumed.get_json()["connection"]["id"], connection_id)
+        self.assertEqual(len(resumed.get_json()["resources"]), 2)
+        self.assertNotIn(token, resumed.get_data(as_text=True))
 
         with self.db.connect() as conn:
             envelope = fetch_one(
@@ -133,6 +156,11 @@ class NitradoHostingIntegrationTests(unittest.TestCase):
         self.assertEqual(dict(retry_counts), {"connections": 1, "secrets": 1, "resources": 2})
 
     def test_csrf_and_non_owner_requests_are_rejected_before_provider_call(self):
+        forbidden_read = self.member_client.get(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/nitrado"
+        )
+        self.assertEqual(forbidden_read.status_code, 403)
+
         missing_csrf = self.owner_client.post(
             f"/api/v1/communities/{self.community['id']}/hosting-connections/nitrado",
             json={"token": "token"},
@@ -285,6 +313,212 @@ class NitradoHostingIntegrationTests(unittest.TestCase):
             )
         self.assertEqual(connection["status"], "reauthorization_required")
         self.assertEqual(connection["last_error_code"], "NITRADO_AUTHENTICATION_FAILED")
+
+    def test_owner_disconnects_locally_and_can_repeat_safely(self):
+        connected = self._connect("disconnect-token").get_json()
+        connection_id = connected["connection"]["id"]
+        resource = next(row for row in connected["discovery"]["resources"] if row["supported"])
+        with self.db.connect() as conn:
+            game_server = self._game_server(conn, "disconnect")
+        self.assertEqual(self._select(connection_id, resource["id"], game_server["id"]).status_code, 200)
+
+        missing_csrf = self.owner_client.delete(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/{connection_id}"
+        )
+        forbidden = self.member_client.delete(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/{connection_id}",
+            headers={"X-TWE-CSRF": "1"},
+        )
+        self.assertEqual(missing_csrf.get_json()["error"]["code"], "CSRF_REJECTED")
+        self.assertEqual(forbidden.get_json()["error"]["code"], "FORBIDDEN")
+
+        first = self.owner_client.delete(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/{connection_id}",
+            headers={"X-TWE-CSRF": "1"},
+        )
+        self.assertEqual(first.status_code, 200)
+        data = first.get_json()
+        self.assertFalse(data["disconnected"]["already_disconnected"])
+        self.assertFalse(data["disconnected"]["provider_token_revoked"])
+        self.assertEqual(data["disconnected"]["unbound_game_servers"], 1)
+        self.assertEqual(data["connection"]["status"], "revoked")
+        self.assertEqual(data["connection"]["credential"], {"configured": False, "masked": False})
+
+        repeated = self.owner_client.delete(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/{connection_id}",
+            headers={"X-TWE-CSRF": "1"},
+        )
+        self.assertTrue(repeated.get_json()["disconnected"]["already_disconnected"])
+        with self.db.connect() as conn:
+            state = fetch_one(
+                conn,
+                """
+                SELECT pc.status,
+                       (SELECT count(*)::int FROM provider_connection_secrets pcs
+                        WHERE pcs.provider_connection_id = pc.id) AS secrets,
+                       gs.provider_resource_id::text,
+                       pr.available, pr.selected_at,
+                       (SELECT count(*)::int FROM audit_logs al
+                        WHERE al.community_id = pc.community_id
+                          AND al.target_id = pc.id
+                          AND al.action = 'provider.connection.nitrado_disconnected') AS audits
+                FROM provider_connections pc
+                JOIN provider_resources pr ON pr.provider_connection_id = pc.id AND pr.id = %s
+                JOIN game_servers gs ON gs.id = %s
+                WHERE pc.id = %s
+                """,
+                (resource["id"], game_server["id"], connection_id),
+            )
+        self.assertEqual(state["status"], "revoked")
+        self.assertEqual(state["secrets"], 0)
+        self.assertIsNone(state["provider_resource_id"])
+        self.assertFalse(state["available"])
+        self.assertIsNone(state["selected_at"])
+        self.assertEqual(state["audits"], 1)
+
+        reconnected = self._connect("replacement-token")
+        self.assertEqual(reconnected.status_code, 200)
+        self.assertEqual(reconnected.get_json()["connection"]["id"], connection_id)
+        self.assertEqual(reconnected.get_json()["connection"]["status"], "active")
+        self.assertEqual(
+            reconnected.get_json()["connection"]["credential"],
+            {"configured": True, "masked": True},
+        )
+
+    def test_disconnect_failure_rolls_back_all_state_changes(self):
+        connected = self._connect("rollback-token").get_json()
+        connection_id = connected["connection"]["id"]
+        resource = next(row for row in connected["discovery"]["resources"] if row["supported"])
+        with self.db.connect() as conn:
+            game_server = self._game_server(conn, "rollback")
+        self.assertEqual(self._select(connection_id, resource["id"], game_server["id"]).status_code, 200)
+
+        real_execute = execute
+
+        def fail_after_credential_and_binding_changes(conn, query, params=()):
+            if "UPDATE provider_resources" in query:
+                raise RuntimeError("Injected disconnect failure")
+            return real_execute(conn, query, params)
+
+        with patch(
+            "twe.routes.hosting_connections.execute",
+            side_effect=fail_after_credential_and_binding_changes,
+        ):
+            response = self.owner_client.delete(
+                f"/api/v1/communities/{self.community['id']}/hosting-connections/{connection_id}",
+                headers={"X-TWE-CSRF": "1"},
+            )
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.get_json()["error"]["code"], "INTERNAL_ERROR")
+
+        with self.db.connect() as conn:
+            state = fetch_one(
+                conn,
+                """
+                SELECT pc.status,
+                       EXISTS (SELECT 1 FROM provider_connection_secrets pcs
+                               WHERE pcs.provider_connection_id = pc.id) AS has_secret,
+                       gs.provider_resource_id::text,
+                       pr.available, pr.selected_at,
+                       (SELECT count(*)::int FROM audit_logs al
+                        WHERE al.target_id = pc.id
+                          AND al.action = 'provider.connection.nitrado_disconnected') AS audits
+                FROM provider_connections pc
+                JOIN provider_resources pr ON pr.id = %s
+                JOIN game_servers gs ON gs.id = %s
+                WHERE pc.id = %s
+                """,
+                (resource["id"], game_server["id"], connection_id),
+            )
+        self.assertEqual(state["status"], "active")
+        self.assertTrue(state["has_secret"])
+        self.assertEqual(state["provider_resource_id"], resource["id"])
+        self.assertTrue(state["available"])
+        self.assertIsNotNone(state["selected_at"])
+        self.assertEqual(state["audits"], 0)
+
+    def test_non_owner_cannot_reconnect_or_replace_token_after_disconnect(self):
+        connected = self._connect("owner-token").get_json()
+        connection_id = connected["connection"]["id"]
+        disconnected = self.owner_client.delete(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/{connection_id}",
+            headers={"X-TWE-CSRF": "1"},
+        )
+        self.assertEqual(disconnected.status_code, 200)
+        calls_before = len(self.transport.calls)
+
+        forbidden = self.member_client.post(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/nitrado",
+            json={"token": "unauthorized-replacement-token"},
+            headers={"X-TWE-CSRF": "1"},
+        )
+        self.assertEqual(forbidden.status_code, 403)
+        self.assertEqual(forbidden.get_json()["error"]["code"], "FORBIDDEN")
+        self.assertEqual(len(self.transport.calls), calls_before)
+        with self.db.connect() as conn:
+            state = fetch_one(
+                conn,
+                """
+                SELECT pc.status,
+                       EXISTS (SELECT 1 FROM provider_connection_secrets pcs
+                               WHERE pcs.provider_connection_id = pc.id) AS has_secret
+                FROM provider_connections pc
+                WHERE pc.id = %s
+                """,
+                (connection_id,),
+            )
+        self.assertEqual(state, {"status": "revoked", "has_secret": False})
+
+    def test_disconnect_wins_over_in_flight_discovery_without_mixed_state(self):
+        connected = self._connect("concurrency-token").get_json()
+        connection_id = connected["connection"]["id"]
+        worker_client = self.app.test_client()
+        with self.db.connect() as conn:
+            self._login(conn, worker_client, self.owner["id"])
+        self.transport.block = True
+        result = {}
+
+        def discover():
+            result["response"] = worker_client.post(
+                f"/api/v1/communities/{self.community['id']}/hosting-connections/{connection_id}/discover",
+                headers={"X-TWE-CSRF": "1"},
+            )
+
+        worker = threading.Thread(target=discover)
+        worker.start()
+        self.assertTrue(self.transport.started.wait(timeout=5))
+        disconnected = self.owner_client.delete(
+            f"/api/v1/communities/{self.community['id']}/hosting-connections/{connection_id}",
+            headers={"X-TWE-CSRF": "1"},
+        )
+        self.assertEqual(disconnected.status_code, 200)
+        self.transport.release.set()
+        worker.join(timeout=5)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(result["response"].status_code, 409)
+        self.assertEqual(
+            result["response"].get_json()["error"]["code"],
+            "HOSTING_CONNECTION_NOT_ACTIVE",
+        )
+        with self.db.connect() as conn:
+            state = fetch_one(
+                conn,
+                """
+                SELECT pc.status,
+                       EXISTS (SELECT 1 FROM provider_connection_secrets pcs
+                               WHERE pcs.provider_connection_id = pc.id) AS has_secret,
+                       count(pr.id) FILTER (WHERE pr.available)::int AS available_resources
+                FROM provider_connections pc
+                LEFT JOIN provider_resources pr ON pr.provider_connection_id = pc.id
+                WHERE pc.id = %s
+                GROUP BY pc.id
+                """,
+                (connection_id,),
+            )
+        self.assertEqual(
+            state,
+            {"status": "revoked", "has_secret": False, "available_resources": 0},
+        )
 
     def test_invalid_token_and_provider_errors_do_not_persist_connection(self):
         cases = ((401, "NITRADO_AUTHENTICATION_FAILED"), (403, "NITRADO_INSUFFICIENT_SCOPE"),

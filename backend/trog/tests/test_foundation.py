@@ -71,6 +71,23 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"configureGenesisAccessView", script.data)
         self.assertIn(b"Your Community role cannot request this Capability.", script.data)
 
+    def test_nitrado_hosting_page_preserves_the_secret_boundary(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        page = client.get("/communities/cohorts-in-the-wild/hosting/")
+        script = client.get("/js/nitrado-hosting.js")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"Connect Nitrado hosting", page.data)
+        self.assertIn(b'type="password"', page.data)
+        self.assertIn(b'autocomplete="off"', page.data)
+        self.assertIn(b"hosting-connections/nitrado", script.data)
+        self.assertIn(b"hosting-connections/${connection.id}/discover", script.data)
+        self.assertIn(b"resources/${resource.id}/select", script.data)
+        self.assertIn(b'method: "DELETE"', script.data)
+        self.assertIn(b"Revoke the token separately in Nitrado", script.data)
+        self.assertNotIn(b"localStorage", script.data)
+        self.assertNotIn(b"innerHTML", script.data)
+
     def test_browser_cannot_self_assign_ownership_endpoint(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
         client = app.test_client()

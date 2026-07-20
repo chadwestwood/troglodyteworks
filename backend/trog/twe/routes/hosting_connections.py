@@ -27,6 +27,107 @@ def require_browser_csrf(view):
     return wrapped
 
 
+@hosting_connections_bp.get("/communities/<community_id>/hosting-connections/nitrado")
+@require_user
+def get_nitrado_connection(community_id):
+    denied = _owner_problem(community_id)
+    if denied:
+        return denied
+    with current_app.config["TWE_DB"].connect() as conn:
+        connection = fetch_one(
+            conn,
+            """
+            SELECT pc.id::text, pc.community_id::text, pc.provider_key,
+                   pc.display_name, pc.status, pc.granted_scopes, pc.connected_at,
+                   pc.last_verified_at, pc.last_error_code,
+                   EXISTS (SELECT 1 FROM provider_connection_secrets pcs
+                           WHERE pcs.provider_connection_id = pc.id) AS has_secret
+            FROM provider_connections pc
+            WHERE pc.community_id = %s AND pc.provider_key = 'nitrado'
+            """,
+            (community_id,),
+        )
+        resources = _resource_rows(conn, connection["id"]) if connection else []
+    return jsonify({
+        "connection": _connection_response(connection) if connection else None,
+        "resources": [_resource_response(row) for row in resources],
+    })
+
+
+@hosting_connections_bp.delete("/communities/<community_id>/hosting-connections/<connection_id>")
+@require_user
+@require_browser_csrf
+def disconnect_hosting(community_id, connection_id):
+    denied = _owner_problem(community_id)
+    if denied:
+        return denied
+    if not _is_uuid(connection_id):
+        return api_error("NOT_FOUND", "Connected hosting account was not found.", 404)
+
+    storage = current_app.config["TWE_PROVIDER_SECRET_STORAGE"]
+    try:
+        with current_app.config["TWE_DB"].connect() as conn:
+            with conn.transaction():
+                connection = _connection_row(conn, community_id, connection_id, for_update=True)
+                if not connection or connection["provider_key"] != "nitrado":
+                    return api_error("NOT_FOUND", "Connected hosting account was not found.", 404)
+                already_disconnected = connection["status"] == "revoked" and not connection["has_secret"]
+                unbound_count = 0
+                if not already_disconnected:
+                    storage.delete_in_transaction(conn, connection_id)
+                    unbound_count = fetch_one(
+                        conn,
+                        """
+                        WITH unbound AS (
+                            UPDATE game_servers gs
+                            SET provider_resource_id = NULL, updated_at = now()
+                            FROM provider_resources pr
+                            WHERE gs.provider_resource_id = pr.id
+                              AND pr.provider_connection_id = %s
+                            RETURNING gs.id
+                        )
+                        SELECT count(*)::int AS count FROM unbound
+                        """,
+                        (connection_id,),
+                    )["count"]
+                    execute(
+                        conn,
+                        """
+                        UPDATE provider_resources
+                        SET available = false, selected_at = NULL, updated_at = now()
+                        WHERE provider_connection_id = %s
+                        """,
+                        (connection_id,),
+                    )
+                    execute(
+                        conn,
+                        """
+                        UPDATE provider_connections
+                        SET status = 'revoked', granted_scopes = ARRAY[]::text[],
+                            revoked_at = now(), last_error_code = NULL, updated_at = now()
+                        WHERE id = %s
+                        """,
+                        (connection_id,),
+                    )
+                    _audit(conn, community_id, "provider.connection.nitrado_disconnected", connection_id, {
+                        "provider_key": "nitrado",
+                        "unbound_game_servers": unbound_count,
+                        "provider_token_revoked": False,
+                    })
+                    connection = _connection_row(conn, community_id, connection_id)
+    except ProviderSecretStorageError as exc:
+        return api_error(exc.code, str(exc), 503)
+
+    return jsonify({
+        "connection": _connection_response(connection),
+        "disconnected": {
+            "already_disconnected": already_disconnected,
+            "unbound_game_servers": unbound_count,
+            "provider_token_revoked": False,
+        },
+    })
+
+
 @hosting_connections_bp.post("/communities/<community_id>/hosting-connections/nitrado")
 @require_user
 @require_browser_csrf
@@ -154,6 +255,12 @@ def discover_nitrado(community_id, connection_id):
             current = _connection_row(conn, community_id, connection_id, for_update=True)
             if not current or current["provider_key"] != "nitrado":
                 return api_error("NOT_FOUND", "Connected hosting account was not found.", 404)
+            if current["status"] == "revoked" or not current["has_secret"]:
+                return api_error(
+                    "HOSTING_CONNECTION_NOT_ACTIVE",
+                    "The connected hosting account is no longer active.",
+                    409,
+                )
             resources = _persist_discovery(conn, connection_id, discovery)
             execute(
                 conn,
@@ -425,10 +532,13 @@ def _connection_row(conn, community_id, connection_id, for_update=False):
     return fetch_one(
         conn,
         """
-        SELECT id::text, community_id::text, provider_key, display_name, status,
-               granted_scopes, connected_at, last_verified_at, last_error_code
-        FROM provider_connections
-        WHERE id = %s AND community_id = %s
+        SELECT pc.id::text, pc.community_id::text, pc.provider_key,
+               pc.display_name, pc.status, pc.granted_scopes, pc.connected_at,
+               pc.last_verified_at, pc.last_error_code,
+               EXISTS (SELECT 1 FROM provider_connection_secrets pcs
+                       WHERE pcs.provider_connection_id = pc.id) AS has_secret
+        FROM provider_connections pc
+        WHERE pc.id = %s AND pc.community_id = %s
         """ + lock,
         (connection_id, community_id),
     )
@@ -441,7 +551,10 @@ def _connection_response(row):
         "connected_at": _iso(row["connected_at"]),
         "last_verified_at": _iso(row["last_verified_at"]),
         "last_error_code": row["last_error_code"],
-        "credential": {"configured": True, "masked": True},
+        "credential": {
+            "configured": bool(row["has_secret"]),
+            "masked": bool(row["has_secret"]),
+        },
     }
 
 

@@ -7,15 +7,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from twe.app import create_app
-from twe.config import Config, load_config
+from twe.config import Config
 from twe.db import Database, execute, fetch_one
 from twe.routes.auth import create_session
 from twe.security import hash_password
+from tests.integration_database import load_integration_config
 
 
 class AdminIntegrationTests(unittest.TestCase):
     def setUp(self):
-        loaded = load_config()
+        loaded = load_integration_config()
         self.suffix = secrets.token_hex(8)
         self.admin_email = f"admin-{self.suffix}@example.test"
         self.member_email = f"member-{self.suffix}@example.test"

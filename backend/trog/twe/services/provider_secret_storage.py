@@ -86,6 +86,9 @@ class ProviderSecretStorage(Protocol):
     def replace_in_transaction(self, conn, provider_connection_id: str, secret: bytes) -> None:
         raise NotImplementedError
 
+    def delete_in_transaction(self, conn, provider_connection_id: str) -> None:
+        raise NotImplementedError
+
 
 class AesGcmProviderSecretCipher:
     """AES-256-GCM envelope cipher with versioned, database-external keys."""
@@ -232,11 +235,14 @@ class AuthenticatedProviderSecretStorage:
     def delete(self, provider_connection_id: str) -> None:
         with self._database.connect() as conn:
             with conn.transaction():
-                execute(
-                    conn,
-                    "DELETE FROM provider_connection_secrets WHERE provider_connection_id = %s",
-                    (provider_connection_id,),
-                )
+                self.delete_in_transaction(conn, provider_connection_id)
+
+    def delete_in_transaction(self, conn, provider_connection_id: str) -> None:
+        execute(
+            conn,
+            "DELETE FROM provider_connection_secrets WHERE provider_connection_id = %s",
+            (provider_connection_id,),
+        )
 
     def rotate(self, provider_connection_id: str) -> None:
         with self._database.connect() as conn:
@@ -295,6 +301,9 @@ class UnavailableProviderSecretStorage:
         self._raise_unavailable()
 
     def replace_in_transaction(self, conn, provider_connection_id: str, secret: bytes) -> None:
+        self._raise_unavailable()
+
+    def delete_in_transaction(self, conn, provider_connection_id: str) -> None:
         self._raise_unavailable()
 
     @staticmethod

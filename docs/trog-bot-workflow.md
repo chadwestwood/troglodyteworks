@@ -38,6 +38,7 @@ Examples:
 @Trog how many players are online?
 @Trog who's on?
 @Trog what mods are installed?
+@Trog map settings
 ```
 
 For external provider-owned access, replies identify the provider-owned instance:
@@ -49,6 +50,10 @@ Cohorts in the Wild - Genesis is up and ready for players.
 Installed-mod questions require `instance.mods.names.read`. Trog reads the
 active launch list from the local ASA panel and responds with human-readable
 names in launch order. This is read-only; it does not grant mod management.
+
+The `map settings` summary combines server status, online player names, and
+the active mod list. Each section retains its corresponding read capability
+check; the combined command does not broaden the requester's access.
 
 Trog must not describe the instance as owned by the consumer Discord guild.
 

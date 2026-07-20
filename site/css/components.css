@@ -1,10 +1,12 @@
 .brand {
     display: inline-flex;
+    flex: none;
     align-items: center;
     gap: var(--space-10);
     color: var(--color-text);
     font-size: 0.97rem;
     font-weight: 700;
+    white-space: nowrap;
 }
 
 .brand-mark,
@@ -373,6 +375,10 @@
     align-items: start;
 }
 
+.invitation-methods > .invitation-method {
+    grid-column: span 6;
+}
+
 .invitation-method {
     height: 100%;
     padding: var(--space-18);
@@ -702,7 +708,7 @@
     }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 1080px) {
     .site-header,
     .app-header {
         display: grid;
@@ -755,6 +761,9 @@
         white-space: normal;
         overflow-wrap: anywhere;
     }
+}
+
+@media (max-width: 800px) {
 
     .resource-row {
         align-items: stretch;
@@ -776,6 +785,10 @@
     .admin-section-heading {
         align-items: start;
         flex-direction: column;
+    }
+
+    .invitation-methods > .invitation-method {
+        grid-column: auto;
     }
 }
 

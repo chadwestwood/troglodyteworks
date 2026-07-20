@@ -123,6 +123,34 @@ backend/trog/.venv/bin/python backend/trog/scripts/migrate.py
 
 Migrations are version-controlled SQL files in `backend/trog/migrations/`.
 
+### Isolated PostgreSQL integration tests
+
+Never run the integration suite against the application database `twe`. The test
+loader requires `TWE_TEST_DATABASE_URL`, rejects application/system database names,
+and requires the database name to end in `_test`.
+
+For this local installation, create and migrate the isolated database without
+putting database credentials on the command line:
+
+```bash
+sudo -u postgres createdb --owner=twe_app --template=template0 twe_test
+cd backend/trog
+.venv/bin/python scripts/configure_test_database.py --database twe_test
+.venv/bin/python scripts/migrate_test_database.py
+cd ../..
+backend/trog/.venv/bin/python -m pytest -q
+```
+
+To reset it, drop only the exact test database, recreate it, and rerun migrations
+from empty:
+
+```bash
+sudo -u postgres dropdb --if-exists twe_test
+sudo -u postgres createdb --owner=twe_app --template=template0 twe_test
+cd backend/trog
+.venv/bin/python scripts/migrate_test_database.py
+```
+
 ### Seed Initial Data
 
 ```bash

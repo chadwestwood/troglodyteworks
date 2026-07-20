@@ -8,17 +8,18 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from twe.app import create_app
-from twe.config import Config, load_config
+from twe.config import Config
 from twe.db import Database, execute, fetch_all, fetch_one
 from twe.oauth import ExternalProfile
 from twe.routes import account_identities
 from twe.routes.auth import create_session
 from twe.security import hash_password
+from tests.integration_database import load_integration_config
 
 
 class MultiProviderAuthIntegrationTests(unittest.TestCase):
     def setUp(self):
-        loaded = load_config()
+        loaded = load_integration_config()
         self.config = Config(
             database_url=loaded.database_url,
             google_client_id="google-client",

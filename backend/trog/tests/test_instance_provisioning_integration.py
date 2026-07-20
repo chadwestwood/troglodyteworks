@@ -8,12 +8,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from twe.app import create_app
-from twe.config import load_config
 from twe.db import Database, execute, fetch_one
 from twe.routes.auth import create_session
 from twe.security import hash_password
 from twe.services import instance_provisioning
 from twe.services.hosting import ProviderInstanceState
+from tests.integration_database import load_integration_config
 
 
 class _FakeProvider:
@@ -45,7 +45,7 @@ class _FakeProvider:
 
 class InstanceProvisioningIntegrationTests(unittest.TestCase):
     def setUp(self):
-        loaded = load_config()
+        loaded = load_integration_config()
         self.config = replace(loaded)
         self.db = Database(self.config.database_url)
         self.suffix = secrets.token_hex(8)

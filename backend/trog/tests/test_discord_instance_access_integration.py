@@ -9,19 +9,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from twe.app import create_app
-from twe.config import load_config
 from twe.db import Database, execute, fetch_one
 from twe.discord_api import DiscordAPIError, DiscordOAuthResult
 from twe.discord_bot.authorization import authorize
 from twe.routes import discord_access
 from twe.routes.auth import create_session
 from twe.security import hash_password
+from tests.integration_database import load_integration_config
 
 
 class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.config = replace(
-            load_config(),
+            load_integration_config(),
             discord_client_id="discord-client",
             discord_client_secret="discord-secret",
             discord_install_redirect_uri="https://example.test/api/v1/discord/oauth/callback",
@@ -233,7 +233,8 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Trog Discord Access", response.data)
         self.assertIn(b"data-discord-guild-select", response.data)
-        self.assertIn(b"Refresh Discord servers", response.data)
+        self.assertIn(b"Refresh Discord", response.data)
+        self.assertIn(b"servers</button>", response.data)
         self.assertNotIn(b"paste the Discord server ID", response.data)
 
     def _active_grant(self):

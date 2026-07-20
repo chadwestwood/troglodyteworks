@@ -183,6 +183,7 @@
     .app-shell {
         width: calc(100% - 1rem);
         max-width: none;
+        padding: var(--space-16) 0 var(--space-32);
     }
 
     .app-shell.narrow {
@@ -266,6 +267,11 @@
     }
 
     .invitation-disclosure>summary small {
+        display: none;
+    }
+
+    body[data-page="community-invitations"] .invite-primary-context,
+    body[data-page="community-invitations"] .invite-secondary-copy {
         display: none;
     }
 }

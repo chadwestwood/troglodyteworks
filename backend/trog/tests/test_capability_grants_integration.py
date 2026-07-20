@@ -8,15 +8,15 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.assign_cohorts_owner import assign_owner
 from twe.authorization import can_request_capability
-from twe.config import load_config
 from twe.db import Database, execute, fetch_one
 from twe.security import hash_password
+from tests.integration_database import load_integration_config
 
 
 class CapabilityGrantIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.db = Database(load_config().database_url)
+        cls.db = Database(load_integration_config().database_url)
         try:
             with cls.db.connect() as conn:
                 fetch_one(conn, "SELECT 1")

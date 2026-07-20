@@ -7,19 +7,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts.backfill_genesis_provider import GenesisBackfillError, backfill_genesis_provider
-from twe.config import load_config
 from twe.db import Database, execute, fetch_all, fetch_one
 from twe.services.provider_resolution import resolve_game_server_provider
 from twe.services.provider_secret_storage import (
     AesGcmProviderSecretCipher,
     AuthenticatedProviderSecretStorage,
 )
+from tests.integration_database import load_integration_config
 
 
 class ProviderFoundationIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.db = Database(load_config().database_url)
+        cls.db = Database(load_integration_config().database_url)
         try:
             with cls.db.connect() as conn:
                 present = fetch_one(conn, "SELECT to_regclass('provider_connections') IS NOT NULL AS present")
@@ -32,6 +32,7 @@ class ProviderFoundationIntegrationTests(unittest.TestCase):
 
     def test_genesis_backfill_is_idempotent_and_preserves_relationships(self):
         with self.db.connect() as conn:
+            self._genesis_topology(conn)
             before = self._genesis_snapshot(conn)
             first = backfill_genesis_provider(conn)
             second = backfill_genesis_provider(conn)
@@ -90,6 +91,7 @@ class ProviderFoundationIntegrationTests(unittest.TestCase):
 
     def test_missing_genesis_topology_fails_before_writes(self):
         with self.db.connect() as conn:
+            self._genesis_topology(conn)
             before_count = fetch_one(
                 conn,
                 "SELECT count(*)::int AS count FROM provider_connections WHERE external_account_id = 'cohorts-local-asa'",
@@ -110,6 +112,7 @@ class ProviderFoundationIntegrationTests(unittest.TestCase):
     def test_ambiguous_genesis_topology_fails_before_writes(self):
         suffix = secrets.token_hex(6)
         with self.db.connect() as conn:
+            self._genesis_topology(conn)
             before_count = fetch_one(
                 conn,
                 "SELECT count(*)::int AS count FROM provider_connections WHERE external_account_id = 'cohorts-local-asa'",
@@ -320,6 +323,38 @@ class ProviderFoundationIntegrationTests(unittest.TestCase):
             (topology["provider_resource_id"],),
         )["count"] if topology["provider_resource_id"] else 0
         return topology
+
+    def _genesis_topology(self, conn):
+        community = fetch_one(
+            conn,
+            """
+            INSERT INTO communities (name, slug)
+            VALUES ('Cohorts in the Wild', 'cohorts-in-the-wild')
+            RETURNING id::text
+            """,
+        )
+        server = fetch_one(
+            conn,
+            """
+            INSERT INTO game_servers
+                (community_id, name, slug, game_type, management_adapter)
+            VALUES (%s, 'ARK Survival Ascended', 'ark-survival-ascended',
+                    'ARK Survival Ascended', 'local_asa')
+            RETURNING id::text
+            """,
+            (community["id"],),
+        )
+        instance = fetch_one(
+            conn,
+            """
+            INSERT INTO game_instances
+                (game_server_id, name, slug, instance_type, game_identifier)
+            VALUES (%s, 'Genesis', 'genesis', 'map', 'Genesis_WP')
+            RETURNING id::text
+            """,
+            (server["id"],),
+        )
+        return community, server, instance
 
     def _community(self, conn, suffix):
         return fetch_one(

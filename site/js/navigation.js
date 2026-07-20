@@ -1,5 +1,5 @@
 (function initializeResponsiveNavigation() {
-  const compactNavigation = window.matchMedia("(max-width: 800px)");
+  const compactNavigation = window.matchMedia("(max-width: 1080px)");
 
   document.querySelectorAll(".site-header, .app-header").forEach((header, index) => {
     const navigation = header.querySelector(".header-actions");

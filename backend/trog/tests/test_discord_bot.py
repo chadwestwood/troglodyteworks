@@ -8,6 +8,7 @@ sys.path.insert(0, str(ROOT))
 
 from twe.config import Config
 from twe.discord_bot.core import (
+    BotReply,
     DiscordBotConfigurationError,
     GameServerRef,
     classify_intent,
@@ -18,6 +19,7 @@ from twe.discord_bot.core import (
     player_count_reply,
     player_list_reply,
     mod_list_reply,
+    server_settings_reply,
     server_status_reply,
     should_respond,
 )
@@ -60,6 +62,9 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(classify_intent("<@123> is anyone online"), "player_list")
         self.assertEqual(classify_intent("@trog list online players"), "player_list")
         self.assertEqual(classify_intent("<@123> show online players"), "player_list")
+        self.assertEqual(classify_intent("@trog map settings"), "server_settings")
+        self.assertEqual(classify_intent("<@123> show map settings"), "server_settings")
+        self.assertIsNone(classify_intent("@trog server settings"))
         self.assertEqual(classify_intent("<@123> what mods are installed?"), "mod_list")
         self.assertEqual(classify_intent("<@123> what mod's are installed?"), "mod_list")
         self.assertEqual(classify_intent("<@123> list active mods"), "mod_list")
@@ -192,6 +197,42 @@ class DiscordBotCoreTests(unittest.TestCase):
 
         reply = mod_list_reply(self.server, self.config, mods_provider=unavailable)
         self.assertEqual(reply.code, "mods_unavailable")
+
+    def test_server_settings_combines_all_three_sections(self):
+        reply = server_settings_reply(
+            BotReply("Server is ready.", "server_up"),
+            BotReply("- Player One", "player_list"),
+            BotReply("- Mod One", "mod_list"),
+        )
+
+        self.assertEqual(reply.code, "server_settings")
+        self.assertIn("**Server status**\nServer is ready.", reply.text)
+        self.assertIn("**Online players**\n- Player One", reply.text)
+        self.assertIn("**Active mods**\n- Mod One", reply.text)
+
+    @patch("twe.discord_bot.core._resolved_health_provider", return_value=lambda _config: {})
+    @patch("twe.discord_bot.core._read_reply")
+    @patch("twe.discord_bot.core.authorize")
+    def test_server_settings_authorizes_each_read_capability(
+        self, authorize_mock, read_reply_mock, _health_provider_mock
+    ):
+        authorize_mock.side_effect = lambda _conn, _guild, _channel, _user, capability: AuthorizationDecision(
+            True, "authorized", capability, self._context(),
+            DiscordIdentity("111", "user", "membership", "member"),
+        )
+        read_reply_mock.side_effect = [
+            BotReply("Server is ready.", "server_up"),
+            BotReply("- Player One", "player_list"),
+            BotReply("- Mod One", "mod_list"),
+        ]
+
+        reply = respond_to_request("server_settings", "222", "333", "111", object(), self.config)
+
+        self.assertEqual(reply.code, "server_settings")
+        self.assertEqual(
+            [call.args[-1] for call in authorize_mock.call_args_list],
+            ["instance.status.read", "instance.players.names.read", "instance.mods.names.read"],
+        )
 
     @patch("twe.discord_bot.core.authorize")
     def test_authorized_restart_is_recognized_but_not_executed(self, authorize_mock):
