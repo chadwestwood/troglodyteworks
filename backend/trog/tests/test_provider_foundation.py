@@ -7,6 +7,7 @@ sys.path.insert(0, str(ROOT))
 
 from twe.config import Config
 from twe.services import local_asa
+from twe.services.nitrado_provider import NitradoProvider
 from twe.services.provider_contracts import (
     BoundSecretAccessor,
     ProviderConnectionRecord,
@@ -112,6 +113,7 @@ class ProviderFoundationTests(unittest.TestCase):
         )
         self.assertIsNotNone(registry.credential_validator("nitrado"))
         self.assertIsNotNone(registry.credential_resource_discoverer("nitrado"))
+        self.assertIsInstance(registry.status_reader("nitrado"), NitradoProvider)
 
     def test_secret_envelope_and_context_repr_redact_secret_material(self):
         secret = ProviderSecretEnvelope(

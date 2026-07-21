@@ -2,6 +2,7 @@ import json
 import socket
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,6 +20,15 @@ from twe.services.nitrado_provider import (
     NitradoRateLimitedError,
     NitradoUnavailableError,
 )
+from twe.services.provider_contracts import (
+    BoundSecretAccessor,
+    ProviderConnectionRecord,
+    ProviderContext,
+    ProviderResourceRecord,
+    ProviderSecretEnvelope,
+    TimeoutPolicy,
+)
+from twe.services.provider_secret_storage import AesGcmProviderSecretCipher
 
 
 class _Transport:
@@ -41,9 +51,64 @@ def _response(services):
     )
 
 
+def _gameserver_response(status):
+    return NitradoHttpResponse(
+        status=200,
+        body=json.dumps({
+            "status": "success",
+            "data": {
+                "gameserver": {
+                    "status": status,
+                    "websocket_token": "must-not-survive",
+                    "credentials": {"password": "must-not-survive"},
+                },
+            },
+        }).encode(),
+    )
+
+
 class NitradoProviderTests(unittest.TestCase):
     def setUp(self):
-        self.config = Config(database_url="postgresql://unused")
+        self.key = b"k" * 32
+        self.config = Config(
+            database_url="postgresql://unused",
+            provider_secret_keys={"key-1": self.key},
+            provider_secret_active_key_version="key-1",
+        )
+
+    def _context(self, credential=b"secret-token", expires_at=None):
+        cipher = AesGcmProviderSecretCipher({"key-1": self.key}, "key-1")
+        encrypted, nonce, version = cipher.encrypt("connection-id", credential)
+        return ProviderContext(
+            connection=ProviderConnectionRecord(
+                id="connection-id",
+                community_id="community-id",
+                provider_key="nitrado",
+                display_name="Nitrado",
+                auth_strategy="configuration",
+                external_account_id=None,
+                status="active",
+            ),
+            resource=ProviderResourceRecord(
+                id="resource-id",
+                provider_connection_id="connection-id",
+                resource_type="game_server_service",
+                external_resource_id="42",
+                display_name="Genesis",
+                provider_game_key="ark_survival_ascended",
+                normalized_status="unknown",
+                provider_status="unknown",
+            ),
+            secret_accessor=BoundSecretAccessor(ProviderSecretEnvelope(
+                storage_kind="encrypted_payload",
+                encrypted_payload=encrypted,
+                encryption_nonce=nonce,
+                key_version=version,
+                expires_at=expires_at,
+            )),
+            correlation_id="correlation-id",
+            timeout_policy=TimeoutPolicy(),
+        )
 
     def test_uses_services_endpoint_authorization_header_and_service_scope_only(self):
         transport = _Transport(_response([]))
@@ -92,6 +157,74 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertNotIn("must-not-survive", repr(supported))
         self.assertIsNone(result.resources[1].provider_game_key)
         self.assertEqual(result.resources[1].normalized_status, "offline")
+
+    def test_reads_live_gameserver_status_with_decrypted_bound_credential(self):
+        transport = _Transport(_gameserver_response("started"))
+
+        status = NitradoProvider(self.config, transport).read_status(self._context())
+
+        self.assertEqual(status.normalized_status, "online")
+        self.assertEqual(status.provider_status, "ready")
+        self.assertEqual(status.as_health_payload()["overall_status"], "ready")
+        self.assertEqual(
+            transport.calls[0][0],
+            "https://api.nitrado.net/services/42/gameservers",
+        )
+        self.assertEqual(transport.calls[0][1]["Authorization"], "Bearer secret-token")
+        rendered = repr(status)
+        self.assertNotIn("secret-token", rendered)
+        self.assertNotIn("must-not-survive", rendered)
+
+    def test_normalizes_gameserver_transitions_without_claiming_ready(self):
+        cases = {
+            "stopped": "offline",
+            "restarting": "degraded",
+            "adminlocked": "failed",
+            "new-provider-state": "unknown",
+        }
+        for provider_status, expected in cases.items():
+            with self.subTest(provider_status=provider_status):
+                status = NitradoProvider(
+                    self.config,
+                    _Transport(_gameserver_response(provider_status)),
+                ).read_status(self._context())
+                self.assertEqual(status.provider_status, expected)
+
+    def test_status_read_rejects_expired_or_missing_credentials_before_http(self):
+        expired = datetime.now(timezone.utc) - timedelta(seconds=1)
+        transport = _Transport(_gameserver_response("started"))
+        provider = NitradoProvider(self.config, transport)
+
+        with self.assertRaises(NitradoAuthenticationError):
+            provider.read_status(self._context(expires_at=expired))
+        self.assertEqual(transport.calls, [])
+
+        context = self._context()
+        context = ProviderContext(
+            connection=context.connection,
+            resource=context.resource,
+            secret_accessor=BoundSecretAccessor(),
+            correlation_id=context.correlation_id,
+            timeout_policy=context.timeout_policy,
+        )
+        with self.assertRaises(NitradoAuthenticationError):
+            provider.read_status(context)
+        self.assertEqual(transport.calls, [])
+
+    def test_status_read_rejects_malformed_or_ambiguous_gameserver_payload(self):
+        bodies = (
+            b'{"status":"success","data":{"gameserver":{}}}',
+            b'{"status":"success","data":{"gameservers":[]}}',
+            b'{"status":"success","data":{"gameservers":[{"status":"started"},{"status":"stopped"}]}}',
+        )
+        for body in bodies:
+            with self.subTest(body=body):
+                provider = NitradoProvider(
+                    self.config,
+                    _Transport(NitradoHttpResponse(status=200, body=body)),
+                )
+                with self.assertRaises(NitradoMalformedResponseError):
+                    provider.read_status(self._context())
 
     def test_maps_provider_failures_to_safe_typed_errors(self):
         cases = (

@@ -1,6 +1,6 @@
 # Troglodyte Works Current State
 
-Last Updated: 2026-07-10
+Last Updated: 2026-07-20
 
 ---
 
@@ -83,7 +83,11 @@ Production
 
 Hosting:
 
-Self-hosted Linux
+Nitrado (migrated from self-hosted Linux on 2026-07-19)
+
+The public `troglodyteworks.com` route is temporarily unavailable while the
+local router is repaired. Local development and the isolated PostgreSQL test
+suite remain available.
 
 ---
 

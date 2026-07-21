@@ -84,6 +84,7 @@ def build_provider_registry(config, nitrado_transport=None) -> ProviderRegistry:
         "nitrado",
         ProviderRegistration(
             connection_describer_factory=lambda: NitradoProvider(config, nitrado_transport),
+            status_reader_factory=lambda: NitradoProvider(config, nitrado_transport),
             credential_validator_factory=lambda: NitradoProvider(config, nitrado_transport),
             credential_resource_discoverer_factory=lambda: NitradoProvider(config, nitrado_transport),
         ),
