@@ -46,6 +46,10 @@ def create_app(config=None, database=None, provider_registry=None):
 
     site_root = Path(__file__).resolve().parents[3] / "site"
 
+    @app.get("/health")
+    def health_check():
+        return {"status": "ok"}
+
     @app.get("/")
     def site_index():
         return send_from_directory(site_root, "index.html")
