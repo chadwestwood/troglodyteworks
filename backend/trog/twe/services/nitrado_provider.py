@@ -161,15 +161,31 @@ class NitradoClient:
         return self._parse_gameserver_players(response.body)
 
     def get_gameserver_mods(self, service_id: str, credential: bytes) -> list[dict[str, str]]:
+        mods, _setting = self.get_gameserver_mod_configuration(service_id, credential)
+        return mods
+
+    def get_gameserver_mod_configuration(
+        self, service_id: str, credential: bytes,
+    ) -> tuple[list[dict[str, str]], tuple[str, str] | None]:
         if not service_id.isdigit():
             raise NitradoMalformedResponseError()
         response = self._get(f"/services/{service_id}/gameservers", credential)
-        return self._parse_gameserver_mods(response.body)
+        return self._parse_gameserver_mod_configuration(response.body)
 
-    def set_gameserver_mods(self, service_id: str, credential: bytes, mod_ids: list[str]) -> None:
+    def set_gameserver_mods(
+        self,
+        service_id: str,
+        credential: bytes,
+        mod_ids: list[str],
+        *,
+        category: str,
+        key: str,
+    ) -> None:
         if not service_id.isdigit() or any(not mod_id.isdigit() for mod_id in mod_ids):
             raise NitradoMalformedResponseError()
-        parameters = {"category": "general", "key": "activeMods", "value": ",".join(mod_ids)}
+        if not category or not key:
+            raise NitradoMalformedResponseError()
+        parameters = {"category": category, "key": key, "value": ",".join(mod_ids)}
         self._post(
             f"/services/{service_id}/gameservers/settings?{urlencode(parameters)}",
             credential,
@@ -339,16 +355,31 @@ class NitradoClient:
 
     @staticmethod
     def _parse_gameserver_mods(body: bytes) -> list[dict[str, str]]:
+        mods, _setting = NitradoClient._parse_gameserver_mod_configuration(body)
+        return mods
+
+    @staticmethod
+    def _parse_gameserver_mod_configuration(
+        body: bytes,
+    ) -> tuple[list[dict[str, str]], tuple[str, str] | None]:
         try:
             gameserver = _gameserver_from_body(body)
             candidates = []
+            writable_setting = None
+            settings = gameserver.get("settings")
+            if isinstance(settings, dict):
+                discovered = _find_writable_mod_setting(settings)
+                if discovered:
+                    category, key, value = discovered
+                    writable_setting = (category, key)
+                    candidates.append(value)
             for container_name in ("settings", "game_specific"):
                 container = gameserver.get(container_name)
                 if not isinstance(container, dict):
                     continue
                 candidates.extend(_find_mod_values(container))
             if not candidates:
-                return []
+                return [], writable_setting
 
             ordered_mods = _normalize_mods(candidates[0])
             names = {}
@@ -359,7 +390,7 @@ class NitradoClient:
             return [
                 {"id": mod["id"], "name": names.get(mod["id"], mod["name"])}
                 for mod in ordered_mods
-            ]
+            ], writable_setting
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             raise NitradoMalformedResponseError() from None
 
@@ -490,22 +521,32 @@ class NitradoProvider:
         if context.connection.provider_key != "nitrado" or not re.fullmatch(r"\d{3,12}", mod_id):
             raise ValueError("A valid numeric CurseForge mod ID is required.")
         credential = self._credential(context)
-        mods = self._client.get_gameserver_mods(context.resource.external_resource_id, credential)
+        mods, writable_setting = self._client.get_gameserver_mod_configuration(
+            context.resource.external_resource_id,
+            credential,
+        )
         existing_ids = [mod["id"] for mod in mods]
         if mod_id in existing_ids:
             enriched = self._mod_catalog.enrich(mods) if self._mod_catalog else mods
             return False, enriched
+        if not writable_setting:
+            raise NitradoProviderError(
+                "Nitrado did not expose a writable active-mod setting for this server."
+            )
+        category, setting_key = writable_setting
         self._client.set_gameserver_mods(
             context.resource.external_resource_id,
             credential,
             [*existing_ids, mod_id],
+            category=category,
+            key=setting_key,
         )
         # A successful settings response only means Nitrado accepted the
         # request. Read the setting back before telling Discord it was saved.
         updated = None
-        for attempt in range(3):
+        for attempt in range(11):
             if attempt:
-                time.sleep(0.5)
+                time.sleep(3)
             confirmed = self._client.get_gameserver_mods(
                 context.resource.external_resource_id,
                 credential,
@@ -610,6 +651,22 @@ def _find_mod_values(container: dict) -> list:
         if isinstance(value, dict):
             found.extend(_find_mod_values(value))
     return found
+
+
+def _find_writable_mod_setting(settings: dict) -> tuple[str, str, object] | None:
+    """Return the exact Nitrado settings category/key that holds active mods."""
+    priority = ("activemods", "mods", "additionalmods")
+    for normalized_target in priority:
+        for category, values in settings.items():
+            if not isinstance(values, dict):
+                continue
+            for key, value in values.items():
+                normalized_key = re.sub(r"[^a-z0-9]+", "", str(key).lower())
+                # An empty string is still a valid writable setting: it is how
+                # Nitrado represents a server with no active mods yet.
+                if normalized_key == normalized_target and value is not None:
+                    return str(category), str(key), value
+    return None
 
 
 def _normalize_mods(value) -> list[dict[str, str]]:

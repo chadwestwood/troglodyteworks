@@ -287,6 +287,40 @@ class NitradoProviderTests(unittest.TestCase):
             {"id": "928708", "name": "Dino Depot"},
         ])
 
+    def test_discovers_the_servers_exact_writable_mod_setting(self):
+        response = NitradoHttpResponse(
+            200,
+            json.dumps({
+                "status": "success",
+                "data": {"gameserver": {"settings": {
+                    "config": {"active_mods": "927090,928708"},
+                }}},
+            }).encode(),
+        )
+        client = NitradoProvider(self.config, _Transport(response))._client
+
+        mods, setting = client.get_gameserver_mod_configuration("42", b"token")
+
+        self.assertEqual([mod["id"] for mod in mods], ["927090", "928708"])
+        self.assertEqual(setting, ("config", "active_mods"))
+
+    def test_discovers_an_empty_writable_mod_setting(self):
+        response = NitradoHttpResponse(
+            200,
+            json.dumps({
+                "status": "success",
+                "data": {"gameserver": {"settings": {
+                    "config": {"active_mods": ""},
+                }}},
+            }).encode(),
+        )
+        client = NitradoProvider(self.config, _Transport(response))._client
+
+        mods, setting = client.get_gameserver_mod_configuration("42", b"token")
+
+        self.assertEqual(mods, [])
+        self.assertEqual(setting, ("config", "active_mods"))
+
     def test_enriches_nitrado_ids_from_the_shared_catalog(self):
         with tempfile.TemporaryDirectory() as directory:
             catalog_path = Path(directory) / "asa_mod_catalog.json"
@@ -325,6 +359,14 @@ class NitradoProviderTests(unittest.TestCase):
         transport = _Transport([
             _gameserver_mods_response("927090"),
             NitradoHttpResponse(200, b'{"status":"success","data":{}}'),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
             _gameserver_mods_response("927090"),
             _gameserver_mods_response("927090"),
             _gameserver_mods_response("927090"),
