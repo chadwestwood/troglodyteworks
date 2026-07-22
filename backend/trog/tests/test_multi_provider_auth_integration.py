@@ -161,8 +161,16 @@ class MultiProviderAuthIntegrationTests(unittest.TestCase):
             self._login(conn, other_client, other["id"])
         rejected = other_client.get(f"/api/v1/auth/google/callback?state={state}&code=google-link")
         self.assertEqual(rejected.status_code, 401)
+        accepted = self.client.get(f"/api/v1/auth/google/callback?state={state}&code=google-link")
+        self.assertEqual(accepted.status_code, 302)
         with self.db.connect() as conn:
             self.assertEqual(self._user_count(conn), 2)
+            linked = fetch_one(
+                conn,
+                "SELECT user_id::text FROM user_external_identities WHERE provider = 'google' AND provider_subject = %s",
+                (f"link-google-{self.suffix}",),
+            )
+        self.assertEqual(linked["user_id"], user["id"])
         self.created_users.extend([user["id"], other["id"]])
 
     def test_oauth_state_is_one_time_and_invalid_state_is_rejected(self):

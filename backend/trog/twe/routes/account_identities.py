@@ -42,6 +42,17 @@ def oauth_callback(provider):
         return api_error("OAUTH_CALLBACK_INVALID", "OAuth callback is missing required values.", 400)
     config = current_app.config["TWE_CONFIG"]
     with current_app.config["TWE_DB"].connect() as conn:
+        pending_state = read_oauth_state(conn, state, provider)
+        if not pending_state:
+            return api_error("OAUTH_STATE_INVALID", "OAuth state was invalid or expired.", 400)
+        if pending_state["purpose"] == "link":
+            current = current_user_from_cookie()
+            if not current or current["id"] != pending_state["user_id"]:
+                return api_error(
+                    "OAUTH_LINK_SESSION_CHANGED",
+                    "Return to the same Troglodyte Works address where you started and try again.",
+                    401,
+                )
         oauth_state = consume_oauth_state(conn, state, provider)
         if not oauth_state:
             return api_error("OAUTH_STATE_INVALID", "OAuth state was invalid or expired.", 400)
@@ -183,6 +194,21 @@ def consume_oauth_state(conn, state: str, provider: str):
         (hash_oauth_value(state), provider),
     )
     return row
+
+
+def read_oauth_state(conn, state: str, provider: str):
+    return fetch_one(
+        conn,
+        """
+        SELECT purpose, user_id::text
+        FROM oauth_states
+        WHERE state_hash = %s
+          AND provider = %s
+          AND consumed_at IS NULL
+          AND expires_at > now()
+        """,
+        (hash_oauth_value(state), provider),
+    )
 
 
 def finish_login_callback(conn, oauth_state, profile: ExternalProfile, config):
