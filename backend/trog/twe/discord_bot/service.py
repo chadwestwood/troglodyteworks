@@ -21,6 +21,7 @@ NO_RESULT_REPLY = BotReply(
     "I received your command, but I could not produce a result right now. Reason: no matching response was generated.",
     "no_result",
 )
+DISCORD_MESSAGE_LIMIT = 1900
 
 
 def main():
@@ -195,7 +196,8 @@ async def handle_message(
         reply = NO_RESULT_REPLY
 
     send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
-    await message.channel.send(reply.text, **send_options)
+    for chunk in split_discord_message(reply.text):
+        await message.channel.send(chunk, **send_options)
     logger.info("Discord reply sent guild_id=%s response_code=%s", message.guild.id, reply.code)
     return True
 
@@ -222,8 +224,33 @@ async def handle_interaction(
         guild_id, channel_id, author_id, intent, reply.code,
     )
     send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
-    await interaction.followup.send(reply.text, ephemeral=ephemeral, **send_options)
+    for chunk in split_discord_message(reply.text):
+        await interaction.followup.send(chunk, ephemeral=ephemeral, **send_options)
     return reply
+
+
+def split_discord_message(text: str, limit: int = DISCORD_MESSAGE_LIMIT) -> list[str]:
+    rendered = str(text or "").strip()
+    if not rendered:
+        return ["I could not produce a response right now."]
+    chunks = []
+    current = ""
+    for line in rendered.splitlines():
+        while len(line) > limit:
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.append(line[:limit])
+            line = line[limit:]
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > limit:
+            chunks.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    return chunks or ["I could not produce a response right now."]
 
 
 if __name__ == "__main__":

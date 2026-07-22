@@ -31,7 +31,7 @@ from twe.discord_bot.authorization import (
     channel_enabled,
     resolve_identity,
 )
-from twe.discord_bot.service import handle_interaction, handle_message
+from twe.discord_bot.service import handle_interaction, handle_message, split_discord_message
 
 
 class DiscordBotCoreTests(unittest.TestCase):
@@ -74,6 +74,15 @@ class DiscordBotCoreTests(unittest.TestCase):
         service_source = (ROOT / "twe" / "discord_bot" / "service.py").read_text()
         self.assertIn('@server_group.command(name="settings"', service_source)
         self.assertIn('interaction, "server_settings"', service_source)
+
+    def test_long_discord_responses_are_split_within_platform_limit(self):
+        text = "\n".join(f"- Mod {index}: " + ("x" * 300) for index in range(20))
+
+        chunks = split_discord_message(text)
+
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(chunk) <= 1900 for chunk in chunks))
+        self.assertEqual("\n".join(chunks), text)
 
     def test_parse_guild_mapping(self):
         mapping = parse_guild_game_server_map("111=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa,222=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
