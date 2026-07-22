@@ -6,12 +6,20 @@
   const member = document.querySelector("[data-member-flow]");
   const error = document.querySelector("[data-error]");
   const guildSelect = document.querySelector("[data-managed-guild]");
+  let activePath = "manager";
 
   function showPath(path) {
+    activePath = path;
     choice.hidden = true;
-    manager.hidden = path !== "manager";
+    manager.hidden = !["manager", "host"].includes(path);
     member.hidden = path !== "member";
-    if (path === "manager") loadManager().catch(showError);
+    if (["manager", "host"].includes(path)) {
+      const heading = manager.querySelector("h1");
+      const button = manager.querySelector("[data-create-workspace]");
+      heading.textContent = path === "host" ? "Choose the Discord server for your new game" : "Choose the Discord server you manage";
+      button.textContent = path === "host" ? "Create this Community and choose Minecraft" : "Create this Community and continue to Nitrado";
+      loadManager().catch(showError);
+    }
     if (path === "member") loadMember().catch(showError);
   }
   function showError(problem) {
@@ -45,7 +53,7 @@
     data.guilds.forEach((guild) => guildSelect.appendChild(new Option(guild.name, guild.id)));
     const connect = document.querySelector("[data-discord-connect]");
     if (!data.discord_connected || !data.guilds.length) {
-      connectButton(connect, data.discord_connected ? "Reconnect Discord to refresh servers" : "Connect Discord", "/onboarding/?path=manager");
+      connectButton(connect, data.discord_connected ? "Reconnect Discord to refresh servers" : "Connect Discord", `/onboarding/?path=${activePath}`);
     } else {
       connect.textContent = "Discord is connected. Only servers you can manage appear below.";
     }
@@ -90,14 +98,19 @@
   document.querySelectorAll("[data-back]").forEach((button) => button.addEventListener("click", () => {
     choice.hidden = false; manager.hidden = true; member.hidden = true;
   }));
-  document.querySelector("[data-refresh-discord]")?.addEventListener("click", () => connectDiscord("/onboarding/?path=manager").catch(showError));
+  document.querySelector("[data-refresh-discord]")?.addEventListener("click", () => connectDiscord(`/onboarding/?path=${activePath}`).catch(showError));
   document.querySelector("[data-create-workspace]")?.addEventListener("click", async () => {
     if (!guildSelect.value) return showError(new Error("Choose the Discord server you manage."));
     const data = await apiRequest("/onboarding/discord-workspace", {
-      method: "POST", body: JSON.stringify({ discord_guild_id: guildSelect.value }),
+      method: "POST", body: JSON.stringify({
+        discord_guild_id: guildSelect.value,
+        setup_intent: activePath === "host" ? "minecraft_hosting" : "nitrado_connection",
+      }),
     });
     remember("twe.community_id", data.workspace.id);
-    window.location.href = `/communities/${encodeURIComponent(data.workspace.slug)}/hosting/?setup=1`;
+    window.location.href = activePath === "host"
+      ? `/hosting/new/?community_id=${encodeURIComponent(data.workspace.id)}`
+      : `/communities/${encodeURIComponent(data.workspace.slug)}/hosting/?setup=1`;
   });
   document.querySelector("[data-copy-message]")?.addEventListener("click", async (event) => {
     const message = document.querySelector("[data-share-message]").value;
@@ -106,7 +119,7 @@
   });
 
   const initialPath = new URLSearchParams(window.location.search).get("path");
-  if (["manager", "member"].includes(initialPath)) showPath(initialPath);
+  if (["manager", "member", "host"].includes(initialPath)) showPath(initialPath);
 })().catch((error) => {
   const node = document.querySelector("[data-error]");
   if (node) { node.textContent = error.message; node.hidden = false; }

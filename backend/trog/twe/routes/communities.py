@@ -17,8 +17,11 @@ communities_bp = Blueprint("twe_communities", __name__)
 def create_discord_workspace():
     payload = request.get_json(silent=True) or {}
     guild_id = str(payload.get("discord_guild_id") or "").strip()
+    setup_intent = str(payload.get("setup_intent") or "nitrado_connection").strip()
     if not guild_id.isdigit() or len(guild_id) > 20:
         return api_error("VALIDATION_ERROR", "Choose a Discord server that you manage.", 400)
+    if setup_intent not in {"nitrado_connection", "minecraft_hosting"}:
+        return api_error("VALIDATION_ERROR", "Choose a supported setup path.", 400)
     with current_app.config["TWE_DB"].connect() as conn:
         authority = fetch_one(conn, """
             SELECT discord_guild_name FROM discord_guild_authority_verifications
@@ -29,7 +32,7 @@ def create_discord_workspace():
         existing = fetch_one(conn, """
             SELECT c.id::text, c.name, c.slug, gs.id::text AS game_server_id, gi.id::text AS game_instance_id
             FROM communities c
-            JOIN game_servers gs ON gs.community_id = c.id
+            LEFT JOIN game_servers gs ON gs.community_id = c.id
             LEFT JOIN game_instances gi ON gi.game_server_id = gs.id
             WHERE c.discord_setup_guild_id = %s LIMIT 1
         """, (guild_id,))
@@ -52,16 +55,17 @@ def create_discord_workspace():
                 VALUES (%s, %s, %s, %s, %s) RETURNING id::text, name, slug
             """, (name, slug, "Operations workspace connected to Discord.", g.current_user["id"], guild_id))
             execute(conn, "INSERT INTO community_memberships (user_id, community_id, role) VALUES (%s, %s, 'owner')", (g.current_user["id"], community["id"]))
-            server = fetch_one(conn, """
-                INSERT INTO game_servers (community_id, name, slug, game_type, management_adapter, game_key)
-                VALUES (%s, 'ARK: Survival Ascended', 'ark-survival-ascended', 'ARK Survival Ascended', 'nitrado', 'ark_survival_ascended')
-                RETURNING id::text
-            """, (community["id"],))
-            instance = fetch_one(conn, """
-                INSERT INTO game_instances (game_server_id, name, slug, instance_type, game_identifier)
-                VALUES (%s, 'Hosted server', 'hosted-server', 'primary', 'ark_survival_ascended') RETURNING id::text
-            """, (server["id"],))
-        community.update({"game_server_id": server["id"], "game_instance_id": instance["id"]})
+            if setup_intent == "nitrado_connection":
+                server = fetch_one(conn, """
+                    INSERT INTO game_servers (community_id, name, slug, game_type, management_adapter, game_key)
+                    VALUES (%s, 'ARK: Survival Ascended', 'ark-survival-ascended', 'ARK Survival Ascended', 'nitrado', 'ark_survival_ascended')
+                    RETURNING id::text
+                """, (community["id"],))
+                instance = fetch_one(conn, """
+                    INSERT INTO game_instances (game_server_id, name, slug, instance_type, game_identifier)
+                    VALUES (%s, 'Hosted server', 'hosted-server', 'primary', 'ark_survival_ascended') RETURNING id::text
+                """, (server["id"],))
+                community.update({"game_server_id": server["id"], "game_instance_id": instance["id"]})
     return jsonify({"workspace": community, "created": True}), 201
 
 

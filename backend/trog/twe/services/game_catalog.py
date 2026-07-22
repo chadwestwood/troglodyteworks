@@ -9,7 +9,12 @@ CATALOG = {
                     "name": "The Island",
                 }
             ],
-        }
+        },
+        {
+            "key": "minecraft_java",
+            "name": "Minecraft: Java Edition",
+            "maps": [{"key": "curseforge_modpack", "name": "CurseForge modpack"}],
+        },
     ]
 }
 

@@ -77,6 +77,21 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(independent_hosting.status_code, 200)
         self.assertIn(b"Connect your hosted game", independent_hosting.data)
 
+    def test_guided_minecraft_hosting_page_is_served(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        page = client.get("/hosting/new/")
+        script = client.get("/js/managed-minecraft-hosting.js")
+        migration = (ROOT / "migrations" / "0022_managed_minecraft_hosting.sql").read_text()
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"Let\xe2\x80\x99s build your Minecraft server", page.data)
+        self.assertIn(b"Search CurseForge", page.data)
+        self.assertIn(b"estimated cost", page.data)
+        self.assertIn(b"/hosting/curseforge/modpacks", script.data)
+        self.assertIn(b"accept_estimated_cost", script.data)
+        self.assertIn("CREATE TABLE IF NOT EXISTS managed_minecraft_hosting_plans", migration)
+        self.assertIn("uq_managed_minecraft_active_owner", migration)
+
     def test_product_comparison_and_detail_pages_are_served(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
         client = app.test_client()

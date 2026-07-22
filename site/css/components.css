@@ -807,3 +807,18 @@
         grid-template-columns: 1fr;
     }
 }
+.setup-progress {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-8);
+  list-style: none;
+  padding: 0;
+  margin: var(--space-24) 0;
+}
+.setup-progress li { color: var(--color-text-muted); border-top: 3px solid var(--color-border); padding-top: var(--space-8); }
+.setup-progress li.is-active { color: var(--color-text); border-color: var(--color-primary); }
+.resource-button { width: 100%; text-align: left; cursor: pointer; }
+@media (max-width: 700px) {
+  .setup-progress { grid-template-columns: 1fr; }
+  .setup-progress li { border-top: 0; border-left: 3px solid var(--color-border); padding: var(--space-4) var(--space-8); }
+}

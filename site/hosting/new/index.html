@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Host a Minecraft server | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=minecraft-hosting-v1">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+</head>
+<body class="app-page" data-page="managed-minecraft-hosting">
+  <main class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <a class="header-link" href="/communities/">My Communities</a>
+    </header>
+    <nav class="breadcrumbs">Home &gt; Host a game &gt; Minecraft</nav>
+    <section class="app-panel">
+      <p class="eyebrow">Guided setup</p>
+      <h1>Let’s build your Minecraft server</h1>
+      <p class="muted">Choose a Community, find a CurseForge modpack, review the estimated cost, and save one exact installation plan. When the server is online, Trog will guide you into Discord.</p>
+      <p class="form-error" data-error hidden></p>
+
+      <ol class="setup-progress" aria-label="Setup progress">
+        <li data-progress="1"><strong>1</strong> Community</li>
+        <li data-progress="2"><strong>2</strong> Game</li>
+        <li data-progress="3"><strong>3</strong> Modpack</li>
+        <li data-progress="4"><strong>4</strong> Review</li>
+        <li data-progress="5"><strong>5</strong> Discord</li>
+      </ol>
+
+      <section data-step="1">
+        <h2>Where should this server live?</h2>
+        <p class="muted">Pick a Community you own. This keeps the server, its people, and its Discord permissions separate from Communities you merely belong to.</p>
+        <label for="hosting_community">Your Community</label>
+        <select id="hosting_community" data-community><option value="">Loading…</option></select>
+        <p class="guidance-note" data-no-community hidden><strong>No Community of your own yet?</strong> Create one from a Discord server you manage, then Trog will bring you back here.</p>
+        <div class="button-row">
+          <button class="primary-button" type="button" data-next="2">Continue</button>
+          <a class="primary-button secondary" href="/onboarding/?path=host">Create one from Discord</a>
+        </div>
+      </section>
+
+      <section data-step="2" hidden>
+        <h2>Choose the game</h2>
+        <div class="choice-card" aria-current="true">
+          <strong>Minecraft: Java Edition</strong>
+          <span>CurseForge modpacks, persistent world storage, and a public TCP address for players.</span>
+        </div>
+        <p class="guidance-note"><strong>Beta limit:</strong> one managed Minecraft server per owner. Bedrock hosting is not available because this hosting path uses TCP.</p>
+        <div class="button-row"><button class="primary-button" type="button" data-next="3">Choose a modpack</button><button class="text-button" type="button" data-back="1">Back</button></div>
+      </section>
+
+      <section data-step="3" hidden>
+        <h2>Find a CurseForge modpack</h2>
+        <p class="muted">Search by the pack’s name. Trog validates the project and version directly with CurseForge before saving the installation.</p>
+        <label for="modpack_search">Modpack name</label>
+        <div class="button-row">
+          <input id="modpack_search" data-search maxlength="80" placeholder="Example: All the Mods 10">
+          <button class="primary-button" type="button" data-search-button>Search CurseForge</button>
+        </div>
+        <div class="resource-list" data-results></div>
+        <div data-file-picker hidden>
+          <label for="modpack_file">Version to install</label>
+          <select id="modpack_file" data-file><option value="">Choose a version</option></select>
+          <p class="muted">Choose the regular modpack release. Trog’s server image handles the server-side installation.</p>
+          <div class="button-row"><button class="primary-button" type="button" data-next="4">Review server</button></div>
+        </div>
+        <button class="text-button" type="button" data-back="2">Back</button>
+      </section>
+
+      <section data-step="4" hidden>
+        <h2>Review the server and cost</h2>
+        <label for="server_name">Server name</label>
+        <input id="server_name" data-server-name maxlength="100" placeholder="Cypres’s Minecraft server">
+        <label for="memory_size">Memory</label>
+        <select id="memory_size" data-memory>
+          <option value="4096">4 GB — smaller modpacks</option>
+          <option value="6144">6 GB — recommended for most packs</option>
+          <option value="8192">8 GB — larger packs</option>
+        </select>
+        <div class="guidance-note" data-cost></div>
+        <div class="resource-row"><span><strong data-review-pack>No modpack selected</strong><small data-review-version></small></span><span data-review-memory></span></div>
+        <label class="checkbox-row"><input type="checkbox" data-accept-eula> I accept the <a href="https://www.minecraft.net/eula" target="_blank" rel="noopener">Minecraft EULA</a>.</label>
+        <label class="checkbox-row"><input type="checkbox" data-accept-cost> I understand this creates ongoing usage charges within the displayed estimate.</label>
+        <label class="checkbox-row"><input type="checkbox" data-accept-beta> I understand this is a one-server beta and modpacks can require tuning.</label>
+        <div class="button-row"><button class="primary-button" type="button" data-submit>Approve this installation plan</button><button class="text-button" type="button" data-back="3">Back</button></div>
+      </section>
+
+      <section data-step="5" hidden>
+        <p class="eyebrow">Plan approved</p>
+        <h2 data-result-title>Your Minecraft server plan is saved</h2>
+        <p data-result-message></p>
+        <div class="guidance-note"><strong>Discord comes after the world exists.</strong> When installation finishes, open that exact Minecraft world and choose “Set up Trog for this world.” That binds Trog to the correct Discord server and channel so replies never refer to the wrong game.</div>
+        <div class="button-row"><a class="primary-button" href="/communities/">Go to my Communities</a><a class="primary-button secondary" href="/onboarding/?path=manager">Check my Discord connection</a></div>
+      </section>
+    </section>
+  </main>
+  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
+  <script src="/js/twe-api.js?v=managed-hosting-v1"></script>
+  <script src="/js/managed-minecraft-hosting.js?v=managed-hosting-v1"></script>
+</body>
+</html>
