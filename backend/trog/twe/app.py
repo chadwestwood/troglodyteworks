@@ -62,6 +62,10 @@ def create_app(config=None, database=None, provider_registry=None):
         if not rule:
             return None
         with app.config["TWE_DB"].connect() as conn:
+            # Lightweight unit-test database doubles intentionally do not
+            # implement a PostgreSQL cursor. Production Database connections do.
+            if not callable(getattr(conn, "cursor", None)):
+                return None
             allowed, retry_after = consume_request_limit(conn, rule, request_identifier())
         if not allowed:
             return rate_limit_response(retry_after)

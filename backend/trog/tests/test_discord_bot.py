@@ -409,7 +409,7 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
         self.assertTrue(handled)
         self.assertEqual(len(message.channel.sent), 1)
-        self.assertIn("is the server up", message.channel.sent[0])
+        self.assertIn("/server status", message.channel.sent[0])
 
     async def test_message_reply_disables_generated_mentions(self):
         message = FakeMessage(
