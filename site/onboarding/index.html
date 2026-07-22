@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Get started | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=onboarding-v1">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+</head>
+<body class="app-page" data-page="onboarding">
+  <main class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <button class="text-button" type="button" data-sign-out>Sign out</button>
+    </header>
+    <section class="app-panel" data-onboarding-choice>
+      <p class="eyebrow">Welcome to Trog</p>
+      <h1>What brings you here?</h1>
+      <p class="muted">Trog connects a Discord server to its hosted games, then answers the questions players ask every day.</p>
+      <p class="form-error" data-error hidden></p>
+      <div class="choice-grid">
+        <button class="choice-card" type="button" data-path="manager">
+          <strong>I manage a Discord server</strong>
+          <span>Connect Nitrado, add Trog, and choose where Trog can respond.</span>
+        </button>
+        <button class="choice-card" type="button" data-path="member">
+          <strong>I’m a Discord member</strong>
+          <span>Find a server already using Trog, or invite an administrator to set it up.</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="app-panel" data-manager-flow hidden>
+      <p class="eyebrow">Discord administrator setup · Step 1 of 3</p>
+      <h1>Choose the Discord server you manage</h1>
+      <p class="muted">Discord must confirm that you are the owner or have Administrator or Manage Server permission.</p>
+      <div data-discord-connect></div>
+      <label for="managed_guild">Discord server</label>
+      <select id="managed_guild" data-managed-guild><option value="">Loading your servers…</option></select>
+      <div class="button-row">
+        <button class="primary-button" type="button" data-create-workspace>Continue to Nitrado</button>
+        <button class="text-button" type="button" data-refresh-discord>Refresh Discord servers</button>
+        <button class="text-button" type="button" data-back>Back</button>
+      </div>
+    </section>
+
+    <section class="app-panel" data-member-flow hidden>
+      <p class="eyebrow">Discord member</p>
+      <h1>Find your Discord server on Trog</h1>
+      <p class="muted">Connect Discord so Trog can privately compare your server memberships with servers already using Trog.</p>
+      <div data-member-connect></div>
+      <div class="resource-list" data-matches></div>
+      <hr>
+      <h2>Not here yet? Send this to an administrator.</h2>
+      <p class="muted">Post the message in your Discord server. The setup link walks an owner or administrator through every step.</p>
+      <textarea rows="5" readonly data-share-message>Trog can connect this Discord server to our hosted game server, answer whether it is online, show players and installed mods, and keep routine server questions in Discord. An owner or administrator can set it up here: https://troglodyteworks.com/onboarding/?path=manager</textarea>
+      <div class="button-row">
+        <button class="primary-button" type="button" data-copy-message>Copy message and setup link</button>
+        <button class="text-button" type="button" data-back>Back</button>
+      </div>
+    </section>
+  </main>
+  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
+  <script src="/js/twe-api.js?v=onboarding-v1"></script>
+  <script src="/js/onboarding.js?v=onboarding-v1"></script>
+</body>
+</html>

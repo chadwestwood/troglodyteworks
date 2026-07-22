@@ -125,6 +125,8 @@
 
     const resources = data.resources || data.discovery?.resources || [];
     resourcesPanel.hidden = !connection;
+    const nextDiscord = document.querySelector("[data-next-discord]");
+    if (nextDiscord) nextDiscord.hidden = !connection;
     if (!resources.length) {
       const empty = document.createElement("p");
       empty.className = "muted";
@@ -215,7 +217,10 @@
   async function initialize() {
     await requireCurrentUser();
     const communities = await apiRequest("/communities");
-    const community = communities.communities.find((item) => item.slug === "cohorts-in-the-wild") || communities.communities[0];
+    const rememberedCommunityId = recall("twe.community_id");
+    const community = communities.communities.find((item) => item.id === rememberedCommunityId)
+      || communities.communities.find((item) => item.slug === "cohorts-in-the-wild")
+      || communities.communities[0];
     if (!community) throw new Error("No Community is available.");
     communityId = community.id;
     document.querySelector("[data-community-name]").textContent = community.name;

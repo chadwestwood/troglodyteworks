@@ -334,6 +334,25 @@ def sync_discord_guild_authorities(conn, user_id: str, profile: ExternalProfile)
         return
     execute(
         conn,
+        "UPDATE discord_user_guild_memberships SET expires_at = now() WHERE user_id = %s",
+        (user_id,),
+    )
+    for guild_id, guild_name in profile.guilds:
+        execute(
+            conn,
+            """
+            INSERT INTO discord_user_guild_memberships
+                (user_id, discord_user_id, discord_guild_id, discord_guild_name, expires_at)
+            VALUES (%s, %s, %s, %s, now() + interval '24 hours')
+            ON CONFLICT (user_id, discord_guild_id)
+            DO UPDATE SET discord_user_id = EXCLUDED.discord_user_id,
+                          discord_guild_name = EXCLUDED.discord_guild_name,
+                          verified_at = now(), expires_at = EXCLUDED.expires_at
+            """,
+            (user_id, profile.subject, guild_id, guild_name),
+        )
+    execute(
+        conn,
         """
         UPDATE discord_guild_authority_verifications
         SET can_manage_guild = false, expires_at = now()

@@ -93,7 +93,9 @@ class FoundationTests(unittest.TestCase):
         page = client.get("/communities/cohorts-in-the-wild/hosting/")
         script = client.get("/js/nitrado-hosting.js")
         self.assertEqual(page.status_code, 200)
-        self.assertIn(b"Connect Nitrado hosting", page.data)
+        self.assertIn(b"Connect your hosted game", page.data)
+        self.assertIn(b"server.nitrado.net/eng/developer/tokens", page.data)
+        self.assertIn(b"green text at the top", page.data)
         self.assertIn(b'type="password"', page.data)
         self.assertIn(b'autocomplete="off"', page.data)
         self.assertIn(b"hosting-connections/nitrado", script.data)
@@ -103,6 +105,18 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"Revoke the token separately in Nitrado", script.data)
         self.assertNotIn(b"localStorage", script.data)
         self.assertNotIn(b"innerHTML", script.data)
+
+    def test_new_user_onboarding_is_discord_first(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        page = client.get("/onboarding/")
+        script = client.get("/js/onboarding.js")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"I manage a Discord server", page.data)
+        self.assertIn(b"I\xe2\x80\x99m a Discord member", page.data)
+        self.assertIn(b"Copy message and setup link", page.data)
+        self.assertIn(b"/onboarding/discord-workspace", script.data)
+        self.assertIn(b"/onboarding/discord-matches", script.data)
 
     def test_browser_cannot_self_assign_ownership_endpoint(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())

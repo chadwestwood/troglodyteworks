@@ -60,7 +60,7 @@ async function resolvePostAuthRoute() {
       remember("twe.community_id", communities[0].id);
       return routes.community;
     }
-    return routes.communities;
+    return communities.length ? routes.communities : "/onboarding/";
   } catch (_error) {
     return routes.communities;
   }
@@ -77,7 +77,7 @@ async function initCommunities() {
   clearNode(list);
   renderPendingInvitations(pendingData.invitations);
   if (communities.length === 0) {
-    emptyState.hidden = false;
+    window.location.replace("/onboarding/");
     if (chooserHint) {
       chooserHint.hidden = true;
     }

@@ -30,6 +30,7 @@ class ExternalProfile:
     email: str | None = None
     email_verified: bool | None = None
     managed_guilds: tuple[tuple[str, str, str], ...] = ()
+    guilds: tuple[tuple[str, str], ...] = ()
 
 
 def new_oauth_state() -> str:
@@ -177,7 +178,17 @@ def exchange_discord_code(code: str, code_verifier: str, config) -> ExternalProf
         email=user.get("email"),
         email_verified=user.get("verified"),
         managed_guilds=discord_managed_guilds(guilds),
+        guilds=discord_guilds(guilds),
     )
+
+
+def discord_guilds(guilds: list[dict]) -> tuple[tuple[str, str], ...]:
+    memberships = []
+    for guild in guilds:
+        guild_id = str(guild.get("id") or "").strip()
+        if guild_id.isdigit() and len(guild_id) <= 20:
+            memberships.append((guild_id, str(guild.get("name") or "Discord server")))
+    return tuple(sorted(memberships, key=lambda item: (item[1].lower(), item[0])))
 
 
 def discord_managed_guilds(guilds: list[dict]) -> tuple[tuple[str, str, str], ...]:

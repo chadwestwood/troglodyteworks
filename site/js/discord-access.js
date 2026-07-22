@@ -13,6 +13,10 @@
   if (!form) {
     return;
   }
+  const allowlist = document.querySelector("[data-channel-allowlist]");
+  form.querySelectorAll('[name="channel_scope"]').forEach((radio) => radio.addEventListener("change", () => {
+    allowlist.hidden = form.elements.channel_scope.value !== "allowlist";
+  }));
   remember("twe.trog_return_to", "/discord/request-access/");
   const identities = await apiRequest("/account/identities");
   if (!identities.identities.discord.connected) {
@@ -68,7 +72,8 @@
     const providerCommunityId = data.get("provider_community_id").trim();
     const gameInstanceId = data.get("game_instance_id").trim();
     const discordGuildId = data.get("discord_guild_id").trim();
-    const allowedChannelIds = data.get("allowed_channel_ids")
+    const channelScope = data.get("channel_scope") || "all";
+    const allowedChannelIds = String(data.get("allowed_channel_ids") || "")
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean);
@@ -84,7 +89,7 @@
             "instance.players.count.read",
             "instance.players.names.read",
           ],
-          channel_scope: allowedChannelIds.length ? "allowlist" : "all",
+          channel_scope: channelScope,
           allowed_channel_ids: allowedChannelIds,
         }),
       });

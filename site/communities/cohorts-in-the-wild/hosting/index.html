@@ -26,10 +26,10 @@
     <nav class="breadcrumbs">Home &gt; Operations &gt; Connected Hosting</nav>
     <main class="app-grid">
       <section class="app-panel">
-        <p class="eyebrow">Community Owner</p>
-        <h1>Connect Nitrado hosting</h1>
-        <p class="muted">Connect a revocable Nitrado long-life token, discover your services, and choose the ARK: Survival Ascended service that belongs to a Community Game Server.</p>
-        <p class="muted">Community: <strong data-community-name></strong></p>
+        <p class="eyebrow">Discord administrator setup · Step 2 of 3</p>
+        <h1>Connect your hosted game</h1>
+        <p class="muted">For now, Trog supports ARK: Survival Ascended servers hosted by Nitrado.</p>
+        <p class="muted">Discord server: <strong data-community-name></strong></p>
         <p class="form-error" data-error role="alert" hidden></p>
         <p class="status-line" data-status role="status" aria-live="polite" hidden></p>
       </section>
@@ -38,7 +38,14 @@
         <div>
           <p class="eyebrow">Nitrado credential</p>
           <h2 data-connection-heading>Connect hosting</h2>
-          <p class="muted" data-connection-copy>Use a long-life token with only the <code>service</code> scope. The token is encrypted by the backend and is never returned to this browser.</p>
+          <ol class="content-stack">
+            <li>Sign in to Nitrado, then open the <a href="https://server.nitrado.net/eng/developer/tokens" target="_blank" rel="noopener noreferrer">hidden long-life token page</a>.</li>
+            <li>Enter a description such as <strong>Trog</strong>.</li>
+            <li>Check only <strong>service</strong>. Do not select rootserver, user, ordering, or SSH permissions.</li>
+            <li>Choose <strong>Create</strong>. Your token appears once as green text at the top of the page.</li>
+            <li>Copy the entire green token immediately, return here, and paste it below.</li>
+          </ol>
+          <p class="muted" data-connection-copy>Trog encrypts the token and never shows it again. You can revoke it from Nitrado at any time.</p>
         </div>
         <form class="content-stack" data-token-form>
           <label>
@@ -62,6 +69,9 @@
           <p class="muted">Unavailable and unsupported services remain visible but cannot be selected.</p>
         </div>
         <div class="resource-list" data-resources-list></div>
+        <div class="button-row">
+          <a class="primary-button" href="/discord/request-access/?setup=1" data-next-discord hidden>Continue: add Trog to Discord</a>
+        </div>
       </section>
     </main>
   </div>

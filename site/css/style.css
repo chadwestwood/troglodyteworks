@@ -6,3 +6,10 @@
 @import url("utilities.css?v=layout-tightening-v5");
 @import url("trog-ui-tokens.css?v=layout-tightening-v5");
 @import url("trog-components.css?v=layout-tightening-v5");
+/* First-run choices intentionally read like two plain answers, not a dashboard. */
+.choice-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:var(--space-16); margin-top:var(--space-24); }
+.choice-card { text-align:left; padding:var(--space-24); border:1px solid var(--color-border); border-radius:20px; background:var(--color-surface); color:inherit; cursor:pointer; }
+.choice-card:hover, .choice-card:focus-visible { border-color:var(--color-primary); box-shadow:var(--shadow-card); }
+.choice-card strong, .choice-card span { display:block; }
+.choice-card strong { font-size:1.25rem; margin-bottom:var(--space-8); }
+.choice-card span { color:var(--color-muted); line-height:1.5; }

@@ -88,13 +88,16 @@ def create_instance_access_request():
         instance = resolve_provider_instance(conn, provider_community_id, game_instance_id)
         if not instance:
             return api_error("INSTANCE_NOT_FOUND", "The provider Community does not own that Instance.", 404)
+        provider_role = membership_for_community(conn, g.current_user["id"], provider_community_id)["role"]
+        self_approved = provider_role in {"owner", "admin"}
         grant = fetch_one(
             conn,
             """
             INSERT INTO discord_instance_access_grants
                 (provider_community_id, game_server_id, game_instance_id, requested_by, status, channel_scope,
-                 requested_channel_ids)
-            VALUES (%s, %s, %s, %s, 'pending_discord_verification', %s, %s)
+                 requested_channel_ids, provider_approved_by, provider_approved_at)
+            VALUES (%s, %s, %s, %s, 'pending_discord_verification', %s, %s,
+                    CASE WHEN %s THEN %s::uuid ELSE NULL END, CASE WHEN %s THEN now() ELSE NULL END)
             RETURNING id::text, status, channel_scope
             """,
             (
@@ -104,6 +107,9 @@ def create_instance_access_request():
                 g.current_user["id"],
                 channel_scope,
                 channel_ids,
+                self_approved,
+                g.current_user["id"],
+                self_approved,
             ),
         )
         for capability in requested:

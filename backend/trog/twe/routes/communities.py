@@ -1,3 +1,5 @@
+import re
+
 from flask import Blueprint, current_app, g, jsonify, request
 
 from ..auth import require_user
@@ -8,6 +10,95 @@ from ..services.game_catalog import resolve_catalog_selection
 from ..services.instance_provisioning import begin_provisioning
 
 communities_bp = Blueprint("twe_communities", __name__)
+
+
+@communities_bp.post("/onboarding/discord-workspace")
+@require_user
+def create_discord_workspace():
+    payload = request.get_json(silent=True) or {}
+    guild_id = str(payload.get("discord_guild_id") or "").strip()
+    if not guild_id.isdigit() or len(guild_id) > 20:
+        return api_error("VALIDATION_ERROR", "Choose a Discord server that you manage.", 400)
+    with current_app.config["TWE_DB"].connect() as conn:
+        authority = fetch_one(conn, """
+            SELECT discord_guild_name FROM discord_guild_authority_verifications
+            WHERE user_id = %s AND discord_guild_id = %s AND can_manage_guild = true AND expires_at > now()
+        """, (g.current_user["id"], guild_id))
+        if not authority:
+            return api_error("FORBIDDEN", "Discord has not confirmed that you manage that server.", 403)
+        existing = fetch_one(conn, """
+            SELECT c.id::text, c.name, c.slug, gs.id::text AS game_server_id, gi.id::text AS game_instance_id
+            FROM communities c
+            JOIN game_servers gs ON gs.community_id = c.id
+            LEFT JOIN game_instances gi ON gi.game_server_id = gs.id
+            WHERE c.discord_setup_guild_id = %s LIMIT 1
+        """, (guild_id,))
+        if existing:
+            membership = membership_for_community(conn, g.current_user["id"], existing["id"])
+            if not membership:
+                return api_error("ALREADY_CONFIGURED", "That Discord server is already using Trog. Ask its Trog owner to invite you.", 409)
+            return jsonify({"workspace": existing, "created": False})
+
+        name = authority["discord_guild_name"] or "Discord server"
+        base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "discord-server"
+        slug = base
+        suffix = 2
+        while fetch_one(conn, "SELECT id FROM communities WHERE slug = %s", (slug,)):
+            slug = f"{base}-{suffix}"
+            suffix += 1
+        with conn.transaction():
+            community = fetch_one(conn, """
+                INSERT INTO communities (name, slug, description, created_by, discord_setup_guild_id)
+                VALUES (%s, %s, %s, %s, %s) RETURNING id::text, name, slug
+            """, (name, slug, "Operations workspace connected to Discord.", g.current_user["id"], guild_id))
+            execute(conn, "INSERT INTO community_memberships (user_id, community_id, role) VALUES (%s, %s, 'owner')", (g.current_user["id"], community["id"]))
+            server = fetch_one(conn, """
+                INSERT INTO game_servers (community_id, name, slug, game_type, management_adapter, game_key)
+                VALUES (%s, 'ARK: Survival Ascended', 'ark-survival-ascended', 'ARK Survival Ascended', 'nitrado', 'ark_survival_ascended')
+                RETURNING id::text
+            """, (community["id"],))
+            instance = fetch_one(conn, """
+                INSERT INTO game_instances (game_server_id, name, slug, instance_type, game_identifier)
+                VALUES (%s, 'Hosted server', 'hosted-server', 'primary', 'ark_survival_ascended') RETURNING id::text
+            """, (server["id"],))
+        community.update({"game_server_id": server["id"], "game_instance_id": instance["id"]})
+    return jsonify({"workspace": community, "created": True}), 201
+
+
+@communities_bp.get("/onboarding/discord-matches")
+@require_user
+def discord_community_matches():
+    with current_app.config["TWE_DB"].connect() as conn:
+        identity = fetch_one(conn, "SELECT 1 FROM discord_identities WHERE user_id = %s", (g.current_user["id"],))
+        rows = fetch_all(conn, """
+            SELECT c.id::text, c.name, c.slug, dugm.discord_guild_name
+            FROM discord_user_guild_memberships dugm
+            JOIN discord_guild_installations dgi ON dgi.discord_guild_id = dugm.discord_guild_id
+            JOIN communities c ON c.id = dgi.community_id
+            WHERE dugm.user_id = %s AND dugm.expires_at > now()
+              AND NOT EXISTS (SELECT 1 FROM community_memberships cm WHERE cm.user_id = %s AND cm.community_id = c.id)
+            ORDER BY lower(c.name)
+        """, (g.current_user["id"], g.current_user["id"]))
+    return jsonify({"discord_connected": bool(identity), "matches": rows})
+
+
+@communities_bp.post("/onboarding/discord-matches/<community_id>/join")
+@require_user
+def join_discord_community(community_id):
+    with current_app.config["TWE_DB"].connect() as conn:
+        match = fetch_one(conn, """
+            SELECT c.id FROM communities c
+            JOIN discord_guild_installations dgi ON dgi.community_id = c.id
+            JOIN discord_user_guild_memberships dugm ON dugm.discord_guild_id = dgi.discord_guild_id
+            WHERE c.id = %s AND dugm.user_id = %s AND dugm.expires_at > now()
+        """, (community_id, g.current_user["id"]))
+        if not match:
+            return api_error("FORBIDDEN", "Reconnect Discord so membership can be verified.", 403)
+        execute(conn, """
+            INSERT INTO community_memberships (user_id, community_id, role) VALUES (%s, %s, 'member')
+            ON CONFLICT (user_id, community_id) DO NOTHING
+        """, (g.current_user["id"], community_id))
+    return jsonify({"joined": True})
 
 
 @communities_bp.get("/communities")
