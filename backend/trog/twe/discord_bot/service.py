@@ -201,8 +201,21 @@ async def handle_message(
 
     content = str(getattr(message, "content", "") or "")
     mentioned_ids = [str(user.id) for user in getattr(message, "mentions", [])]
+    mentioned_role_ids = [str(role.id) for role in getattr(message, "role_mentions", [])]
+    bot_member = getattr(message.guild, "me", None)
+    bot_role_ids = [
+        str(role.id)
+        for role in getattr(bot_member, "roles", [])
+        if bool(getattr(role, "managed", False)) or str(getattr(role, "name", "")).casefold() == "trog"
+    ]
     bot_user_id = str(bot_user.id)
-    mentioned = is_directly_mentioned(content, mentioned_ids, bot_user_id)
+    mentioned = is_directly_mentioned(
+        content,
+        mentioned_ids,
+        bot_user_id,
+        mentioned_role_ids=mentioned_role_ids,
+        bot_role_ids=bot_role_ids,
+    )
     intent = classify_intent(content)
 
     logger.info(

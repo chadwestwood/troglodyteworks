@@ -69,10 +69,21 @@ def should_respond(mentioned_user_ids: list[str], bot_user_id: str) -> bool:
     return str(bot_user_id) in {str(user_id) for user_id in mentioned_user_ids}
 
 
-def is_directly_mentioned(message: str, mentioned_user_ids: list[str], bot_user_id: str) -> bool:
+def is_directly_mentioned(
+    message: str,
+    mentioned_user_ids: list[str],
+    bot_user_id: str,
+    mentioned_role_ids: list[str] | None = None,
+    bot_role_ids: list[str] | None = None,
+) -> bool:
     if should_respond(mentioned_user_ids, bot_user_id):
         return True
     if re.search(rf"<@!?{re.escape(str(bot_user_id))}>", message):
+        return True
+    # Discord commonly presents the bot's managed integration role as
+    # ``@Trog``. Role mentions are not included in ``message.mentions``, so
+    # validate them against roles actually assigned to this bot member.
+    if set(mentioned_role_ids or ()) & set(bot_role_ids or ()):
         return True
     # Some Discord clients/autocomplete contexts can leave us with plain text
     # during local/manual runs. Accept an explicit @trog prefix as a fallback,

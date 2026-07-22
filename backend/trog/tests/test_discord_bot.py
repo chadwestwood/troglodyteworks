@@ -86,6 +86,26 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(extract_mod_id("@Trog install mod 123456"), "123456")
         self.assertIsNone(extract_mod_id("@Trog add this mod"))
 
+    def test_bot_managed_role_mention_is_treated_as_direct_mention(self):
+        self.assertTrue(
+            is_directly_mentioned(
+                "<@&456> is the server up?",
+                [],
+                "123",
+                mentioned_role_ids=["456"],
+                bot_role_ids=["456"],
+            )
+        )
+        self.assertFalse(
+            is_directly_mentioned(
+                "<@&999> is the server up?",
+                [],
+                "123",
+                mentioned_role_ids=["999"],
+                bot_role_ids=["456"],
+            )
+        )
+
     def test_worker_registers_combined_server_settings_command(self):
         service_source = (ROOT / "twe" / "discord_bot" / "service.py").read_text()
         self.assertIn('@server_group.command(name="settings"', service_source)
