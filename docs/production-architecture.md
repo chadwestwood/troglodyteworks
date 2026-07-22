@@ -57,6 +57,15 @@ working copy -> Git commit -> GitHub -> Railway build -> pre-deploy migration ->
 
 Direct edits to the former in-house server are not a deployment mechanism.
 
+## Deployment verification
+
+`backend/trog/scripts/production_smoke.py` verifies the custom domain, web
+health contract, public pages, and anonymous authentication boundary without
+creating sessions or mutating data. OAuth callbacks require a real provider
+round trip, the Discord worker has no HTTP endpoint, and Nitrado reads require
+authorized tenant context; those surfaces must use their dedicated production
+verification procedures rather than being faked by the public smoke command.
+
 ## Security boundaries
 
 - Secrets stay in Railway variables or encrypted provider-secret storage.
@@ -65,4 +74,3 @@ Direct edits to the former in-house server are not a deployment mechanism.
 - Browser input never proves Discord ownership, installation, or provider state.
 - Read access must be authorized before tenant-specific reconciliation or provider calls.
 - Disruptive provider operations require a separate reviewed lifecycle and are currently disabled.
-

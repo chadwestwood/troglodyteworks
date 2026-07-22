@@ -57,6 +57,6 @@ targeted regression coverage.
 ## Immediate priorities
 
 1. Expand reliable Nitrado read-only observability without exposing secrets or platform identifiers.
-2. Add production smoke tests for the domain, OAuth callbacks, web service, worker, and provider reads.
+2. Extend the new non-mutating public smoke checks with safe worker, OAuth configuration, and provider-read verification.
 3. Continue the eight-week plan, updating Linear only when explicitly requested.
 4. Keep current-state documentation updated whenever production topology changes.

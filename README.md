@@ -42,7 +42,7 @@ The former in-house server and `10.0.0.103` are not part of the current producti
 - DNS and public edge: Cloudflare
 - Database: Railway PostgreSQL
 - Game hosting for Genesis: Nitrado
-- Work planning: Linear
+- Work planning: the eight-week plan and current-state documentation; Linear is updated only when explicitly requested
 - Architecture and implementation contracts: `docs/`
 
 ## Repository layout
@@ -79,6 +79,16 @@ Never place production tokens, passwords, OAuth secrets, provider credentials, o
 Railway builds from `backend/trog`. Database migrations run as the web service's pre-deploy step. The web service runs Gunicorn and exposes HTTP on Railway's assigned port. The worker runs `python -m twe.discord_bot.service` and intentionally exposes no HTTP endpoint.
 
 Production changes flow through reviewed repository commits and Railway deployments. They are not made by editing the former local server.
+
+After Railway activates a web deployment, run the non-mutating public checks:
+
+```bash
+python backend/trog/scripts/production_smoke.py
+```
+
+The checks cover the custom domain, deterministic health response, homepage,
+sign-in page, and anonymous authentication boundary. They never sign in, create
+OAuth state, contact a game provider, or modify production data.
 
 ## Operational safety
 
