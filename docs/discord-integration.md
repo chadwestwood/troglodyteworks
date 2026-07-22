@@ -120,10 +120,11 @@ result through the interaction follow-up. This prevents normal provider latency
 from exceeding Discord's initial response deadline. Restart-related interaction
 responses are ephemeral; all generated replies disable mentions.
 
-The read-only command set includes `/server status`, `/server players`,
-`/server mods`, and `/server settings`. The settings command combines the first
-three results while preserving each capability check; it does not broaden access.
+The read-only command set includes `/server help`, `/server status`, `/server count`, `/server players`,
+`/server mods`, and `/server settings`. The settings command combines status,
+player names, and mods while preserving each capability check; it does not broaden access.
 Responses that exceed Discord's message limit are split on line boundaries, with
-mention generation disabled on every chunk.
+mention generation disabled on every chunk. Natural-language questions require a
+direct Trog mention, and requests are burst-limited per Discord user and guild.
 
 The systemd template in `deploy/systemd/trog-discord.service` is operator-managed and must not be enabled automatically. Authorization logs contain identifiers, capability/intent, and result code, but not message content or secrets. Addressed messages retain a deterministic fallback response.

@@ -1,11 +1,18 @@
 from pathlib import Path
 
-from flask import Flask, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 from .config import load_config
 from .db import Database
+from .db import fetch_all
 from .responses import api_error
+from .rate_limits import (
+    consume_request_limit,
+    rate_limit_response,
+    request_identifier,
+    rule_for_request,
+)
 from .services.provider_secret_storage import build_provider_secret_storage
 from .routes.account_identities import account_identities_bp
 from .routes.admin import admin_bp
@@ -19,6 +26,7 @@ from .routes.hosting_connections import hosting_connections_bp
 from .routes.instances import instances_bp
 from .routes.operations import operations_bp
 from .services.provider_registry import build_provider_registry
+from .services.runtime_heartbeat import runtime_heartbeat_response
 
 
 def create_app(config=None, database=None, provider_registry=None):
@@ -46,9 +54,45 @@ def create_app(config=None, database=None, provider_registry=None):
 
     site_root = Path(__file__).resolve().parents[3] / "site"
 
+    @app.before_request
+    def enforce_request_rate_limit():
+        if request.url_rule is None:
+            return None
+        rule = rule_for_request(request.method, request.path)
+        if not rule:
+            return None
+        with app.config["TWE_DB"].connect() as conn:
+            allowed, retry_after = consume_request_limit(conn, rule, request_identifier())
+        if not allowed:
+            return rate_limit_response(retry_after)
+        return None
+
     @app.get("/health")
     def health_check():
         return {"status": "ok"}
+
+    @app.get("/health/ready")
+    def readiness_check():
+        with app.config["TWE_DB"].connect() as conn:
+            rows = fetch_all(
+                conn,
+                """
+                SELECT component, status, details, checked_at
+                FROM runtime_heartbeats
+                WHERE component = 'trog_worker'
+                """,
+            )
+        worker = runtime_heartbeat_response(rows)
+        worker_ready = bool(worker and worker[0]["status"] == "ready")
+        status_code = 200 if worker_ready else 503
+        return jsonify({
+            "status": "ready" if worker_ready else "degraded",
+            "components": {
+                "web_api": "ready",
+                "database": "ready",
+                "trog_worker": worker[0]["status"] if worker else "missing",
+            },
+        }), status_code
 
     @app.get("/")
     def site_index():

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Public Beta | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=public-beta-v1">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+</head>
+
+<body>
+  <div class="site-shell">
+    <header class="site-header" aria-label="Primary navigation">
+      <a class="brand" href="/" aria-label="Troglodyte Works home">
+        <span class="brand-mark" aria-hidden="true">TW</span>
+        <span>Troglodyte Works</span>
+      </a>
+      <nav class="header-actions" aria-label="Beta navigation">
+        <a class="header-link" href="/explore/">Explore</a>
+        <a class="header-link" href="/auth/sign-in.html">Sign In</a>
+        <a class="header-link" href="/auth/register.html">Create Account</a>
+      </nav>
+    </header>
+
+    <main class="content-stack">
+      <section class="page-hero">
+        <p class="eyebrow">Public Beta</p>
+        <h1>Bring one real community into Trog.</h1>
+        <p class="subtitle">The beta is focused on a dependable path from account creation to a connected game server and useful Discord answers.</p>
+      </section>
+
+      <section class="detail-grid" aria-label="Beta onboarding checklist">
+        <article class="detail-card">
+          <p class="eyebrow">Step 1</p>
+          <h2>Create your identity</h2>
+          <p>Create a TWE account, then connect Google and Discord from Account Settings. Discord identity is required for Trog authorization.</p>
+          <a class="primary-button" href="/auth/register.html">Create account</a>
+        </article>
+        <article class="detail-card">
+          <p class="eyebrow">Step 2</p>
+          <h2>Join a Community</h2>
+          <p>Use an invitation from a Community owner. Membership and Discord server access remain separate approvals.</p>
+          <a class="primary-button secondary" href="/communities/">Open communities</a>
+        </article>
+        <article class="detail-card">
+          <p class="eyebrow">Step 3</p>
+          <h2>Connect hosting</h2>
+          <p>Owners can connect a revocable Nitrado service token, discover an ASA server, and attach it without exposing the token to the browser again.</p>
+        </article>
+        <article class="detail-card">
+          <p class="eyebrow">Step 4</p>
+          <h2>Verify Trog</h2>
+          <p>Install Trog in the approved Discord server, then try <code>/server help</code>, <code>/server status</code>, <code>/server players</code>, and <code>/server mods</code>.</p>
+        </article>
+      </section>
+
+      <section class="page-section">
+        <p class="eyebrow">Beta expectations</p>
+        <h2>Safe, observable, and honest about limitations.</h2>
+        <div class="resource-list">
+          <div class="resource-row"><span><strong>Read-only operations first</strong><small>Status, player, and mod reads are live. Restart execution remains deliberately disabled.</small></span></div>
+          <div class="resource-row"><span><strong>Least privilege</strong><small>Trog answers only in connected guilds and approved channels using provider-approved capabilities.</small></span></div>
+          <div class="resource-row"><span><strong>Report failures clearly</strong><small>If a provider or runtime component is unavailable, Trog says so instead of inventing a result.</small></span></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
+</body>
+
+</html>

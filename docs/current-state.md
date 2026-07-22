@@ -16,6 +16,7 @@ Genesis is an ARK: Survival Ascended Game Instance owned by Cohorts in the Wild.
 - Railway runs the Flask/Gunicorn web service.
 - Railway runs Trog as a separate long-running worker.
 - The Trog worker reports a non-secret database heartbeat for admin-only runtime visibility.
+- The readiness endpoint verifies the website, PostgreSQL, and current Trog worker heartbeat; GitHub checks it every ten minutes.
 - Railway PostgreSQL stores application state.
 - Cloudflare routes `troglodyteworks.com` to Railway.
 - Nitrado hosts the Cohorts in the Wild Genesis service.
@@ -36,6 +37,9 @@ See `docs/production-architecture.md` for boundaries and request flow.
 - `@Trog is the server up?` returns deterministic status information.
 - `@Trog who's on?` returns the available player names from Nitrado.
 - Nitrado rate limits, outages, and credential failures use stable secret-free API errors rather than generic application failures.
+- Sensitive public writes use a hashed-identifier, database-backed limiter shared by Railway replicas.
+- Trog natural-language requests require a direct mention and are burst-limited per Discord user and guild.
+- The public beta page documents the supported identity, Community, hosting, installation, and command-verification path.
 - GitHub pull requests and pushes to `main` run backend regressions, a Python dependency audit, and tracked-secret/configuration policy checks.
 
 ## Current operating constraints

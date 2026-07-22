@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 
 from ..config import load_config
 from ..db import Database
@@ -22,6 +23,25 @@ NO_RESULT_REPLY = BotReply(
     "no_result",
 )
 DISCORD_MESSAGE_LIMIT = 1900
+
+
+class DiscordRequestLimiter:
+    def __init__(self, limit=8, window_seconds=30, clock=time.monotonic):
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self.clock = clock
+        self.requests = {}
+
+    def allow(self, guild_id: str, user_id: str) -> bool:
+        now = self.clock()
+        key = (str(guild_id), str(user_id))
+        recent = [stamp for stamp in self.requests.get(key, []) if stamp > now - self.window_seconds]
+        if len(recent) >= self.limit:
+            self.requests[key] = recent
+            return False
+        recent.append(now)
+        self.requests[key] = recent
+        return True
 
 
 def main():
@@ -53,6 +73,7 @@ def main():
     allowed_mentions = discord.AllowedMentions.none()
     tree = discord.app_commands.CommandTree(client)
     database = Database(config.database_url)
+    request_limiter = DiscordRequestLimiter()
 
     server_group = discord.app_commands.Group(name="server", description="Inspect or administer the connected game server")
 
@@ -61,6 +82,7 @@ def main():
         await handle_interaction(
             interaction, "server_status", database, config, guild_map,
             allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
         )
 
     @server_group.command(name="players", description="List players on the connected server")
@@ -68,6 +90,15 @@ def main():
         await handle_interaction(
             interaction, "player_list", database, config, guild_map,
             allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
+        )
+
+    @server_group.command(name="count", description="Count players on the connected server")
+    async def server_count(interaction):
+        await handle_interaction(
+            interaction, "player_count", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
         )
 
     @server_group.command(name="mods", description="List active mods on the connected server")
@@ -75,6 +106,7 @@ def main():
         await handle_interaction(
             interaction, "mod_list", database, config, guild_map,
             allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
         )
 
     @server_group.command(name="settings", description="Show status, players, and active mods")
@@ -82,6 +114,15 @@ def main():
         await handle_interaction(
             interaction, "server_settings", database, config, guild_map,
             allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
+        )
+
+    @server_group.command(name="help", description="Show Trog's available server commands")
+    async def server_help(interaction):
+        await handle_interaction(
+            interaction, "server_help", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
         )
 
     @server_group.command(name="restart", description="Request a server restart")
@@ -89,6 +130,7 @@ def main():
         await handle_interaction(
             interaction, "server_restart", database, config, guild_map,
             allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
         )
 
     tree.add_command(server_group)
@@ -111,6 +153,7 @@ def main():
         await handle_message(
             message, client.user, database, config, guild_map,
             allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
         )
 
     client.run(token)
@@ -134,6 +177,7 @@ async def worker_heartbeat_loop(client, database, interval_seconds=30, logger=LO
 
 async def handle_message(
     message, bot_user, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
+    request_limiter=None,
 ):
     if not bot_user:
         logger.warning("Discord message ignored because bot user is not ready.")
@@ -161,11 +205,16 @@ async def handle_message(
         len(content),
     )
 
-    # Discord sometimes gives us message content without a usable mention object,
-    # even when the user typed/selects @trog. To avoid silent failures, answer
-    # deterministic supported status/player questions even if mention detection fails.
-    if not mentioned and not intent:
+    if not mentioned:
         return False
+
+    if request_limiter and not request_limiter.allow(str(message.guild.id), str(message.author.id)):
+        send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
+        await message.channel.send(
+            "You are asking me too quickly. Please wait a few seconds and try again.",
+            **send_options,
+        )
+        return True
 
     try:
         if not intent:
@@ -204,6 +253,7 @@ async def handle_message(
 
 async def handle_interaction(
     interaction, intent, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
+    request_limiter=None,
 ):
     guild_id = str(interaction.guild_id) if interaction.guild_id else ""
     channel_id = str(interaction.channel_id) if interaction.channel_id else ""
@@ -213,9 +263,20 @@ async def handle_interaction(
     # the follow-up webhook. Administrative responses stay private.
     ephemeral = intent == "server_restart"
     await interaction.response.defer(thinking=True, ephemeral=ephemeral)
+    if request_limiter and not request_limiter.allow(guild_id, author_id):
+        reply = BotReply(
+            "You are using Trog commands too quickly. Please wait a few seconds and try again.",
+            "discord_rate_limited",
+        )
+        send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
+        await interaction.followup.send(reply.text, ephemeral=True, **send_options)
+        return reply
     try:
-        with database.connect() as conn:
-            reply = respond_to_request(intent, guild_id, channel_id, author_id, conn, config, guild_map)
+        if intent == "server_help":
+            reply = HELP_REPLY
+        else:
+            with database.connect() as conn:
+                reply = respond_to_request(intent, guild_id, channel_id, author_id, conn, config, guild_map)
     except Exception:
         logger.exception("Discord interaction handling failed guild_id=%s intent=%s", guild_id, intent)
         reply = BotReply("I could not process that command right now.", "interaction_unavailable")

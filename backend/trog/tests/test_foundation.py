@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -19,6 +20,15 @@ from twe.services import local_asa
 
 
 class FoundationTests(unittest.TestCase):
+    def test_readiness_marks_missing_worker_as_degraded(self):
+        database = MagicMock()
+        database.connect.return_value.__enter__.return_value = object()
+        app = create_app(Config(database_url="postgresql://unused"), database=database)
+        with patch("twe.app.fetch_all", return_value=[]):
+            response = app.test_client().get("/health/ready")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()["components"]["trog_worker"], "missing")
+
     def test_password_verification(self):
         password_hash = hash_password("correct horse battery staple")
         self.assertTrue(verify_password(password_hash, "correct horse battery staple"))
@@ -45,6 +55,7 @@ class FoundationTests(unittest.TestCase):
         explore = client.get("/explore/")
         invite = client.get("/invite/example-token/")
         admin = client.get("/admin/")
+        beta = client.get("/beta/")
         self.assertEqual(register.status_code, 200)
         self.assertIn(b"Create Account", register.data)
         self.assertEqual(explore.status_code, 200)
@@ -54,6 +65,9 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(admin.status_code, 200)
         self.assertIn(b"Platform Admin", admin.data)
         self.assertIn(b"data-admin-runtime-health", admin.data)
+        self.assertEqual(beta.status_code, 200)
+        self.assertIn(b"Public Beta", beta.data)
+        self.assertIn(b"/server help", beta.data)
         community = client.get("/communities/cohorts-in-the-wild/")
         self.assertEqual(community.status_code, 200)
         self.assertIn(b"Connect a new game service", community.data)

@@ -32,8 +32,14 @@ class BotReply:
 
 
 HELP_REPLY = BotReply(
-    "Mention me and ask `map settings`, `is the server up?`, `how many players are online?`, `who's on?`, or `what mods are installed?`.",
-    "unsupported_question",
+    "**Here is what I can do**\n"
+    "- `/server status` — check whether the connected server is ready\n"
+    "- `/server players` — list active players\n"
+    "- `/server count` — count active players\n"
+    "- `/server mods` — list active mods by name\n"
+    "- `/server settings` — show the combined server overview\n"
+    "You can also mention me and ask the same questions naturally. Read access follows your Community's approved Trog permissions.",
+    "server_help",
 )
 
 
@@ -78,6 +84,8 @@ def classify_intent(message: str) -> str | None:
     normalized = normalized.replace("\u201c", '"').replace("\u201d", '"')
     normalized = re.sub(r"<@!?\d+>", " ", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
+    if re.search(r"\b(help|commands?|what can you do)\b", normalized):
+        return "server_help"
     if re.search(r"\bmap\s+settings\b", normalized):
         return "server_settings"
     if re.search(r"\bmod(?:'s|s)?\b", normalized) and re.search(
@@ -268,6 +276,8 @@ def capability_for_intent(intent: str) -> str:
 
 def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user_id: str,
                        conn, config: Config, guild_map: dict[str, str] | None = None) -> BotReply:
+    if intent == "server_help":
+        return HELP_REPLY
     if intent == "server_settings":
         replies = [
             respond_to_request(read_intent, guild_id, channel_id, discord_user_id, conn, config, guild_map)

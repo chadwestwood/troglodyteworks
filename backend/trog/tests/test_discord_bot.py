@@ -31,7 +31,12 @@ from twe.discord_bot.authorization import (
     channel_enabled,
     resolve_identity,
 )
-from twe.discord_bot.service import handle_interaction, handle_message, split_discord_message
+from twe.discord_bot.service import (
+    DiscordRequestLimiter,
+    handle_interaction,
+    handle_message,
+    split_discord_message,
+)
 
 
 class DiscordBotCoreTests(unittest.TestCase):
@@ -68,12 +73,16 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(classify_intent("<@123> what mods are installed?"), "mod_list")
         self.assertEqual(classify_intent("<@123> what mod's are installed?"), "mod_list")
         self.assertEqual(classify_intent("<@123> list active mods"), "mod_list")
+        self.assertEqual(classify_intent("<@123> help"), "server_help")
+        self.assertEqual(classify_intent("<@123> what can you do?"), "server_help")
         self.assertIsNone(classify_intent("<@123> tell me a joke"))
 
     def test_worker_registers_combined_server_settings_command(self):
         service_source = (ROOT / "twe" / "discord_bot" / "service.py").read_text()
         self.assertIn('@server_group.command(name="settings"', service_source)
         self.assertIn('interaction, "server_settings"', service_source)
+        self.assertIn('@server_group.command(name="count"', service_source)
+        self.assertIn('@server_group.command(name="help"', service_source)
 
     def test_long_discord_responses_are_split_within_platform_limit(self):
         text = "\n".join(f"- Mod {index}: " + ("x" * 300) for index in range(20))
@@ -102,8 +111,8 @@ class DiscordBotCoreTests(unittest.TestCase):
 
     def test_unsupported_question_gets_help_response(self):
         reply = respond_to_message("<@123> hello", "111", object(), self.config, {})
-        self.assertEqual(reply.code, "unsupported_question")
-        self.assertIn("is the server up", reply.text)
+        self.assertEqual(reply.code, "server_help")
+        self.assertIn("/server status", reply.text)
 
     def test_server_offline_response(self):
         reply = server_status_reply(
@@ -420,7 +429,7 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(handled)
         self.assertIs(message.channel.last_send_options["allowed_mentions"], safe_mentions)
 
-    async def test_answers_supported_status_question_even_without_direct_mention(self):
+    async def test_ignores_supported_status_question_without_direct_mention(self):
         message = FakeMessage(
             content="is the server up?",
             author=self.author,
@@ -429,9 +438,8 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
             mentions=[],
         )
         handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
-        self.assertTrue(handled)
-        self.assertEqual(len(message.channel.sent), 1)
-        self.assertIn("not connected", message.channel.sent[0])
+        self.assertFalse(handled)
+        self.assertEqual(message.channel.sent, [])
 
     async def test_answers_player_list_question_with_direct_mention(self):
         message = FakeMessage(
@@ -446,7 +454,7 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(message.channel.sent), 1)
         self.assertIn("not connected", message.channel.sent[0])
 
-    async def test_answers_player_list_question_without_direct_mention(self):
+    async def test_ignores_player_list_question_without_direct_mention(self):
         message = FakeMessage(
             content="is anyone on the server?",
             author=self.author,
@@ -455,9 +463,29 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
             mentions=[],
         )
         handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
-        self.assertTrue(handled)
-        self.assertEqual(len(message.channel.sent), 1)
-        self.assertIn("not connected", message.channel.sent[0])
+        self.assertFalse(handled)
+        self.assertEqual(message.channel.sent, [])
+
+    async def test_rate_limits_repeated_mentions_per_user_and_guild(self):
+        message = FakeMessage(
+            content="<@999> help",
+            author=self.author,
+            guild=FakeGuild(222),
+            channel=FakeChannel(333),
+            mentions=[self.bot],
+        )
+        limiter = DiscordRequestLimiter(limit=1, window_seconds=30, clock=lambda: 100)
+
+        first = await handle_message(
+            message, self.bot, FakeDatabase(), self.config, {}, request_limiter=limiter,
+        )
+        second = await handle_message(
+            message, self.bot, FakeDatabase(), self.config, {}, request_limiter=limiter,
+        )
+
+        self.assertTrue(first)
+        self.assertTrue(second)
+        self.assertIn("too quickly", message.channel.sent[-1])
 
     async def test_answers_mod_list_question_with_direct_mention(self):
         message = FakeMessage(

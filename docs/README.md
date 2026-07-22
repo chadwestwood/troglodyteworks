@@ -35,6 +35,7 @@ Documentation is part of the product. Every document should identify whether it 
 
 - `beacon-api.md`
 - `discord-api.md`
+- `public-beta-readiness.md`
 - `nitrado-api.md`
 
 Research informs decisions but is not, by itself, an implemented production contract.
