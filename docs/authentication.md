@@ -1,5 +1,9 @@
 # TWE Authentication and Authorization
 
+**Status:** Implemented with known security remediation
+
+**Known findings:** `known-security-work.md`
+
 ## Purpose
 
 This document defines how Troglodyte Works Experience identifies users, maintains authenticated sessions, and determines what users are allowed to access or manage.
@@ -194,5 +198,10 @@ Role safety applies:
 - admin may invite moderator or member;
 - moderator may invite member;
 - owner cannot be granted through an invitation.
+
+The role hierarchy must be checked both when an invitation is created and when a
+membership request is approved. As of 2026-07-22, the approval-path recheck is a
+known security remediation item; this document states the required contract, not
+an assertion that the defect has already been fixed.
 
 Accepting an invitation creates only Community Membership. It does not grant Game Instance access, Discord installation approval, Server Operations, restart, save, mods, or ownership.

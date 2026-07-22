@@ -207,7 +207,11 @@ Migration `0007` is forward-only. Rolling back manually requires dropping `oauth
 
 ## Not Implemented
 
+**Post-slice production update (2026-07-22):** Google and Discord OAuth sign-in
+and account linking were subsequently configured and manually verified on both the
+Railway domain and `troglodyteworks.com`. The remaining exclusions still apply.
+
 - automatic account merge;
 - verified account-recovery merge workflow;
 - storing provider refresh tokens;
-- live OAuth verification against Google or Discord.
+- automated live-provider verification in the test suite; production Google and Discord OAuth have been manually verified.

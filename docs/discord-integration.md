@@ -1,5 +1,9 @@
 # Discord Integration
 
+**Status:** Implemented production contract
+
+**Production runtime:** Railway `trog-worker`
+
 ## Purpose
 
 Trog is one Discord application installed across multiple guilds. PostgreSQL records each guild's TWE Community and Game Server, immutable Discord user identities, optional TWE user links, and per-channel capability-category policy.
@@ -79,7 +83,21 @@ TROG_DISCORD_GUILD_GAME_SERVER_MAP=
 
 `TROG_DISCORD_GUILD_GAME_SERVER_MAP` is a temporary read-only compatibility fallback for guilds not yet migrated to database-backed Instance Access Grants. PostgreSQL is checked first. If a guild has a pending, active, denied, or revoked Instance Access Grant, Trog does not fall back to the legacy Game Server map. The fallback never authorizes `/server restart` and should be removed after all installations are migrated and database integration tests pass reliably.
 
-Status and player queries continue using the existing `local_asa` Management Adapter and RCON player service configuration. Player-list replies expose only the username parsed from each `ListPlayers` row; the RCON row number and immutable platform account ID are discarded before the Discord reply is built. The `what mods are installed?` mention and `/server mods` command use `instance.mods.names.read`; the adapter reads active mod IDs from `TWE_ASA_PANEL_CONFIG_PATH` and resolves names from local catalogs without making a network request per message. Tokens, RCON credentials, passwords, and session secrets must never be logged or committed.
+Production Genesis status and player queries use the Nitrado provider adapter. The
+worker resolves the Discord grant to the exact TWE Instance and bound Nitrado
+Provider Resource before making a read-only provider call. Player replies expose
+only the display names returned through the normalized player service; provider
+payloads, platform account identifiers, credentials, and service internals are not
+included in Discord output.
+
+The former `local_asa` and RCON implementation is a superseded Genesis deployment
+path. Local mod-catalog behavior may remain useful for self-hosted instances but is
+not a statement of current Nitrado capability. Do not promise mod names, map-setting
+summaries, or other provider data unless the selected adapter advertises and
+implements the corresponding capability.
+
+Tokens, provider credentials, passwords, OAuth secrets, and session secrets must
+never be logged or committed.
 
 `TROG_DISCORD_REDIRECT_URI` is the account sign-in/link callback. `TROG_DISCORD_INSTALL_REDIRECT_URI` is the separate guild verification and bot-install callback and must end at `/api/v1/discord/oauth/callback`. Register both exact URLs in the Discord Developer Portal.
 
@@ -90,7 +108,7 @@ retry action instead of requiring a duplicate access request.
 
 ## Runtime and logging
 
-Run the service with:
+Railway runs the worker with:
 
 ```text
 python -m twe.discord_bot.service

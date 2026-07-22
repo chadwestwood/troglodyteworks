@@ -1,5 +1,9 @@
 # Trog Bot Workflow
 
+**Status:** Partially implemented
+
+**Verified production interactions:** status, player count, and player names for the Nitrado-hosted Genesis Instance
+
 ## Purpose
 
 Trog is the Discord-facing community assistant for Troglodyte Works.
@@ -37,8 +41,8 @@ Examples:
 @Trog is the server up?
 @Trog how many players are online?
 @Trog who's on?
-@Trog what mods are installed?
-@Trog map settings
+@Trog what mods are installed?  (provider capability required; not verified for Nitrado)
+@Trog map settings             (combined provider capabilities required; not verified for Nitrado)
 ```
 
 For external provider-owned access, replies identify the provider-owned instance:
@@ -47,9 +51,11 @@ For external provider-owned access, replies identify the provider-owned instance
 Cohorts in the Wild - Genesis is up and ready for players.
 ```
 
-Installed-mod questions require `instance.mods.names.read`. Trog reads the
-active launch list from the local ASA panel and responds with human-readable
-names in launch order. This is read-only; it does not grant mod management.
+Installed-mod questions require `instance.mods.names.read`. The former local ASA
+adapter could read its local launch list, but production Genesis now uses Nitrado.
+Trog must return a clear unavailable response unless the selected provider adapter
+advertises and implements that capability. This is read-only and never grants mod
+management.
 
 The `map settings` summary combines server status, online player names, and
 the active mod list. Each section retains its corresponding read capability
@@ -57,7 +63,8 @@ check; the combined command does not broaden the requester's access.
 
 Trog must not describe the instance as owned by the consumer Discord guild.
 
-Player-list responses contain display usernames only. RCON row numbers and
-immutable platform account IDs must be removed before composing a Discord reply.
+Player-list responses contain display usernames only. Provider payload fields,
+RCON row numbers, immutable platform account IDs, and Nitrado service identifiers
+must be removed before composing a Discord reply.
 
 Discord account linking is handled through the provider-neutral external identity model. A User who signed up with Google or local credentials must connect Discord to the same TWE User before Discord guild authority can be verified. Linking Discord only proves the Discord user identity; Community Membership, provider approval, Instance Access Grants, and capability allowlists remain separate authorization steps.

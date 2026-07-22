@@ -159,6 +159,7 @@ Example:
 
 ```text
 Genesis_WP
+```
 
 ### Community Capability Grant
 

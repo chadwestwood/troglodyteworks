@@ -185,11 +185,16 @@ source control, fixtures, shell history, logs, screenshots, or documentation.
 
 ## Known Limitations
 
+**Post-slice production update (2026-07-22):** Genesis was subsequently migrated
+to Nitrado, the discovered service was bound to the existing TWE Game Server, and
+read-only status and player-name queries were verified in production. The final
+bullet below describes the boundary when this slice was written, not current state.
+
 - Key distribution, backup, access control, and retirement remain deployment
   responsibilities; keys must be injected by an approved runtime secret facility.
 - Nitrado-side token revocation is not automated; after local disconnect, the
   Owner must revoke the user-generated token in Nitrado.
-- Existing self-hosted Genesis and Pterodactyl behavior is intentionally unchanged.
+- At slice completion, existing self-hosted Genesis and Pterodactyl behavior was intentionally unchanged. This condition was later superseded for Genesis by the Nitrado production migration.
 
 ## Slice 3 Prerequisites
 

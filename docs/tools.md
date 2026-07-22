@@ -1,5 +1,10 @@
 # Troglodyte Works MCP Tools
 
+**Status:** Future tool catalog. A listed tool is not a production capability
+unless an applicable provider adapter, authorization contract, audit lifecycle,
+and test suite are implemented. Current Nitrado production access is read-only
+status and player information; disruptive tools are disabled.
+
 MCP tools are safe actions the AI can request.
 
 ## Read-Only Tools

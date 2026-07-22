@@ -1,5 +1,10 @@
 # Troglodyte Works Agents
 
+**Status:** Future operating concept. These roles describe a possible specialized
+agent organization; they are not independent production agents currently deployed
+by TWE. Trog's implemented production actions remain deterministic and
+capability-checked.
+
 Troglodyte Works uses AI agents as specialized employees.
 
 ## Customer Concierge

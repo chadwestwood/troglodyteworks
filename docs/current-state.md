@@ -1,166 +1,62 @@
 # Troglodyte Works Current State
 
-Last Updated: 2026-07-20
+**Last updated:** 2026-07-22
 
----
+**Status:** Current production baseline
 
-# Project Status
+## Product direction
 
-Current Phase:
+Troglodyte Works Experience is a community operating layer for gaming communities. Hosting is one connected service, and infrastructure providers are replaceable. Trog is the Discord guide into approved TWE capabilities.
 
-Foundation
+Genesis is an ARK: Survival Ascended Game Instance owned by Cohorts in the Wild. It is not the platform backend name.
 
-Current Sprint:
+## Production topology
 
-Sprint 1 – Foundation
+- GitHub is the deployment source.
+- Railway runs the Flask/Gunicorn web service.
+- Railway runs Trog as a separate long-running worker.
+- Railway PostgreSQL stores application state.
+- Cloudflare routes `troglodyteworks.com` to Railway.
+- Nitrado hosts the Cohorts in the Wild Genesis service.
+- The former local server and household router are outside the production path.
 
-Current Story:
+See `docs/production-architecture.md` for boundaries and request flow.
 
-TW-15 Create Site Layout
+## Verified capabilities
 
-Current Branch:
+- The public site and `/health` are available at `troglodyteworks.com`.
+- Local-password, Google, and Discord sign-in work in production.
+- Google and Discord identities link to a canonical TWE User.
+- Cohorts in the Wild has Community Membership and capability-based access.
+- Trog is connected to the Cohorts Discord guild through the Railway worker.
+- A service-scoped Nitrado long-life token can be validated and stored encrypted.
+- Nitrado services can be discovered and bound to an existing Game Server.
+- Genesis reports online through the Nitrado provider path.
+- `@Trog is the server up?` returns deterministic status information.
+- `@Trog who's on?` returns the available player names from Nitrado.
 
-feature/TW-6-register-account
+## Current operating constraints
 
----
+- Live Nitrado capabilities are read-only.
+- Trog restart execution remains disabled.
+- Local `local_asa` documentation describes a superseded Genesis deployment and is not the production provider path.
+- Provider credentials must be revocable, encrypted at rest, and never returned to the browser after storage.
+- Linear is the current work-planning system of record; an internal TWE engineering tracker remains a future product capability.
 
-# Product Direction
+## Known security work
 
-Troglodyte Works is a platform for gaming communities.
+The 2026-07-22 standard security review identified three validated items:
 
-Hosting is one service.
+1. add application-level password-login rate limiting or lockout;
+2. reapply role hierarchy checks when invitation membership is approved; and
+3. authorize Instance access before provider reconciliation or other tenant-specific work.
 
-The product is organized around:
+Until those items are fixed and verified, documentation must not claim those boundaries are fully enforced.
 
-- Communities
-- Journeys
-- Services
-- Guides
+## Immediate priorities
 
-The user experience is designed around asking one question at a time.
-
-Naming clarification:
-
-Genesis refers to one ARK instance/map.
-
-It does not name the platform backend or shared infrastructure.
-
----
-
-# Current Infrastructure
-
-## Founder
-
-Chad Westwood
-
-Founder
-
-First Member
-
-First Customer
-
----
-
-## Live Community
-
-Cohorts in the Wild
-
----
-
-## Live Server
-
-Game:
-
-ARK Survival Ascended
-
-Map:
-
-Genesis_WP
-
-Status:
-
-Production
-
-Hosting:
-
-Nitrado (migrated from self-hosted Linux on 2026-07-19)
-
-The public `troglodyteworks.com` route is temporarily unavailable while the
-local router is repaired. Local development and the isolated PostgreSQL test
-suite remain available.
-
----
-
-# Current Technology
-
-Frontend
-
-- HTML
-- CSS
-- JavaScript
-
-Backend
-
-- Python
-
-Hosting
-
-- Apache
-- NGINX
-- HestiaCP
-
-Version Control
-
-- Git
-- GitHub
-
-Project Management
-
-- Jira
-
-Remote Development
-
-- VS Code Remote SSH
-
----
-
-# Documents Complete
-
-✓ Vision
-
-✓ Design Principles
-
-✓ Domain Model
-
-✓ Services
-
-✓ Product Architecture
-
-✓ PM0003 Product Discovery
-
----
-
-# Upcoming Documents
-
-- User Journeys
-- Guidance System
-- Technical Architecture
-- Use Cases
-
----
-
-# Development Philosophy
-
-Every Sprint should produce:
-
-Working software
-
-Improved documentation
-
-A stronger understanding of the product
-
----
-
-# Current Goal
-
-Create a reusable UI foundation that supports future Journeys instead of individual pages.
+1. Resolve and verify the three security findings.
+2. Expand reliable Nitrado read-only observability without exposing secrets or platform identifiers.
+3. Add production smoke tests for the domain, OAuth callbacks, web service, worker, and provider reads.
+4. Continue the eight-week plan in Linear.
+5. Keep current-state documentation updated whenever production topology changes.

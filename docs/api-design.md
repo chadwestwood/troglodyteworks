@@ -1,5 +1,7 @@
 # TWE API Design
 
+**Status:** Current contract with evolving provider implementations
+
 ## Purpose
 
 This document defines the REST API contract for Troglodyte Works Experience (TWE).
@@ -421,7 +423,7 @@ Returns one Game Server.
         "name": "Cohorts in the Wild",
         "slug": "cohorts-in-the-wild-ark",
         "game_type": "ARK Survival Ascended",
-        "management_adapter": "local_asa",
+        "management_adapter": "nitrado",
         "status": "online"
     }
 }

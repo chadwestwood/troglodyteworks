@@ -1,5 +1,10 @@
 # Troglodyte Works Services
 
+**Status:** Mixed catalog. Items described as examples are product direction, not
+proof of production implementation. Current verified hosting capabilities are
+Nitrado connection/discovery/binding plus read-only Genesis status and player
+information.
+
 Services are capabilities that Members may enable within their Communities.
 
 A Service does not necessarily imply hosting or a paid subscription.

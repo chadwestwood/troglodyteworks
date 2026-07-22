@@ -2,6 +2,10 @@
 
 **Version:** 1.0 (Founder's Draft)
 
+**Status:** Incomplete founder's draft. The Community and Trog blueprints contain
+the currently developed product principles. Do not infer missing constitutional
+rules from the unfinished sections below.
+
 ---
 
 > *We are not building software.*

@@ -1,107 +1,55 @@
-# Troglodyte Works Data Model
+# TWE Conceptual Data Model
 
-Everything in the platform has a unique ID.
+**Status:** Current conceptual summary
 
--------------------------------------------------
+**Canonical detail:** `database-schema.md`
 
-Customer
+This document intentionally summarizes the product model. Table names, fields, constraints, and migration behavior belong in `database-schema.md`.
 
-customer_id
-name
-email
-subscription
-services[]
+## Community center
 
--------------------------------------------------
+```text
+User
+  -> Community Membership
+  -> Community
+       -> Game Server
+            -> Game Instance
+```
 
-Service
+- A User is the canonical TWE account.
+- External identities such as Google and Discord are sign-in methods linked to that User.
+- Community Membership grants a role inside one Community.
+- A Community can exist without any hosted game service.
+- A Game Server is the Community's logical game environment.
+- A Game Instance is one independently addressable playable environment, such as Genesis.
 
-service_id
-customer_id
-type
-status
-servers[]
+## Provider boundary
 
--------------------------------------------------
+```text
+Community
+  -> Provider Connection
+       -> Provider Resource
+            -> Game Server or Game Instance binding
+```
 
-Server
+Provider credentials are encrypted, revocable, scoped, and never part of the Community identity. Replacing Nitrado, self-hosting, or another provider must not require replacing the Community or its Memberships.
 
-server_id
-service_id
-game
-name
-status
-hostname
-public_ip
-ports
-settings
-mods
-backups
-logs
+## Discord boundary
 
--------------------------------------------------
+```text
+Discord Guild Installation
+  -> Instance Access Grant
+       -> provider Community
+       -> exact Game Server and Game Instance
+       -> approved read capabilities and channel scope
+```
 
-Game
+Discord installation, Discord identity, Community Membership, provider approval, and capability grants are separate authorities. A Discord role or browser-supplied identifier is not sufficient authority.
 
-game_id
-name
-version
-maps[]
-supported_mods[]
+## Operations
 
--------------------------------------------------
+Server Operations record requested capabilities, authorization, execution, verification, results, and audit history. Current Nitrado production operations are read-only. Disruptive operations require the reviewed lifecycle in `server-operation-lifecycle.md`.
 
-Map
+## Retired model
 
-map_id
-game_id
-name
-display_name
-
--------------------------------------------------
-
-Mod
-
-mod_id
-game_id
-curseforge_id
-name
-version
-status
-
--------------------------------------------------
-
-Backup
-
-backup_id
-server_id
-created
-size
-reason
-
--------------------------------------------------
-
-Log
-
-log_id
-server_id
-created
-level
-message
-
--------------------------------------------------
-
-Tool
-
-tool_id
-name
-mcp_server
-permissions
-
--------------------------------------------------
-
-Agent
-
-agent_id
-role
-available_tools[]
+The earlier `Customer -> Service -> Server` hierarchy is superseded. It treated hosting as the product center and did not adequately model Communities, Memberships, external identities, provider replacement, or Instance-scoped Discord access.

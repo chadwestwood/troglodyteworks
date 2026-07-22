@@ -1,5 +1,12 @@
 # Vertical Slice: Genesis Server Operations (V1)
 
+**Status: Superseded production topology.** This slice records the former
+`local_asa` implementation. Genesis moved to Nitrado in July 2026. Its safety and
+operation-lifecycle reasoning remains useful, but its paths, processes, RCON
+assumptions, and local restart mechanisms are not current production instructions.
+Current production supports read-only Nitrado status and player queries; disruptive
+Nitrado operations remain disabled.
+
 ## Purpose
 
 This document defines the first production Server Operations connected to the live Cohorts in the Wild Genesis ARK Survival Ascended instance.

@@ -1,8 +1,12 @@
 # TWE Engineering Tracker
 
+**Status:** Future product capability
+
+**Current planning system of record:** Linear
+
 ## Purpose
 
-The Engineering Tracker is the central system for managing the ongoing development of Troglodyte Works Experience (TWE).
+The Engineering Tracker is the planned internal system for managing the ongoing development of Troglodyte Works Experience (TWE). Until it is implemented and deliberately adopted, Linear is the operational source of truth for the eight-week plan, completed work, bugs, and security remediation.
 
 Every engineering effort is represented as an Issue.
 

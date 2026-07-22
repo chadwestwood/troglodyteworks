@@ -302,7 +302,12 @@ Initial check statuses:
 - failed
 - skipped
 
-## Initial Seed Data
+## Historical Initial Seed Data
+
+The following values describe the original local Genesis seed. They are retained
+to explain early migrations and must not be interpreted as the current production
+provider binding. Production Genesis is bound to a discovered Nitrado Provider
+Resource; `local_asa` is a superseded deployment path for that Instance.
 
 ### User
 
