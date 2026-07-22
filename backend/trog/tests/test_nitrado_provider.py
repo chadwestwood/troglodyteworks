@@ -45,6 +45,12 @@ class _Transport:
             raise self.error
         return self.response
 
+    def post(self, url, headers, form, timeout_seconds):
+        self.calls.append((url, headers, form, timeout_seconds))
+        if self.error:
+            raise self.error
+        return self.response
+
 
 def _response(services):
     return NitradoHttpResponse(
@@ -293,6 +299,36 @@ class NitradoProviderTests(unittest.TestCase):
             ).read_mods(self._context())
 
             self.assertEqual(mods, [{"id": "927090", "name": "Global Catalog Name"}])
+
+    def test_add_mod_preserves_load_order_and_writes_active_mods(self):
+        transport = _Transport(_gameserver_mods_response("927090,928708"))
+        provider = NitradoProvider(self.config, transport)
+
+        added, mods = provider.add_mod(self._context(), "999123")
+
+        self.assertTrue(added)
+        self.assertEqual([mod["id"] for mod in mods], ["927090", "928708", "999123"])
+        self.assertEqual(transport.calls[1][0], "https://api.nitrado.net/services/42/gameservers/settings")
+        self.assertEqual(
+            transport.calls[1][2],
+            {"category": "general", "key": "activeMods", "value": "927090,928708,999123"},
+        )
+
+    def test_add_existing_mod_is_idempotent_and_does_not_write(self):
+        transport = _Transport(_gameserver_mods_response("927090,928708"))
+
+        added, _mods = NitradoProvider(self.config, transport).add_mod(self._context(), "928708")
+
+        self.assertFalse(added)
+        self.assertEqual(len(transport.calls), 1)
+
+    def test_restart_posts_to_nitrado_once(self):
+        transport = _Transport(NitradoHttpResponse(200, b'{"status":"success","data":{}}'))
+
+        NitradoProvider(self.config, transport).restart(self._context())
+
+        self.assertEqual(transport.calls[0][0], "https://api.nitrado.net/services/42/gameservers/restart")
+        self.assertIn("restart_message", transport.calls[0][2])
 
     def test_normalizes_gameserver_transitions_without_claiming_ready(self):
         cases = {

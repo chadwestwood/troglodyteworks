@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import re
 
 from ..config import Config
-from ..db import fetch_one
+from ..db import execute, fetch_all, fetch_one
 from ..services.adapters import adapter_for
 from ..services.provider_resolution import (
     read_game_server_health,
@@ -10,6 +10,7 @@ from ..services.provider_resolution import (
     read_game_server_players,
     resolve_game_server_provider,
 )
+from ..services.nitrado_provider import NitradoProvider, NitradoProviderError
 from .authorization import authorize, resolve_guild
 
 
@@ -37,6 +38,8 @@ HELP_REPLY = BotReply(
     "- `/server players` — list active players\n"
     "- `/server count` — count active players\n"
     "- `/server mods` — list active mods by name\n"
+    "- `/server add-mod <mod ID>` — add an ASA mod (owner/admin)\n"
+    "- `/server restart` — restart the routed server (owner/admin)\n"
     "- `/server settings` — show the combined server overview\n"
     "You can also mention me and ask the same questions naturally. Read access follows your Community's approved Trog permissions.",
     "server_help",
@@ -86,6 +89,10 @@ def classify_intent(message: str) -> str | None:
     normalized = re.sub(r"\s+", " ", normalized).strip()
     if re.search(r"\b(help|commands?|what can you do)\b", normalized):
         return "server_help"
+    if re.search(r"\b(add|install|enable)\b", normalized) and re.search(r"\bmod\b|\b\d{3,12}\b", normalized):
+        return "mod_add"
+    if re.search(r"\brestart\b", normalized):
+        return "server_restart"
     if re.search(r"\bmap\s+settings\b", normalized):
         return "server_settings"
     if re.search(r"\bmod(?:'s|s)?\b", normalized) and re.search(
@@ -101,6 +108,12 @@ def classify_intent(message: str) -> str | None:
     if re.search(r"\b(how many|players?|online|count)\b", normalized) and re.search(r"\b(players?|online)\b", normalized):
         return "player_count"
     return None
+
+
+def extract_mod_id(message: str) -> str | None:
+    normalized = re.sub(r"<@!?\d+>", " ", message)
+    match = re.search(r"\b(?:add|install|enable)\b.*?\b(\d{3,12})\b", normalized, flags=re.IGNORECASE)
+    return match.group(1) if match else None
 
 
 def game_server_for_guild(conn, guild_id: str, guild_map: dict[str, str] | None = None) -> GameServerRef | None:
@@ -270,12 +283,14 @@ def capability_for_intent(intent: str) -> str:
         "player_count": "instance.players.count.read",
         "player_list": "instance.players.names.read",
         "mod_list": "instance.mods.names.read",
+        "mod_add": "instance.mods.write",
         "server_restart": "instance.restart.execute",
     }[intent]
 
 
 def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user_id: str,
-                       conn, config: Config, guild_map: dict[str, str] | None = None) -> BotReply:
+                       conn, config: Config, guild_map: dict[str, str] | None = None,
+                       command_argument: str | None = None) -> BotReply:
     if intent == "server_help":
         return HELP_REPLY
     if intent == "server_settings":
@@ -314,12 +329,13 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
             return BotReply("Trog is not enabled for that capability in this channel.", "channel_disabled")
         if capability.endswith(".read"):
             return BotReply("That read capability has not been approved for this Discord server.", "read_not_approved")
-        return BotReply("You are not authorized to restart this server.", "restart_denied")
+        return BotReply("Only an authorized Community owner or administrator can change or restart this server.", "administrative_denied")
+    if intent == "mod_add":
+        if not command_argument or not re.fullmatch(r"\d{3,12}", command_argument):
+            return BotReply("Give me the numeric CurseForge mod ID, for example: `@Trog add 123456 to the map`.", "mod_id_required")
+        return _execute_nitrado_operation(conn, decision, config, "instance.mods.write", command_argument)
     if intent == "server_restart":
-        return BotReply(
-            "You are authorized for `instance.restart.execute`, but restart execution is not enabled yet.",
-            "restart_authorized_not_enabled",
-        )
+        return _execute_nitrado_operation(conn, decision, config, "instance.restart.execute")
     game_server = GameServerRef(
         id=decision.context.game_server_id,
         name=decision.context.game_server_name,
@@ -335,6 +351,76 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
         players_provider=players_provider,
         mods_provider=mods_provider,
     )
+
+
+def _execute_nitrado_operation(conn, decision, config: Config, capability: str, argument: str | None = None) -> BotReply:
+    context = decision.context
+    resolution = resolve_game_server_provider(conn, context.game_server_id)
+    if not resolution or resolution.mode != "provider" or resolution.context.connection.provider_key != "nitrado":
+        return BotReply("That operation is currently available only for Nitrado-connected servers.", "provider_write_unavailable")
+    instance_id = context.instance_id
+    if not instance_id:
+        instances = fetch_all(
+            conn,
+            "SELECT id::text FROM game_instances WHERE game_server_id = %s ORDER BY sort_order, created_at LIMIT 2",
+            (context.game_server_id,),
+        )
+        # Administrative operations must never guess between maps. A channel
+        # route supplies an exact instance; this fallback is only safe for a
+        # legacy game server that has exactly one instance.
+        instance_id = instances[0]["id"] if len(instances) == 1 else None
+    if not instance_id:
+        return BotReply("I could not identify the routed game instance for this operation.", "instance_unavailable")
+    operation = fetch_one(
+        conn,
+        """
+        INSERT INTO server_operations
+            (game_instance_id, requested_by, capability, status, current_stage, started_at)
+        VALUES (%s, %s, %s, 'executing', 'provider_request', now())
+        RETURNING id::text
+        """,
+        (instance_id, decision.identity.user_id, capability),
+    )
+    provider = NitradoProvider(config)
+    try:
+        if capability == "instance.mods.write":
+            added, mods = provider.add_mod(resolution.context, argument)
+            if not added:
+                message = f"Mod `{argument}` is already configured on **{context.game_server_name}**."
+                code = "mod_already_installed"
+            else:
+                name = next((mod["name"] for mod in mods if mod["id"] == argument), f"Mod {argument}")
+                message = (
+                    f"Added **{name}** (`{argument}`) to **{context.game_server_name}**. "
+                    "The setting is saved; use `@Trog restart` in this channel when you are ready to apply it."
+                )
+                code = "mod_added"
+        else:
+            provider.restart(resolution.context)
+            message = f"Nitrado accepted the restart request for **{context.game_server_name}**. It may take several minutes to return."
+            code = "restart_requested"
+        execute(
+            conn,
+            "UPDATE server_operations SET status = 'completed', current_stage = 'provider_accepted', completed_at = now(), result_message = %s WHERE id = %s",
+            (message, operation["id"]),
+        )
+        execute(
+            conn,
+            """
+            INSERT INTO audit_logs (user_id, community_id, action, target_type, target_id, details)
+            VALUES (%s, %s, %s, 'server_operation', %s, jsonb_build_object('capability', %s::text, 'argument', %s::text))
+            """,
+            (decision.identity.user_id, context.community_id, "discord.server_operation.completed", operation["id"], capability, argument),
+        )
+        return BotReply(message, code)
+    except (NitradoProviderError, ValueError) as exc:
+        safe_message = str(exc)[:400]
+        execute(
+            conn,
+            "UPDATE server_operations SET status = 'failed', current_stage = 'failed', completed_at = now(), result_message = %s WHERE id = %s",
+            (safe_message, operation["id"]),
+        )
+        return BotReply(f"I could not complete that Nitrado operation: {safe_message}", "provider_operation_failed")
 
 
 def _read_reply(

@@ -11,6 +11,7 @@ from .core import (
     DiscordBotConfigurationError,
     HELP_REPLY,
     classify_intent,
+    extract_mod_id,
     is_directly_mentioned,
     parse_guild_game_server_map,
     respond_to_request,
@@ -133,6 +134,15 @@ def main():
             request_limiter=request_limiter,
         )
 
+    @server_group.command(name="add-mod", description="Add an ASA mod by CurseForge mod ID")
+    async def server_add_mod(interaction, mod_id: str):
+        await handle_interaction(
+            interaction, "mod_add", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
+            command_argument=mod_id,
+        )
+
     tree.add_command(server_group)
 
     @client.event
@@ -223,7 +233,7 @@ async def handle_message(
             with database.connect() as conn:
                 reply = respond_to_request(
                     intent, str(message.guild.id), str(message.channel.id), str(message.author.id),
-                    conn, config, guild_map,
+                    conn, config, guild_map, command_argument=extract_mod_id(content),
                 )
     except DiscordBotConfigurationError:
         logger.warning("Discord guild is not connected to a valid TWE game server guild_id=%s", message.guild.id)
@@ -253,7 +263,7 @@ async def handle_message(
 
 async def handle_interaction(
     interaction, intent, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
-    request_limiter=None,
+    request_limiter=None, command_argument=None,
 ):
     guild_id = str(interaction.guild_id) if interaction.guild_id else ""
     channel_id = str(interaction.channel_id) if interaction.channel_id else ""
@@ -261,7 +271,7 @@ async def handle_interaction(
     # Provider reads can legitimately take longer than Discord's initial
     # interaction deadline. Acknowledge first, then deliver the result through
     # the follow-up webhook. Administrative responses stay private.
-    ephemeral = intent == "server_restart"
+    ephemeral = intent in {"server_restart", "mod_add"}
     await interaction.response.defer(thinking=True, ephemeral=ephemeral)
     if request_limiter and not request_limiter.allow(guild_id, author_id):
         reply = BotReply(
@@ -276,7 +286,10 @@ async def handle_interaction(
             reply = HELP_REPLY
         else:
             with database.connect() as conn:
-                reply = respond_to_request(intent, guild_id, channel_id, author_id, conn, config, guild_map)
+                reply = respond_to_request(
+                    intent, guild_id, channel_id, author_id, conn, config, guild_map,
+                    command_argument=command_argument,
+                )
     except Exception:
         logger.exception("Discord interaction handling failed guild_id=%s intent=%s", guild_id, intent)
         reply = BotReply("I could not process that command right now.", "interaction_unavailable")

@@ -12,7 +12,7 @@ PUBLIC_CAPABILITIES = frozenset(
         "instance.mods.names.read",
     }
 )
-ADMINISTRATIVE_CAPABILITIES = frozenset({"instance.restart.execute"})
+ADMINISTRATIVE_CAPABILITIES = frozenset({"instance.restart.execute", "instance.mods.write"})
 
 
 @dataclass(frozen=True)
@@ -265,9 +265,9 @@ def authorize(conn, guild_id: str, channel_id: str, discord_user_id: str, capabi
     category = "read" if capability in PUBLIC_CAPABILITIES else "administrative"
     if not channel_enabled(conn, context, channel_id, category):
         return AuthorizationDecision(False, "channel_disabled", capability, context)
-    if not grant_capability_enabled(conn, context, capability):
-        return AuthorizationDecision(False, "capability_not_granted", capability, context)
     if capability in PUBLIC_CAPABILITIES:
+        if not grant_capability_enabled(conn, context, capability):
+            return AuthorizationDecision(False, "capability_not_granted", capability, context)
         return AuthorizationDecision(True, "public_capability", capability, context)
     if capability not in ADMINISTRATIVE_CAPABILITIES:
         return AuthorizationDecision(False, "unknown_capability", capability, context)
@@ -285,5 +285,13 @@ def authorize(conn, guild_id: str, channel_id: str, discord_user_id: str, capabi
     }
     if not identity.membership_id:
         return AuthorizationDecision(False, "not_a_community_member", capability, context, identity)
+    # A provider Community owner retains administrative control of their own
+    # hosted instance even when Trog is routed through another Discord guild.
+    # Delegated administrators still require both the Discord access capability
+    # and a TWE Server Operation Capability Grant.
+    if identity.role == "owner":
+        return AuthorizationDecision(True, "community_owner", capability, context, identity)
+    if not grant_capability_enabled(conn, context, capability):
+        return AuthorizationDecision(False, "capability_not_granted", capability, context, identity)
     allowed = can_request_capability(access, capability, conn)
     return AuthorizationDecision(allowed, "authorized" if allowed else "capability_not_granted", capability, context, identity)

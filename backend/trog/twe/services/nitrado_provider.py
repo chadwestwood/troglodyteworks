@@ -5,6 +5,7 @@ import re
 import socket
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -91,6 +92,26 @@ class NitradoHttpTransport:
         except (TimeoutError, socket.timeout, URLError) as exc:
             raise NitradoUnavailableError() from exc
 
+    def post(self, url: str, headers: dict[str, str], form: dict[str, str], timeout_seconds: float) -> NitradoHttpResponse:
+        request = Request(
+            url,
+            data=urlencode(form).encode("utf-8"),
+            headers={**headers, "Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=timeout_seconds) as response:
+                body = response.read(MAX_RESPONSE_BYTES + 1)
+                if len(body) > MAX_RESPONSE_BYTES:
+                    raise NitradoMalformedResponseError()
+                return NitradoHttpResponse(status=response.status, body=body)
+        except HTTPError as exc:
+            status = exc.code
+            exc.close()
+            return NitradoHttpResponse(status=status, body=b"")
+        except (TimeoutError, socket.timeout, URLError) as exc:
+            raise NitradoUnavailableError() from exc
+
 
 @dataclass(frozen=True)
 class NitradoService:
@@ -134,6 +155,27 @@ class NitradoClient:
         response = self._get(f"/services/{service_id}/gameservers", credential)
         return self._parse_gameserver_mods(response.body)
 
+    def set_gameserver_mods(self, service_id: str, credential: bytes, mod_ids: list[str]) -> None:
+        if not service_id.isdigit() or any(not mod_id.isdigit() for mod_id in mod_ids):
+            raise NitradoMalformedResponseError()
+        self._post(
+            f"/services/{service_id}/gameservers/settings",
+            credential,
+            {"category": "general", "key": "activeMods", "value": ",".join(mod_ids)},
+        )
+
+    def restart_gameserver(self, service_id: str, credential: bytes) -> None:
+        if not service_id.isdigit():
+            raise NitradoMalformedResponseError()
+        self._post(
+            f"/services/{service_id}/gameservers/restart",
+            credential,
+            {
+                "message": "Restart requested by a Troglodyte Works administrator.",
+                "restart_message": "Restart requested through Trog.",
+            },
+        )
+
     def _get(self, path: str, credential: bytes) -> NitradoHttpResponse:
         try:
             token = credential.decode("ascii")
@@ -158,6 +200,40 @@ class NitradoClient:
             raise NitradoUnavailableError()
         if response.status != 200:
             raise NitradoMalformedResponseError()
+        return response
+
+    def _post(self, path: str, credential: bytes, form: dict[str, str]) -> NitradoHttpResponse:
+        try:
+            token = credential.decode("ascii")
+        except (AttributeError, UnicodeDecodeError):
+            raise NitradoAuthenticationError() from None
+        response = self._transport.post(
+            f"{self._base_url}{path}",
+            {
+                "Accept": "application/json",
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "Troglodyte-Works/1.0",
+            },
+            form,
+            self._timeout_seconds,
+        )
+        if response.status == 401:
+            raise NitradoAuthenticationError()
+        if response.status == 403:
+            raise NitradoInsufficientScopeError()
+        if response.status == 429:
+            raise NitradoRateLimitedError()
+        if response.status >= 500:
+            raise NitradoUnavailableError()
+        if response.status not in {200, 201, 202, 204}:
+            raise NitradoMalformedResponseError()
+        if response.body:
+            try:
+                payload = json.loads(response.body)
+            except json.JSONDecodeError:
+                raise NitradoMalformedResponseError() from None
+            if not isinstance(payload, dict) or payload.get("status") != "success":
+                raise NitradoMalformedResponseError()
         return response
 
     @staticmethod
@@ -408,6 +484,31 @@ class NitradoProvider:
             credential,
         )
         return self._mod_catalog.enrich(mods) if self._mod_catalog else mods
+
+    def add_mod(self, context: ProviderContext, mod_id: str) -> tuple[bool, list[dict[str, str]]]:
+        if context.connection.provider_key != "nitrado" or not re.fullmatch(r"\d{3,12}", mod_id):
+            raise ValueError("A valid numeric CurseForge mod ID is required.")
+        credential = self._credential(context)
+        mods = self._client.get_gameserver_mods(context.resource.external_resource_id, credential)
+        existing_ids = [mod["id"] for mod in mods]
+        if mod_id in existing_ids:
+            enriched = self._mod_catalog.enrich(mods) if self._mod_catalog else mods
+            return False, enriched
+        self._client.set_gameserver_mods(
+            context.resource.external_resource_id,
+            credential,
+            [*existing_ids, mod_id],
+        )
+        updated = [*mods, {"id": mod_id, "name": f"Mod {mod_id}"}]
+        return True, self._mod_catalog.enrich(updated) if self._mod_catalog else updated
+
+    def restart(self, context: ProviderContext) -> None:
+        if context.connection.provider_key != "nitrado":
+            raise ValueError("Nitrado adapter received the wrong Provider Connection.")
+        self._client.restart_gameserver(
+            context.resource.external_resource_id,
+            self._credential(context),
+        )
 
     def _credential(self, context: ProviderContext) -> bytes:
         envelope = context.secret_accessor.read_envelope()

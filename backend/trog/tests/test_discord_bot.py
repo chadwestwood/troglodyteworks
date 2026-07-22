@@ -12,6 +12,7 @@ from twe.discord_bot.core import (
     DiscordBotConfigurationError,
     GameServerRef,
     classify_intent,
+    extract_mod_id,
     is_directly_mentioned,
     parse_guild_game_server_map,
     respond_to_message,
@@ -73,9 +74,17 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(classify_intent("<@123> what mods are installed?"), "mod_list")
         self.assertEqual(classify_intent("<@123> what mod's are installed?"), "mod_list")
         self.assertEqual(classify_intent("<@123> list active mods"), "mod_list")
+        self.assertEqual(classify_intent("<@123> add 123456 to the map"), "mod_add")
+        self.assertEqual(classify_intent("@trog install mod 987654"), "mod_add")
+        self.assertEqual(classify_intent("@trog restart"), "server_restart")
         self.assertEqual(classify_intent("<@123> help"), "server_help")
         self.assertEqual(classify_intent("<@123> what can you do?"), "server_help")
         self.assertIsNone(classify_intent("<@123> tell me a joke"))
+
+    def test_extracts_only_numeric_mod_id_from_add_command(self):
+        self.assertEqual(extract_mod_id("<@123> add 987654 to the map"), "987654")
+        self.assertEqual(extract_mod_id("@Trog install mod 123456"), "123456")
+        self.assertIsNone(extract_mod_id("@Trog add this mod"))
 
     def test_worker_registers_combined_server_settings_command(self):
         service_source = (ROOT / "twe" / "discord_bot" / "service.py").read_text()
@@ -83,6 +92,7 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertIn('interaction, "server_settings"', service_source)
         self.assertIn('@server_group.command(name="count"', service_source)
         self.assertIn('@server_group.command(name="help"', service_source)
+        self.assertIn('@server_group.command(name="add-mod"', service_source)
 
     def test_long_discord_responses_are_split_within_platform_limit(self):
         text = "\n".join(f"- Mod {index}: " + ("x" * 300) for index in range(20))
@@ -260,15 +270,17 @@ class DiscordBotCoreTests(unittest.TestCase):
             ["instance.status.read", "instance.players.names.read", "instance.mods.names.read"],
         )
 
+    @patch("twe.discord_bot.core._execute_nitrado_operation")
     @patch("twe.discord_bot.core.authorize")
-    def test_authorized_restart_is_recognized_but_not_executed(self, authorize_mock):
+    def test_authorized_restart_is_executed(self, authorize_mock, execute_mock):
         authorize_mock.return_value = AuthorizationDecision(
             True, "authorized", "instance.restart.execute", self._context(),
             DiscordIdentity("111", "user", "membership", "owner"),
         )
+        execute_mock.return_value = BotReply("Restart accepted.", "restart_requested")
         reply = respond_to_request("server_restart", "222", "333", "111", object(), self.config)
-        self.assertEqual(reply.code, "restart_authorized_not_enabled")
-        self.assertIn("not enabled yet", reply.text)
+        self.assertEqual(reply.code, "restart_requested")
+        execute_mock.assert_called_once()
 
     @patch("twe.discord_bot.core.authorize")
     def test_unauthorized_restart_is_denied(self, authorize_mock):
@@ -277,7 +289,7 @@ class DiscordBotCoreTests(unittest.TestCase):
             DiscordIdentity("111", "user", "membership", "member"),
         )
         reply = respond_to_request("server_restart", "222", "333", "111", object(), self.config)
-        self.assertEqual(reply.code, "restart_denied")
+        self.assertEqual(reply.code, "administrative_denied")
 
     def _context(self):
         return DiscordContext("installation", "222", "community", self.server.id,
