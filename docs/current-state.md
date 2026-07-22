@@ -36,6 +36,7 @@ See `docs/production-architecture.md` for boundaries and request flow.
 - `@Trog is the server up?` returns deterministic status information.
 - `@Trog who's on?` returns the available player names from Nitrado.
 - Nitrado rate limits, outages, and credential failures use stable secret-free API errors rather than generic application failures.
+- GitHub pull requests and pushes to `main` run backend regressions, a Python dependency audit, and tracked-secret/configuration policy checks.
 
 ## Current operating constraints
 

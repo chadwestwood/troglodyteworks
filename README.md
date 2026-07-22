@@ -90,6 +90,26 @@ The checks cover the custom domain, deterministic health response, homepage,
 sign-in page, and anonymous authentication boundary. They never sign in, create
 OAuth state, contact a game provider, or modify production data.
 
+## Security checks
+
+Every pull request and push to `main` runs three independent checks before a
+change is considered ready for production:
+
+- the complete backend regression suite;
+- a Python dependency vulnerability audit; and
+- a dependency-free repository policy check that rejects tracked `.env` files,
+  private keys, common provider-token formats, and hard-coded secret assignments.
+
+Run the fast repository policy check locally with:
+
+```bash
+python scripts/security_check.py
+```
+
+Do not silence a finding by copying a real credential into an allowlist. Replace
+test data with an unmistakable placeholder. A confirmed exposure requires
+revocation and rotation even after the value is removed from the current branch.
+
 ## Operational safety
 
 Current Nitrado integration is read-only for live status, player information, and the configured ASA mod list. Destructive or disruptive actions—including restart, stop, restore, configuration mutation, and mod changes—must remain unavailable until their authorization, confirmation, audit, provider, and recovery contracts are explicitly implemented and reviewed.

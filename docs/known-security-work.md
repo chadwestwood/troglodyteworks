@@ -5,6 +5,20 @@
 
 This file records validated security gaps without exposing exploit instructions, credentials, or sensitive production data. Linear contains the operational work items.
 
+## Automated repository checks
+
+**State:** Implemented 2026-07-22
+
+GitHub now runs the backend regression suite, a Python dependency vulnerability
+audit, and a repository policy check on pull requests and pushes to `main`. The
+policy check rejects tracked environment files, private keys, common provider
+token formats, and hard-coded secret assignments. It is intentionally
+dependency-free so it can run locally before external packages are installed.
+
+Scanner findings must not be bypassed with real-value allowlists. Confirmed
+credential exposure requires provider-side revocation and rotation; deleting the
+current file does not remove the value from Git history.
+
 ## Password-login abuse protection
 
 **Severity:** Medium  
