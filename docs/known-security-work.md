@@ -8,9 +8,13 @@ This file records validated security gaps without exposing exploit instructions,
 ## Password-login abuse protection
 
 **Severity:** Medium  
-**State:** Validated; remediation pending
+**State:** Fixed and regression-tested 2026-07-22
 
-Application-level password sign-in needs rate limiting, progressive delay, temporary lockout, or an equivalent abuse-resistant control. Provider and edge limits are defense in depth, not a replacement for an application control with tests and observable outcomes.
+Local-password sign-in now records only a normalized identifier hash, serializes
+attempts across application replicas, and temporarily blocks an identifier after
+five failed attempts in fifteen minutes. Missing accounts still perform password
+hash verification, responses remain generic, and successful sign-in clears the
+failure history. The response includes `Retry-After`; OAuth sign-in is unchanged.
 
 ## Invitation approval role hierarchy
 

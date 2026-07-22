@@ -302,6 +302,21 @@ Initial check statuses:
 - failed
 - skipped
 
+### Password Login Failure
+
+Records recent failed local-password sign-in attempts for application-level abuse
+protection. The submitted email is normalized and stored only as a SHA-256
+identifier hash; passwords and raw email addresses are never stored in this table.
+Five failures for one identifier within fifteen minutes temporarily block further
+password verification. A successful password sign-in clears that identifier's
+failure history. Google and Discord OAuth sign-in are unaffected.
+
+Fields:
+
+- id
+- identifier_hash
+- attempted_at
+
 ## Historical Initial Seed Data
 
 The following values describe the original local Genesis seed. They are retained

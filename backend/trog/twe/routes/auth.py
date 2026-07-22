@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import hashlib
 import re
 
 from flask import Blueprint, current_app, jsonify, request
@@ -12,6 +13,12 @@ auth_bp = Blueprint("twe_auth", __name__)
 
 REGISTRATION_FIELDS = {"display_name", "email", "password", "password_confirmation"}
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+LOGIN_FAILURE_LIMIT = 5
+LOGIN_FAILURE_WINDOW_SECONDS = 15 * 60
+LOGIN_RETRY_AFTER_SECONDS = 15 * 60
+# A missing account still performs a real password-hash verification so callers
+# cannot cheaply distinguish registered from unregistered email addresses.
+DUMMY_PASSWORD_HASH = hash_password("twe-password-login-timing-placeholder")
 
 
 @auth_bp.post("/auth/login")
@@ -24,14 +31,26 @@ def login():
 
     config = current_app.config["TWE_CONFIG"]
     with current_app.config["TWE_DB"].connect() as conn:
+        identifier_hash = login_identifier_hash(email)
+        # Serialize attempts for one normalized identifier across Railway replicas.
+        # The hash itself contains no email address or other submitted credential.
+        fetch_one(conn, "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (identifier_hash,))
+        if login_failure_count(conn, identifier_hash) >= LOGIN_FAILURE_LIMIT:
+            return login_rate_limit_response()
         user = fetch_one(
             conn,
             "SELECT id::text, email, display_name, password_hash FROM users WHERE lower(email) = %s",
             (email,),
         )
-        if not user or not user["password_hash"] or not verify_password(user["password_hash"], password):
+        password_hash = user["password_hash"] if user and user.get("password_hash") else DUMMY_PASSWORD_HASH
+        password_valid = verify_password(password_hash, password)
+        if not user or not user.get("password_hash") or not password_valid:
+            record_login_failure(conn, identifier_hash)
+            if login_failure_count(conn, identifier_hash) >= LOGIN_FAILURE_LIMIT:
+                return login_rate_limit_response()
             return api_error("INVALID_CREDENTIALS", "Invalid email or password.", 401)
 
+        clear_login_failures(conn, identifier_hash)
         token = create_session(conn, user["id"], config)
 
     response = jsonify({"user": user_response(user)})
@@ -130,6 +149,59 @@ def validate_registration_payload(payload):
 
 def normalize_email(value) -> str:
     return str(value or "").strip().lower()
+
+
+def login_identifier_hash(email: str) -> str:
+    return hashlib.sha256(normalize_email(email).encode("utf-8")).hexdigest()
+
+
+def login_failure_count(conn, identifier_hash: str) -> int:
+    row = fetch_one(
+        conn,
+        """
+        SELECT count(*)::int AS count
+        FROM password_login_failures
+        WHERE identifier_hash = %s
+          AND attempted_at >= now() - (%s * interval '1 second')
+        """,
+        (identifier_hash, LOGIN_FAILURE_WINDOW_SECONDS),
+    )
+    return int(row["count"] if row else 0)
+
+
+def record_login_failure(conn, identifier_hash: str):
+    # Keep the abuse ledger bounded without retaining long-term login metadata.
+    execute(
+        conn,
+        "DELETE FROM password_login_failures WHERE attempted_at < now() - interval '1 day'",
+    )
+    execute(
+        conn,
+        "INSERT INTO password_login_failures (identifier_hash) VALUES (%s)",
+        (identifier_hash,),
+    )
+
+
+def clear_login_failures(conn, identifier_hash: str):
+    execute(
+        conn,
+        "DELETE FROM password_login_failures WHERE identifier_hash = %s",
+        (identifier_hash,),
+    )
+
+
+def login_rate_limit_response():
+    response = jsonify(
+        {
+            "error": {
+                "code": "LOGIN_RATE_LIMITED",
+                "message": "Too many sign-in attempts. Try again later.",
+            }
+        }
+    )
+    response.status_code = 429
+    response.headers["Retry-After"] = str(LOGIN_RETRY_AFTER_SECONDS)
+    return response
 
 
 def create_session(conn, user_id: str, config):

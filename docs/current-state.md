@@ -47,12 +47,12 @@ See `docs/production-architecture.md` for boundaries and request flow.
 
 The 2026-07-22 standard security review identified three validated items:
 
-1. add application-level password-login rate limiting or lockout;
+1. application-level password-login lockout — fixed and regression-tested 2026-07-22;
 2. reapply role hierarchy checks when invitation membership is approved — fixed and regression-tested 2026-07-22; and
 3. authorize Instance access before provider reconciliation or other tenant-specific work.
 
-Documentation must not claim the remaining boundaries are fully enforced until
-their fixes and regression tests are complete.
+Documentation must not claim the remaining Instance reconciliation boundary is
+fully enforced until its fix and regression tests are complete.
 
 ## Immediate priorities
 
