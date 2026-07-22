@@ -23,6 +23,7 @@ from .routes.discord_access import discord_access_bp
 from .routes.game_catalog import game_catalog_bp
 from .routes.game_servers import game_servers_bp
 from .routes.hosting_connections import hosting_connections_bp
+from .routes.host_agents import host_agents_bp
 from .routes.instances import instances_bp
 from .routes.operations import operations_bp
 from .services.provider_registry import build_provider_registry
@@ -49,6 +50,7 @@ def create_app(config=None, database=None, provider_registry=None):
     app.register_blueprint(game_catalog_bp, url_prefix="/api/v1")
     app.register_blueprint(game_servers_bp, url_prefix="/api/v1")
     app.register_blueprint(hosting_connections_bp, url_prefix="/api/v1")
+    app.register_blueprint(host_agents_bp, url_prefix="/api/v1")
     app.register_blueprint(instances_bp, url_prefix="/api/v1")
     app.register_blueprint(operations_bp, url_prefix="/api/v1")
 
@@ -105,6 +107,10 @@ def create_app(config=None, database=None, provider_registry=None):
     @app.get("/invite/<token>/")
     def invite_page(token):
         return send_from_directory(site_root, "invite/index.html")
+
+    @app.get("/discord/share/<token>/")
+    def discord_share_page(token):
+        return send_from_directory(site_root, "discord/share/index.html")
 
     # Community pages use the selected Community from the API. Serve the shared
     # page shells for every real slug so one user's Communities remain visibly

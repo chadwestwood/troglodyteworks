@@ -32,6 +32,7 @@
       <p class="form-error" data-error hidden></p>
       <div class="guidance-note" data-status>Choose specific channels when one Discord server discusses more than one hosted game. Each channel will use the Community and hosted game selected below.
       </div>
+      <p class="muted">After Trog is installed, this page shows Discord channel names and lets an administrator change the route without copying IDs.</p>
 
       <form class="stack-form" data-discord-access-form>
         <label for="provider_community_id">Which Community should Trog represent?</label>
@@ -60,16 +61,22 @@
         <fieldset>
           <legend>Which channels should use this hosted game?</legend>
           <label><input type="radio" name="channel_scope" value="all" checked> All channels Trog can see (best for one game)</label>
-          <label><input type="radio" name="channel_scope" value="allowlist"> Only specific channels (best for multiple games)</label>
+          <label><input type="radio" name="channel_scope" value="allowlist"> Choose specific channels after Trog is installed (best for multiple games)</label>
         </fieldset>
         <div data-channel-allowlist hidden>
-          <label for="allowed_channel_ids">Allowed channel IDs</label>
-          <input id="allowed_channel_ids" name="allowed_channel_ids" type="text" autocomplete="off" placeholder="123456789, 987654321">
-          <small class="muted">In Discord, enable Developer Mode under User Settings → Advanced. Right-click each channel, choose Copy Channel ID, and paste it here. Separate multiple IDs with commas. You can connect the same hosted game to channels in another Discord server with a separate request.</small>
+          <p class="guidance-note">Install Trog first. This page will then load the channel names that Trog can see so you can select them with checkboxes. Until channels are chosen, this connection will not answer in any channel.</p>
         </div>
 
         <button class="primary-button" type="submit">Verify and install Trog</button>
       </form>
+
+      <hr>
+      <h2>Share this Trog with another Discord owner</h2>
+      <p class="muted">Community owners and admins can create a private, expiring link. It shares read-only game information without adding the recipient to your Community.</p>
+      <div class="button-row">
+        <button class="primary-button secondary" type="button" data-create-trog-share>Create private invitation link</button>
+      </div>
+      <div class="guidance-note" data-trog-share-result hidden></div>
     </section>
 
     <details class="disclosure-panel">
@@ -88,7 +95,7 @@
 
   <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
   <script src="/js/twe-api.js?v=trog-oauth-v1"></script>
-  <script src="/js/discord-access.js?v=multi-community-v1"></script>
+  <script src="/js/discord-access.js?v=channel-routing-v2"></script>
 </body>
 
 </html>

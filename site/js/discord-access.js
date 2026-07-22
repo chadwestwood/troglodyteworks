@@ -10,6 +10,8 @@
   const refreshDiscordGuilds = document.querySelector("[data-refresh-discord-guilds]");
   const linkedDiscordSummary = document.querySelector("[data-linked-discord-summary]");
   const requestList = document.querySelector("[data-discord-access-requests]");
+  const createShareButton = document.querySelector("[data-create-trog-share]");
+  const shareResult = document.querySelector("[data-trog-share-result]");
   if (!form) {
     return;
   }
@@ -52,6 +54,44 @@
   await populateProviderChoices(communitySelect, instanceSelect);
   communitySelect?.addEventListener("change", () => populateInstanceChoices(communitySelect.value, instanceSelect));
   await renderAccessRequests(requestList);
+  createShareButton?.addEventListener("click", async () => {
+    if (!communitySelect.value || !instanceSelect.value) {
+      showError("Choose a Community and hosted game first.");
+      return;
+    }
+    createShareButton.disabled = true;
+    try {
+      const data = await apiRequest("/discord/trog-share-links", {
+        method: "POST",
+        body: JSON.stringify({
+          provider_community_id: communitySelect.value,
+          game_instance_id: instanceSelect.value,
+        }),
+      });
+      clearNode(shareResult);
+      shareResult.hidden = false;
+      shareResult.append("Private link: ");
+      const link = document.createElement("a");
+      link.href = data.share.url;
+      link.textContent = data.share.url;
+      link.target = "_blank";
+      link.rel = "noopener";
+      shareResult.appendChild(link);
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "text-button";
+      copy.textContent = "Copy link";
+      copy.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(data.share.url);
+        copy.textContent = "Copied";
+      });
+      shareResult.append(" ", copy);
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      createShareButton.disabled = false;
+    }
+  });
 
   const callback = new URLSearchParams(window.location.search);
   if (callback.get("discord_error")) {
@@ -73,10 +113,7 @@
     const gameInstanceId = data.get("game_instance_id").trim();
     const discordGuildId = data.get("discord_guild_id").trim();
     const channelScope = data.get("channel_scope") || "all";
-    const allowedChannelIds = String(data.get("allowed_channel_ids") || "")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const allowedChannelIds = [];
 
     try {
       const requestData = await apiRequest("/discord/instance-access-requests", {
@@ -248,8 +285,67 @@ async function renderAccessRequests(list) {
       });
       row.appendChild(revoke);
     }
+    if (request.can_manage_discord && request.status === "active") {
+      const route = document.createElement("button");
+      route.type = "button";
+      route.className = "secondary-action";
+      route.textContent = "Choose Discord channels";
+      route.addEventListener("click", () => renderChannelRouteEditor(row, request, route));
+      row.appendChild(route);
+    }
     list.appendChild(row);
   });
+}
+
+async function renderChannelRouteEditor(row, request, button) {
+  button.disabled = true;
+  try {
+    const data = await apiRequest(`/discord/installations/${request.consumer_discord_guild_id}/channels`);
+    const panel = document.createElement("fieldset");
+    panel.className = "content-stack";
+    const legend = document.createElement("legend");
+    legend.textContent = `Channels that should use ${request.provider_community_name} - ${request.instance_name}`;
+    panel.appendChild(legend);
+    const selected = new Set(request.requested_channel_ids || []);
+    data.channels.forEach((channel) => {
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = channel.id;
+      checkbox.checked = selected.has(channel.id);
+      label.append(checkbox, document.createTextNode(` #${channel.name}`));
+      panel.appendChild(label);
+    });
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "primary-button";
+    save.textContent = "Save channel routing";
+    save.addEventListener("click", async () => {
+      const channelIds = [...panel.querySelectorAll('input[type="checkbox"]:checked')]
+        .map((checkbox) => checkbox.value);
+      if (!channelIds.length) {
+        showError("Choose at least one Discord channel.");
+        return;
+      }
+      save.disabled = true;
+      try {
+        await apiRequest(`/discord/instance-access-grants/${request.id}/channels`, {
+          method: "PATCH",
+          body: JSON.stringify({ channel_ids: channelIds }),
+        });
+        await renderAccessRequests(document.querySelector("[data-discord-access-requests]"));
+      } catch (error) {
+        showError(error.message);
+        save.disabled = false;
+      }
+    });
+    panel.appendChild(save);
+    row.appendChild(panel);
+    button.remove();
+  } catch (error) {
+    showError(error.message);
+    button.disabled = false;
+  }
 }
 
 async function populateProviderChoices(communitySelect, instanceSelect) {

@@ -28,10 +28,26 @@
       <section class="app-panel">
         <p class="eyebrow">Discord administrator setup · Step 2 of 3</p>
         <h1>Connect your hosted game</h1>
-        <p class="muted">For now, Trog supports ARK: Survival Ascended servers hosted by Nitrado.</p>
+        <p class="muted">Use Nitrado below, or pair a computer you control for a self-hosted ARK or Minecraft server.</p>
         <p class="muted">Discord server: <strong data-community-name></strong></p>
         <p class="form-error" data-error role="alert" hidden></p>
         <p class="status-line" data-status role="status" aria-live="polite" hidden></p>
+      </section>
+
+      <section class="app-panel" data-host-agent-panel>
+        <div>
+          <p class="eyebrow">Self-hosted computer</p>
+          <h2>Pair Trog Host Agent</h2>
+          <p class="muted">The agent makes outbound HTTPS reports only. It does not open your router, accept remote shell commands, or expose your home network.</p>
+          <ol class="content-stack">
+            <li><a href="/downloads/trog_host_agent.py" download>Download the Trog Host Agent</a> onto the computer hosting the game.</li>
+            <li>Choose <strong>Create pairing command</strong> below.</li>
+            <li>Run the one-time command on that computer, then run <code>python3 trog_host_agent.py run</code>.</li>
+          </ol>
+        </div>
+        <div class="button-row"><button class="primary-button secondary" type="button" data-create-pairing>Create pairing command</button></div>
+        <div class="guidance-note" data-pairing-result hidden></div>
+        <div class="resource-list" data-host-agents></div>
       </section>
 
       <section class="app-panel" data-connection-panel>
@@ -78,6 +94,7 @@
   <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
   <script src="/js/nitrado-hosting.js?v=slice-2-ui-v1"></script>
+  <script src="/js/host-agent.js?v=host-agent-v1"></script>
 </body>
 
 </html>

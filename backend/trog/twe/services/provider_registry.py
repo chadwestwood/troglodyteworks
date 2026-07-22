@@ -80,6 +80,8 @@ def build_provider_registry(config, nitrado_transport=None) -> ProviderRegistry:
         ProviderRegistration(
             connection_describer_factory=lambda: SelfHostedProvider(config),
             status_reader_factory=lambda: SelfHostedProvider(config),
+            player_reader_factory=lambda: SelfHostedProvider(config),
+            mod_reader_factory=lambda: SelfHostedProvider(config),
         ),
     )
     registry.register(

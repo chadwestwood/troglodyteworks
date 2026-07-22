@@ -208,6 +208,43 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         self.assertFalse(unmapped.allowed)
         self.assertEqual(unmapped.reason, "channel_unmapped")
 
+    def test_same_instance_can_route_to_channels_in_two_discord_servers(self):
+        first_grant = self._active_grant_for_channel("333")
+        second_guild = str(int(self.guild_id) + 500)
+        with self.db.connect() as conn:
+            installation = fetch_one(conn, """
+                INSERT INTO discord_guild_installations
+                    (discord_guild_id, community_id, game_server_id, installed_by)
+                VALUES (%s,%s,%s,%s) RETURNING id::text
+            """, (second_guild, self.community["id"], self.server["id"], self.matter["id"]))
+            second = fetch_one(conn, """
+                INSERT INTO discord_instance_access_grants
+                    (discord_guild_installation_id, provider_community_id, game_server_id, game_instance_id,
+                     requested_by, requester_discord_user_id, consumer_discord_guild_id, status,
+                     channel_scope, requested_channel_ids, provider_approved_by, provider_approved_at,
+                     discord_approved_by, discord_approver_user_id, discord_approved_at, installed_at, activated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,'active','allowlist',ARRAY['777'],%s,now(),%s,%s,now(),now(),now())
+                RETURNING id::text
+            """, (installation["id"], self.community["id"], self.server["id"], self.instance["id"],
+                    self.matter["id"], self.discord_user_id, second_guild, self.owner["id"],
+                    self.matter["id"], self.discord_user_id))
+            execute(conn, """
+                INSERT INTO discord_instance_access_grant_capabilities
+                    (discord_instance_access_grant_id, capability, granted_by)
+                VALUES (%s,'instance.status.read',%s)
+            """, (second["id"], self.owner["id"]))
+            lizzlive = authorize(conn, self.guild_id, "333", "public-user", "instance.status.read")
+            mattertrala = authorize(conn, second_guild, "777", "public-user", "instance.status.read")
+            wrong_channel = authorize(conn, second_guild, "333", "public-user", "instance.status.read")
+
+        self.assertTrue(lizzlive.allowed)
+        self.assertEqual(lizzlive.context.instance_access_grant_id, first_grant)
+        self.assertTrue(mattertrala.allowed)
+        self.assertEqual(mattertrala.context.instance_access_grant_id, second["id"])
+        self.assertEqual(mattertrala.context.instance_name, "Genesis")
+        self.assertFalse(wrong_channel.allowed)
+        self.assertEqual(wrong_channel.reason, "channel_unmapped")
+
     def test_failed_instance_is_treated_as_a_stale_target(self):
         self._active_grant()
         with self.db.connect() as conn:

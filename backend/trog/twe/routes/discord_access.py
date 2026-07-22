@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
 import secrets
 from urllib.parse import urlencode
 
@@ -7,7 +8,13 @@ from flask import Blueprint, current_app, g, jsonify, redirect, request
 from ..auth import require_user
 from ..authorization import membership_for_community
 from ..db import execute, fetch_all, fetch_one
-from ..discord_api import DiscordAPIError, exchange_guild_authorization, installed_bot_guild, managed_guild
+from ..discord_api import (
+    DiscordAPIError,
+    exchange_guild_authorization,
+    installed_bot_channels,
+    installed_bot_guild,
+    managed_guild,
+)
 from ..oauth import new_pkce_verifier, pkce_challenge
 from ..responses import api_error
 
@@ -21,6 +28,126 @@ READ_CAPABILITIES = frozenset(
         "instance.mods.names.read",
     }
 )
+
+
+def _share_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+@discord_access_bp.post("/discord/trog-share-links")
+@require_user
+def create_trog_share_link():
+    payload = request.get_json(silent=True) or {}
+    community_id = str(payload.get("provider_community_id") or "").strip()
+    instance_id = str(payload.get("game_instance_id") or "").strip()
+    try:
+        expires_days = max(1, min(int(payload.get("expires_days") or 14), 30))
+        max_uses = max(1, min(int(payload.get("max_uses") or 10), 100))
+    except (TypeError, ValueError):
+        return api_error("VALIDATION_ERROR", "Share-link limits are invalid.", 400)
+    token = secrets.token_urlsafe(32)
+    with current_app.config["TWE_DB"].connect() as conn:
+        if not provider_manager(conn, g.current_user["id"], community_id):
+            return api_error("FORBIDDEN", "Only a Community owner or admin may share its Trog.", 403)
+        instance = resolve_provider_instance(conn, community_id, instance_id)
+        if not instance:
+            return api_error("INSTANCE_NOT_FOUND", "That hosted game does not belong to this Community.", 404)
+        link = fetch_one(
+            conn,
+            """
+            INSERT INTO discord_instance_share_links
+                (token_hash, provider_community_id, game_server_id, game_instance_id,
+                 created_by, expires_at, max_uses)
+            VALUES (%s,%s,%s,%s,%s,now() + (%s || ' days')::interval,%s)
+            RETURNING id::text, expires_at, max_uses
+            """,
+            (_share_token_hash(token), community_id, instance["game_server_id"], instance_id,
+             g.current_user["id"], expires_days, max_uses),
+        )
+        audit(conn, g.current_user["id"], community_id, "discord.trog_share.created",
+              "discord_instance_share_link", link["id"], {"expires_days": expires_days, "max_uses": max_uses})
+    return jsonify({
+        "share": {
+            "id": link["id"],
+            "url": f"{request.url_root.rstrip('/')}/discord/share/{token}/",
+            "expires_at": link["expires_at"],
+            "max_uses": link["max_uses"],
+        }
+    }), 201
+
+
+@discord_access_bp.get("/discord/trog-share-links/<token>")
+def get_trog_share_link(token):
+    with current_app.config["TWE_DB"].connect() as conn:
+        link = _active_share_link(conn, token)
+    if not link:
+        return api_error("TROG_SHARE_UNAVAILABLE", "This private Trog invitation is invalid or expired.", 404)
+    return jsonify({"share": _share_response(link)})
+
+
+@discord_access_bp.post("/discord/trog-share-links/<token>/redeem")
+@require_user
+def redeem_trog_share_link(token):
+    with current_app.config["TWE_DB"].connect() as conn:
+        with conn.transaction():
+            link = fetch_one(
+                conn,
+                """
+                SELECT dsl.id::text, dsl.provider_community_id::text, dsl.game_server_id::text,
+                       dsl.game_instance_id::text, dsl.capabilities
+                FROM discord_instance_share_links dsl
+                WHERE dsl.token_hash = %s AND dsl.revoked_at IS NULL
+                  AND dsl.expires_at > now() AND dsl.use_count < dsl.max_uses
+                FOR UPDATE
+                """,
+                (_share_token_hash(token),),
+            )
+            if not link:
+                return api_error("TROG_SHARE_UNAVAILABLE", "This private Trog invitation is invalid or expired.", 404)
+            grant = fetch_one(
+                conn,
+                """
+                INSERT INTO discord_instance_access_grants
+                    (provider_community_id, game_server_id, game_instance_id, requested_by,
+                     status, channel_scope, requested_channel_ids, provider_approved_by, provider_approved_at)
+                SELECT provider_community_id, game_server_id, game_instance_id, %s,
+                       'pending_discord_verification', 'allowlist', ARRAY[]::text[], created_by, now()
+                FROM discord_instance_share_links WHERE id = %s
+                RETURNING id::text, status
+                """,
+                (g.current_user["id"], link["id"]),
+            )
+            for capability in link["capabilities"]:
+                execute(conn, """
+                    INSERT INTO discord_instance_access_grant_capabilities
+                        (discord_instance_access_grant_id, capability, granted_by)
+                    SELECT %s, %s, created_by FROM discord_instance_share_links WHERE id = %s
+                """, (grant["id"], capability, link["id"]))
+            execute(conn, "UPDATE discord_instance_share_links SET use_count = use_count + 1 WHERE id = %s", (link["id"],))
+            audit(conn, g.current_user["id"], link["provider_community_id"], "discord.trog_share.redeemed",
+                  "discord_instance_access_grant", grant["id"], {"share_link_id": link["id"]})
+    return jsonify({"request": request_response(grant), "continue_to": f"/discord/request-access/?request={grant['id']}"}), 201
+
+
+def _active_share_link(conn, token):
+    return fetch_one(conn, """
+        SELECT dsl.id::text, c.name AS provider_community_name, gs.name AS game_server_name,
+               gi.name AS instance_name, dsl.expires_at, dsl.max_uses, dsl.use_count
+        FROM discord_instance_share_links dsl
+        JOIN communities c ON c.id = dsl.provider_community_id
+        JOIN game_servers gs ON gs.id = dsl.game_server_id
+        JOIN game_instances gi ON gi.id = dsl.game_instance_id
+        WHERE dsl.token_hash = %s AND dsl.revoked_at IS NULL
+          AND dsl.expires_at > now() AND dsl.use_count < dsl.max_uses
+    """, (_share_token_hash(token),))
+
+
+def _share_response(row):
+    return {
+        "community": row["provider_community_name"], "game_server": row["game_server_name"],
+        "instance": row["instance_name"], "expires_at": row["expires_at"],
+        "remaining_uses": row["max_uses"] - row["use_count"],
+    }
 
 
 @discord_access_bp.get("/discord/managed-guilds")
@@ -62,6 +189,45 @@ def list_managed_discord_guilds():
     )
 
 
+@discord_access_bp.get("/discord/installations/<guild_id>/channels")
+@require_user
+def list_installed_discord_channels(guild_id):
+    guild_id = numeric_text(guild_id)
+    if not guild_id:
+        return api_error("VALIDATION_ERROR", "A valid Discord server is required.", 400)
+    with current_app.config["TWE_DB"].connect() as conn:
+        authority = fetch_one(
+            conn,
+            """
+            SELECT id::text
+            FROM discord_guild_authority_verifications
+            WHERE user_id = %s AND discord_guild_id = %s
+              AND can_manage_guild = true AND expires_at > now()
+            """,
+            (g.current_user["id"], guild_id),
+        )
+        installation = fetch_one(
+            conn,
+            "SELECT id::text FROM discord_guild_installations WHERE discord_guild_id = %s",
+            (guild_id,),
+        )
+    if not authority:
+        return api_error("FORBIDDEN", "Refresh Discord to verify that you manage this server.", 403)
+    if not installation:
+        return api_error("NOT_FOUND", "Trog is not installed in that Discord server.", 404)
+    try:
+        channels = installed_bot_channels(guild_id, current_app.config["TWE_CONFIG"])
+    except DiscordAPIError as exc:
+        return api_error("DISCORD_CHANNELS_UNAVAILABLE", str(exc), 503)
+    return jsonify({
+        "guild_id": guild_id,
+        "channels": [
+            {"id": str(channel["id"]), "name": str(channel.get("name") or "channel")}
+            for channel in channels
+        ],
+    })
+
+
 @discord_access_bp.post("/discord/instance-access-requests")
 @require_user
 def create_instance_access_request():
@@ -79,8 +245,8 @@ def create_instance_access_request():
         return api_error("VALIDATION_ERROR", "Only read-only Discord capabilities may be requested.", 400)
     if channel_ids is None:
         return api_error("VALIDATION_ERROR", "Discord channel IDs must be numeric.", 400)
-    if channel_scope == "allowlist" and not channel_ids:
-        return api_error("VALIDATION_ERROR", "At least one channel is required for allowlist scope.", 400)
+    # An empty allowlist is intentional during first-time setup: it fails closed
+    # until the Discord administrator chooses channel names after installation.
 
     with current_app.config["TWE_DB"].connect() as conn:
         if not membership_for_community(conn, g.current_user["id"], provider_community_id):
@@ -465,6 +631,84 @@ def revoke_instance_access_grant(grant_id):
     return jsonify({"request": request_response(updated)})
 
 
+@discord_access_bp.patch("/discord/instance-access-grants/<grant_id>/channels")
+@require_user
+def update_instance_access_channels(grant_id):
+    payload = request.get_json(silent=True) or {}
+    channel_ids = normalize_snowflake_list(payload.get("channel_ids") or [])
+    if channel_ids is None or not channel_ids:
+        return api_error("VALIDATION_ERROR", "Choose at least one Discord channel.", 400)
+    with current_app.config["TWE_DB"].connect() as conn:
+        grant = grant_by_id(conn, grant_id)
+        if not grant or grant["status"] != "active" or not grant["consumer_discord_guild_id"]:
+            return api_error("INVALID_REQUEST_STATE", "Only an active Trog connection can be routed.", 409)
+        authority = fetch_one(
+            conn,
+            """
+            SELECT id::text
+            FROM discord_guild_authority_verifications
+            WHERE user_id = %s AND discord_guild_id = %s
+              AND can_manage_guild = true AND expires_at > now()
+            """,
+            (g.current_user["id"], grant["consumer_discord_guild_id"]),
+        )
+        if not authority:
+            return api_error("FORBIDDEN", "Refresh Discord to verify that you manage this server.", 403)
+        try:
+            available = {
+                str(channel["id"])
+                for channel in installed_bot_channels(
+                    grant["consumer_discord_guild_id"], current_app.config["TWE_CONFIG"]
+                )
+            }
+        except DiscordAPIError as exc:
+            return api_error("DISCORD_CHANNELS_UNAVAILABLE", str(exc), 503)
+        if any(channel_id not in available for channel_id in channel_ids):
+            return api_error("VALIDATION_ERROR", "One or more selected channels are not available to Trog.", 400)
+        conflict = fetch_one(
+            conn,
+            """
+            SELECT id::text
+            FROM discord_instance_access_grants
+            WHERE discord_guild_installation_id = %s
+              AND id <> %s
+              AND status = 'active'
+              AND (
+                    channel_scope = 'all'
+                    OR requested_channel_ids && %s::text[]
+                  )
+            LIMIT 1
+            """,
+            (grant["discord_guild_installation_id"], grant_id, channel_ids),
+        )
+        if conflict:
+            return api_error(
+                "DISCORD_CHANNEL_ROUTE_CONFLICT",
+                "One of those channels already uses a different hosted game.",
+                409,
+            )
+        updated = fetch_one(
+            conn,
+            """
+            UPDATE discord_instance_access_grants
+            SET channel_scope = 'allowlist', requested_channel_ids = %s, updated_at = now()
+            WHERE id = %s
+            RETURNING id::text, status, channel_scope, requested_channel_ids
+            """,
+            (channel_ids, grant_id),
+        )
+        audit(
+            conn,
+            g.current_user["id"],
+            grant["provider_community_id"],
+            "discord.instance_access.channels_updated",
+            "discord_instance_access_grant",
+            grant_id,
+            {"channel_count": len(channel_ids)},
+        )
+    return jsonify({"request": request_response(updated)})
+
+
 @discord_access_bp.get("/discord/installations")
 @require_user
 def list_discord_installations():
@@ -488,6 +732,14 @@ def list_discord_installations():
                 diag.installed_at,
                 (diag.requested_by = %s) AS is_requester,
                 (cm.role IN ('owner', 'admin')) AS can_manage_provider,
+                EXISTS (
+                    SELECT 1
+                    FROM discord_guild_authority_verifications auth
+                    WHERE auth.user_id = %s
+                      AND auth.discord_guild_id = diag.consumer_discord_guild_id
+                      AND auth.can_manage_guild = true
+                      AND auth.expires_at > now()
+                ) AS can_manage_discord,
                 ARRAY(
                     SELECT capability
                     FROM discord_instance_access_grant_capabilities cap
@@ -501,12 +753,16 @@ def list_discord_installations():
             FROM discord_instance_access_grants diag
             JOIN communities c ON c.id = diag.provider_community_id
             JOIN game_instances gi ON gi.id = diag.game_instance_id
-            JOIN community_memberships cm ON cm.community_id = diag.provider_community_id
+            LEFT JOIN community_memberships cm
+              ON cm.community_id = diag.provider_community_id AND cm.user_id = %s
             WHERE diag.requested_by = %s
                OR (cm.user_id = %s AND cm.role IN ('owner', 'admin'))
             ORDER BY diag.created_at DESC
             """,
-            (g.current_user["id"], g.current_user["id"], g.current_user["id"]),
+            (
+                g.current_user["id"], g.current_user["id"], g.current_user["id"],
+                g.current_user["id"], g.current_user["id"],
+            ),
         )
     return jsonify({"installations": rows})
 

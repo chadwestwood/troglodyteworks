@@ -79,3 +79,24 @@ def installed_bot_guild(guild_id: str, config) -> dict:
     if str(guild.get("id")) != str(guild_id):
         raise DiscordAPIError("Discord returned the wrong installed server.")
     return guild
+
+
+def installed_bot_channels(guild_id: str, config) -> tuple[dict, ...]:
+    """Return mention-capable guild channels visible to the installed bot."""
+    if not config.discord_bot_token:
+        raise DiscordAPIError("The Trog bot token is not configured.")
+    try:
+        channels = get_json(
+            f"https://discord.com/api/v10/guilds/{guild_id}/channels",
+            {"Authorization": f"Bot {config.discord_bot_token}", "User-Agent": DISCORD_USER_AGENT},
+        )
+    except (HTTPError, URLError, TimeoutError, ValueError, OAuthProviderError) as exc:
+        raise DiscordAPIError("Trog could not read channels from that Discord server.") from exc
+    if not isinstance(channels, list):
+        raise DiscordAPIError("Discord returned an invalid channel list.")
+    eligible = [
+        channel for channel in channels
+        if channel.get("type") in {0, 5} and str(channel.get("id") or "").isdigit()
+    ]
+    eligible.sort(key=lambda channel: (int(channel.get("position") or 0), str(channel.get("name") or "")))
+    return tuple(eligible)
