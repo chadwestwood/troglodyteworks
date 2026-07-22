@@ -15,11 +15,17 @@
   if (!form) {
     return;
   }
+  const pageParameters = new URLSearchParams(window.location.search);
+  const requestedCommunityId = pageParameters.get("community_id") || "";
+  const requestedInstanceId = pageParameters.get("instance_id") || "";
+  const setupReturnTo = requestedCommunityId && requestedInstanceId
+    ? `/discord/request-access/?${new URLSearchParams({ community_id: requestedCommunityId, instance_id: requestedInstanceId })}`
+    : "/discord/request-access/";
   const allowlist = document.querySelector("[data-channel-allowlist]");
   form.querySelectorAll('[name="channel_scope"]').forEach((radio) => radio.addEventListener("change", () => {
     allowlist.hidden = form.elements.channel_scope.value !== "allowlist";
   }));
-  remember("twe.trog_return_to", "/discord/request-access/");
+  remember("twe.trog_return_to", setupReturnTo);
   const identities = await apiRequest("/account/identities");
   if (!identities.identities.discord.connected) {
     clearNode(status);
@@ -33,7 +39,7 @@
       try {
         const data = await apiRequest("/account/identities/discord/connect", {
           method: "POST",
-          body: JSON.stringify({ return_to: "/discord/request-access/" }),
+          body: JSON.stringify({ return_to: setupReturnTo }),
         });
         window.location.href = data.oauth.authorization_url;
       } catch (error) {
@@ -50,8 +56,18 @@
     linkedDiscordSummary.textContent = `Discord connected: ${identities.identities.discord.provider_username || "linked account"}.`;
   }
   await populateManagedGuildChoices(discordGuildSelect, discordGuildHelp);
-  refreshDiscordGuilds?.addEventListener("click", () => refreshManagedDiscordGuilds(refreshDiscordGuilds));
-  await populateProviderChoices(communitySelect, instanceSelect);
+  refreshDiscordGuilds?.addEventListener("click", () => refreshManagedDiscordGuilds(refreshDiscordGuilds, setupReturnTo));
+  await populateProviderChoices(
+    communitySelect,
+    instanceSelect,
+    requestedCommunityId,
+    requestedInstanceId,
+  );
+  if (requestedCommunityId && requestedInstanceId) {
+    communitySelect.disabled = true;
+    instanceSelect.disabled = true;
+    status.textContent = "This setup is locked to the map or world you opened. Choose only the Discord server and channels where its Trog should answer.";
+  }
   communitySelect?.addEventListener("change", () => populateInstanceChoices(communitySelect.value, instanceSelect));
   await renderAccessRequests(requestList);
   createShareButton?.addEventListener("click", async () => {
@@ -93,7 +109,7 @@
     }
   });
 
-  const callback = new URLSearchParams(window.location.search);
+  const callback = pageParameters;
   if (callback.get("discord_error")) {
     showError(callback.get("discord_error"));
   } else if (callback.get("verified") === "1" && callback.get("request")) {
@@ -109,8 +125,8 @@
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(form);
-    const providerCommunityId = data.get("provider_community_id").trim();
-    const gameInstanceId = data.get("game_instance_id").trim();
+    const providerCommunityId = communitySelect.value.trim();
+    const gameInstanceId = instanceSelect.value.trim();
     const discordGuildId = data.get("discord_guild_id").trim();
     const channelScope = data.get("channel_scope") || "all";
     const allowedChannelIds = [];
@@ -147,13 +163,13 @@ async function startDiscordAuthorization(requestId, purpose, discordGuildId = nu
   window.location.href = oauth.oauth.authorization_url;
 }
 
-async function refreshManagedDiscordGuilds(button) {
+async function refreshManagedDiscordGuilds(button, returnTo = "/discord/request-access/") {
   button.disabled = true;
   button.textContent = "Opening Discord...";
   try {
     const data = await apiRequest("/account/identities/discord/connect", {
       method: "POST",
-      body: JSON.stringify({ return_to: "/discord/request-access/" }),
+      body: JSON.stringify({ return_to: returnTo }),
     });
     window.location.href = data.oauth.authorization_url;
   } catch (error) {
@@ -348,7 +364,12 @@ async function renderChannelRouteEditor(row, request, button) {
   }
 }
 
-async function populateProviderChoices(communitySelect, instanceSelect) {
+async function populateProviderChoices(
+  communitySelect,
+  instanceSelect,
+  preferredCommunityId = "",
+  preferredInstanceId = "",
+) {
   if (!communitySelect || !instanceSelect) {
     return;
   }
@@ -362,14 +383,14 @@ async function populateProviderChoices(communitySelect, instanceSelect) {
   data.communities.forEach((community) => {
     communitySelect.appendChild(new Option(`${community.name} (${community.role})`, community.id));
   });
-  const rememberedCommunity = recall("twe.community_id");
-  if (rememberedCommunity && data.communities.some((community) => community.id === rememberedCommunity)) {
-    communitySelect.value = rememberedCommunity;
+  const selectedCommunity = preferredCommunityId || recall("twe.community_id");
+  if (selectedCommunity && data.communities.some((community) => community.id === selectedCommunity)) {
+    communitySelect.value = selectedCommunity;
   }
-  await populateInstanceChoices(communitySelect.value, instanceSelect);
+  await populateInstanceChoices(communitySelect.value, instanceSelect, preferredInstanceId);
 }
 
-async function populateInstanceChoices(communityId, instanceSelect) {
+async function populateInstanceChoices(communityId, instanceSelect, preferredInstanceId = "") {
   clearNode(instanceSelect);
   if (!communityId) {
     instanceSelect.appendChild(new Option("Choose a Community first", ""));
@@ -391,8 +412,8 @@ async function populateInstanceChoices(communityId, instanceSelect) {
   options.forEach(({ server, instance }) => {
     instanceSelect.appendChild(new Option(`${server.name} - ${instance.name}`, instance.id));
   });
-  const rememberedInstance = recall("twe.instance_id");
-  if (rememberedInstance && options.some(({ instance }) => instance.id === rememberedInstance)) {
-    instanceSelect.value = rememberedInstance;
+  const selectedInstance = preferredInstanceId || recall("twe.instance_id");
+  if (selectedInstance && options.some(({ instance }) => instance.id === selectedInstance)) {
+    instanceSelect.value = selectedInstance;
   }
 }

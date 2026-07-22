@@ -47,8 +47,15 @@
           <p class="muted">You can see service health and community context. Operational controls appear only for
             authorized staff.</p>
         </div>
-        <p class="muted">Trog access for a Discord server is requested separately from Community membership.</p>
-        <a class="primary-button" href="/discord/request-access/">Request Trog access</a>
+      </section>
+      <section class="app-panel" data-trog-instance-panel>
+        <div>
+          <p class="eyebrow">This world in Discord</p>
+          <h2>Use Trog for <span data-trog-instance-name>this map</span></h2>
+          <p class="muted">Connect this exact world to one Discord server or to selected channels. Questions and
+            commands in those channels will always resolve to this world.</p>
+        </div>
+        <a class="primary-button" href="#" data-trog-instance-link>Set up Trog for this world</a>
       </section>
       <section class="app-panel" data-membership-approvals-panel hidden>
         <div>
@@ -75,7 +82,7 @@
   </div>
   <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
-  <script src="/js/twe-pages.js?v=member-genesis-view-v1"></script>
+  <script src="/js/twe-pages.js?v=instance-trog-routing-v1"></script>
 </body>
 
 </html>

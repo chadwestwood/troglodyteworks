@@ -86,7 +86,7 @@ class FoundationTests(unittest.TestCase):
         script = client.get("/js/twe-pages.js")
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"Read-only community view", page.data)
-        self.assertIn(b"Request Trog access", page.data)
+        self.assertIn(b"Set up Trog for this world", page.data)
         self.assertIn(b"data-capabilities-panel", page.data)
         self.assertIn(b"configureGenesisAccessView", script.data)
         self.assertIn(b"/admin/runtime-health", script.data)
@@ -133,9 +133,9 @@ class FoundationTests(unittest.TestCase):
         discord = client.get("/discord/request-access/")
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"Create my own Community", page.data)
-        self.assertIn(b"Add a Community's Trog to my Discord", page.data)
+        self.assertIn(b"open the exact hosted map or world", page.data)
         self.assertIn(b"communityPath", script.data)
-        self.assertIn(b"Which Community should Trog represent?", discord.data)
+        self.assertIn(b"Map or world Trog will represent", discord.data)
 
     def test_browser_cannot_self_assign_ownership_endpoint(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())

@@ -745,7 +745,13 @@ async function initGenesis() {
   );
   const hasOperatorAccess = visibleCapabilities.length > 0;
   setText("[data-instance-name]", instanceData.instance.name);
+  setText("[data-trog-instance-name]", instanceData.instance.name);
   setText("[data-instance-summary]", "Connected service world and operations status");
+  const trogLink = document.querySelector("[data-trog-instance-link]");
+  if (trogLink) {
+    const query = new URLSearchParams({ community_id: communityId, instance_id: instanceId });
+    trogLink.href = `/discord/request-access/?${query.toString()}`;
+  }
   renderGenesisHealth(healthData.health, hasOperatorAccess);
   configureGenesisAccessView(hasOperatorAccess);
   if (hasOperatorAccess) {
