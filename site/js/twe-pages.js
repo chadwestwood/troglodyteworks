@@ -184,14 +184,23 @@ function renderAdminRuntimeHealth(components) {
     return;
   }
   components.forEach((component) => {
-    const title = component.component === "trog_worker" ? "Trog Discord worker" : "Runtime service";
-    const guildCount = Number.isInteger(component.details?.guild_count)
-      ? `${component.details.guild_count} Discord server(s) visible`
-      : "Discord server count unavailable";
+    const titles = {
+      web_api: "Website and API",
+      database: "PostgreSQL database",
+      trog_worker: "Trog Discord worker",
+    };
+    const descriptions = {
+      web_api: "The production web service is responding.",
+      database: "The production database accepted this health query.",
+    };
+    const description = descriptions[component.component]
+      || (Number.isInteger(component.details?.guild_count)
+        ? `${component.details.guild_count} Discord server(s) visible`
+        : "Discord server count unavailable");
     const age = `${component.age_seconds} second(s) since last signal`;
     list.appendChild(createAdminRecord(
-      title,
-      guildCount,
+      titles[component.component] || "Runtime service",
+      description,
       [age],
       component.status,
       component.status === "ready" ? "active" : "attention",

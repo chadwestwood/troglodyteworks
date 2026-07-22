@@ -94,6 +94,19 @@ class AdminIntegrationTests(unittest.TestCase):
         self.assertEqual(discord_access.status_code, 200)
         self.assertTrue(any(request["instance_name"] == "Admin Genesis" for request in discord_access.get_json()["discord_access"]))
 
+    def test_runtime_health_distinguishes_web_database_and_worker(self):
+        response = self.admin_client.get("/api/v1/admin/runtime-health")
+
+        self.assertEqual(response.status_code, 200)
+        components = {
+            component["component"]: component
+            for component in response.get_json()["components"]
+        }
+        self.assertEqual(components["web_api"]["status"], "ready")
+        self.assertEqual(components["database"]["status"], "ready")
+        self.assertEqual(components["web_api"]["age_seconds"], 0)
+        self.assertEqual(components["database"]["age_seconds"], 0)
+
     def test_non_admin_is_rejected(self):
         response = self.member_client.get("/api/v1/admin/users")
         self.assertEqual(response.status_code, 403)

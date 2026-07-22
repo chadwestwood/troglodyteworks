@@ -1,4 +1,5 @@
 from functools import wraps
+from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, g, jsonify
 
@@ -212,7 +213,24 @@ def admin_runtime_health():
             ORDER BY component
             """,
         )
-    return jsonify({"components": runtime_heartbeat_response(rows)})
+    checked_at = datetime.now(timezone.utc)
+    live_components = [
+        {
+            "component": "web_api",
+            "status": "ready",
+            "details": {},
+            "checked_at": checked_at,
+        },
+        {
+            "component": "database",
+            "status": "ready",
+            "details": {},
+            "checked_at": checked_at,
+        },
+    ]
+    return jsonify({
+        "components": runtime_heartbeat_response([*live_components, *rows], now=checked_at),
+    })
 
 
 def user_row(row):
