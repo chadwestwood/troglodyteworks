@@ -6,6 +6,8 @@ import time
 from ..config import load_config
 from ..db import Database
 from ..services.runtime_heartbeat import record_runtime_heartbeat
+from ..services.provider_resolution import read_game_server_health, resolve_game_server_provider
+from .authorization import resolve_guild
 from .core import (
     BotReply,
     DiscordBotConfigurationError,
@@ -24,6 +26,11 @@ NO_RESULT_REPLY = BotReply(
     "no_result",
 )
 DISCORD_MESSAGE_LIMIT = 1900
+RESTART_WATCH_INITIAL_DELAY_SECONDS = 20
+RESTART_WATCH_POLL_SECONDS = 15
+RESTART_WATCH_TIMEOUT_SECONDS = 15 * 60
+RESTART_READY_CONFIRMATION_SECONDS = 60
+_RESTART_WATCH_TASKS = {}
 
 
 class DiscordRequestLimiter:
@@ -270,6 +277,16 @@ async def handle_message(
     send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
     for chunk in split_discord_message(reply.text):
         await message.channel.send(chunk, **send_options)
+    if reply.code == "restart_requested":
+        schedule_restart_watch(
+            message.channel,
+            str(message.guild.id),
+            str(message.channel.id),
+            database,
+            config,
+            allowed_mentions=allowed_mentions,
+            logger=logger,
+        )
     logger.info("Discord reply sent guild_id=%s response_code=%s", message.guild.id, reply.code)
     return True
 
@@ -313,7 +330,135 @@ async def handle_interaction(
     send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
     for chunk in split_discord_message(reply.text):
         await interaction.followup.send(chunk, ephemeral=ephemeral, **send_options)
+    if reply.code == "restart_requested" and getattr(interaction, "channel", None) is not None:
+        schedule_restart_watch(
+            interaction.channel,
+            guild_id,
+            channel_id,
+            database,
+            config,
+            allowed_mentions=allowed_mentions,
+            logger=logger,
+        )
     return reply
+
+
+def schedule_restart_watch(
+    channel, guild_id, channel_id, database, config, *, allowed_mentions=None, logger=LOGGER,
+):
+    key = (str(guild_id), str(channel_id))
+    existing = _RESTART_WATCH_TASKS.get(key)
+    if existing and not existing.done():
+        logger.info("Restart readiness watch already active guild_id=%s channel_id=%s", *key)
+        return existing
+    task = asyncio.create_task(
+        monitor_restart_until_ready(
+            channel,
+            str(guild_id),
+            str(channel_id),
+            database,
+            config,
+            allowed_mentions=allowed_mentions,
+            logger=logger,
+        ),
+        name=f"trog-restart-watch-{guild_id}-{channel_id}",
+    )
+    _RESTART_WATCH_TASKS[key] = task
+    task.add_done_callback(lambda completed: _RESTART_WATCH_TASKS.pop(key, None))
+    return task
+
+
+async def monitor_restart_until_ready(
+    channel,
+    guild_id,
+    channel_id,
+    database,
+    config,
+    *,
+    allowed_mentions=None,
+    logger=LOGGER,
+    initial_delay=RESTART_WATCH_INITIAL_DELAY_SECONDS,
+    poll_interval=RESTART_WATCH_POLL_SECONDS,
+    timeout=RESTART_WATCH_TIMEOUT_SECONDS,
+    ready_confirmation_seconds=RESTART_READY_CONFIRMATION_SECONDS,
+    sleep=asyncio.sleep,
+    clock=time.monotonic,
+    health_reader=None,
+):
+    """Notify the requesting channel once a restarted routed server is ready.
+
+    The watcher waits to observe a non-ready state. If Nitrado completes the
+    transition between polls, two ready readings after a minimum settling
+    period are accepted instead, preventing an immediate false positive from
+    the pre-restart status.
+    """
+    started_at = clock()
+    saw_not_ready = False
+    consecutive_ready = 0
+    server_name = "The server"
+    send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
+    await sleep(initial_delay)
+    while clock() - started_at < timeout:
+        try:
+            if health_reader is None:
+                server_name, health = await asyncio.to_thread(
+                    _read_routed_health,
+                    database,
+                    config,
+                    str(guild_id),
+                    str(channel_id),
+                )
+            else:
+                server_name, health = health_reader()
+            ready = bool(health and health.get("overall_status") == "ready")
+            if ready:
+                consecutive_ready += 1
+                settled = clock() - started_at >= ready_confirmation_seconds
+                if saw_not_ready or (settled and consecutive_ready >= 2):
+                    await channel.send(
+                        f"**{server_name}** is back up and ready for players.",
+                        **send_options,
+                    )
+                    logger.info(
+                        "Restart readiness confirmed guild_id=%s channel_id=%s server=%s",
+                        guild_id,
+                        channel_id,
+                        server_name,
+                    )
+                    return True
+            else:
+                saw_not_ready = True
+                consecutive_ready = 0
+        except Exception:
+            # Provider/API unavailability is normal while a game server is
+            # restarting. Keep polling without exposing implementation errors
+            # in Discord.
+            saw_not_ready = True
+            consecutive_ready = 0
+            logger.info(
+                "Restart readiness check unavailable guild_id=%s channel_id=%s",
+                guild_id,
+                channel_id,
+                exc_info=True,
+            )
+        await sleep(poll_interval)
+    await channel.send(
+        f"I am still waiting for **{server_name}** to become ready. The restart may still be in progress; ask `@Trog is the server up?` for the latest status.",
+        **send_options,
+    )
+    logger.warning("Restart readiness watch timed out guild_id=%s channel_id=%s", guild_id, channel_id)
+    return False
+
+
+def _read_routed_health(database, config, guild_id, channel_id):
+    with database.connect() as conn:
+        context = resolve_guild(conn, guild_id, channel_id)
+        if not context:
+            raise LookupError("The Discord channel no longer has a routed game server.")
+        resolution = resolve_game_server_provider(conn, context.game_server_id)
+        if not resolution:
+            raise LookupError("The routed game server no longer exists.")
+        return context.game_server_name, read_game_server_health(resolution, config)
 
 
 def split_discord_message(text: str, limit: int = DISCORD_MESSAGE_LIMIT) -> list[str]:

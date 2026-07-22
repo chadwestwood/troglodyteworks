@@ -36,6 +36,7 @@ from twe.discord_bot.service import (
     DiscordRequestLimiter,
     handle_interaction,
     handle_message,
+    monitor_restart_until_ready,
     split_discord_message,
 )
 
@@ -619,6 +620,55 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(interaction.events[0], ("defer", True, True))
         self.assertTrue(interaction.events[1][2])
 
+    async def test_restart_watch_announces_when_server_returns(self):
+        channel = FakeChannel(333)
+        readings = iter([
+            ("Genesis", {"overall_status": "starting"}),
+            ("Genesis", {"overall_status": "ready"}),
+        ])
+
+        result = await monitor_restart_until_ready(
+            channel,
+            "222",
+            "333",
+            FakeDatabase(),
+            self.config,
+            initial_delay=0,
+            poll_interval=0,
+            timeout=30,
+            ready_confirmation_seconds=0,
+            sleep=_no_sleep,
+            health_reader=lambda: next(readings),
+        )
+
+        self.assertTrue(result)
+        self.assertEqual(channel.sent, ["**Genesis** is back up and ready for players."])
+
+    async def test_restart_watch_does_not_report_pre_restart_ready_state(self):
+        channel = FakeChannel(333)
+        readings = iter([
+            ("Genesis", {"overall_status": "ready"}),
+            ("Genesis", {"overall_status": "restarting"}),
+            ("Genesis", {"overall_status": "ready"}),
+        ])
+
+        result = await monitor_restart_until_ready(
+            channel,
+            "222",
+            "333",
+            FakeDatabase(),
+            self.config,
+            initial_delay=0,
+            poll_interval=0,
+            timeout=30,
+            ready_confirmation_seconds=60,
+            sleep=_no_sleep,
+            health_reader=lambda: next(readings),
+        )
+
+        self.assertTrue(result)
+        self.assertEqual(len(channel.sent), 1)
+
 
 class FakeUser:
     def __init__(self, user_id):
@@ -704,6 +754,10 @@ class FakeCursor:
 
     def fetchone(self):
         return None
+
+
+async def _no_sleep(_seconds):
+    return None
 
 
 if __name__ == "__main__":

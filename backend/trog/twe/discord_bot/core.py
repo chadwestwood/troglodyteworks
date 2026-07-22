@@ -408,7 +408,10 @@ def _execute_nitrado_operation(conn, decision, config: Config, capability: str, 
                 code = "mod_added"
         else:
             provider.restart(resolution.context)
-            message = f"Nitrado accepted the restart request for **{context.game_server_name}**. It may take several minutes to return."
+            message = (
+                f"Nitrado accepted the restart request for **{context.game_server_name}**. "
+                "It may take several minutes to return. I will let this channel know when it is ready for players."
+            )
             code = "restart_requested"
         execute(
             conn,
