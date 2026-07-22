@@ -1,8 +1,10 @@
+import asyncio
 import logging
 import os
 
 from ..config import load_config
 from ..db import Database
+from ..services.runtime_heartbeat import record_runtime_heartbeat
 from .core import (
     BotReply,
     DiscordBotConfigurationError,
@@ -88,6 +90,12 @@ def main():
         guilds = [(str(guild.id), guild.name) for guild in client.guilds]
         LOGGER.info("Trog Discord bot connected as %s", client.user)
         LOGGER.info("Trog Discord bot can see %s guild(s): %s", len(guilds), guilds)
+        heartbeat_task = getattr(client, "_twe_heartbeat_task", None)
+        if heartbeat_task is None or heartbeat_task.done():
+            client._twe_heartbeat_task = asyncio.create_task(
+                worker_heartbeat_loop(client, database),
+                name="trog-runtime-heartbeat",
+            )
         await tree.sync()
 
     @client.event
@@ -98,6 +106,22 @@ def main():
         )
 
     client.run(token)
+
+
+async def worker_heartbeat_loop(client, database, interval_seconds=30, logger=LOGGER):
+    while not client.is_closed():
+        ready = client.is_ready()
+        try:
+            with database.connect() as conn:
+                record_runtime_heartbeat(
+                    conn,
+                    "trog_worker",
+                    "ready" if ready else "connecting",
+                    {"guild_count": len(client.guilds) if ready else 0},
+                )
+        except Exception:
+            logger.exception("Trog runtime heartbeat update failed")
+        await asyncio.sleep(interval_seconds)
 
 
 async def handle_message(

@@ -5,6 +5,7 @@ from flask import Blueprint, current_app, g, jsonify
 from ..auth import require_user
 from ..db import fetch_all, fetch_one
 from ..responses import api_error
+from ..services.runtime_heartbeat import runtime_heartbeat_response
 
 admin_bp = Blueprint("twe_admin", __name__)
 
@@ -197,6 +198,21 @@ def admin_discord_access():
             """,
         )
     return jsonify({"discord_access": [dict(row) for row in rows]})
+
+
+@admin_bp.get("/admin/runtime-health")
+@require_admin
+def admin_runtime_health():
+    with current_app.config["TWE_DB"].connect() as conn:
+        rows = fetch_all(
+            conn,
+            """
+            SELECT component, status, details, checked_at
+            FROM runtime_heartbeats
+            ORDER BY component
+            """,
+        )
+    return jsonify({"components": runtime_heartbeat_response(rows)})
 
 
 def user_row(row):

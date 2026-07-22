@@ -33,7 +33,7 @@ The web service owns browser routes, API routes, authentication callbacks, Commu
 
 ### Trog worker
 
-The worker maintains the Discord Gateway connection and handles supported mentions and commands. It is a long-running worker, not an HTTP service, and therefore has no Railway HTTP health check.
+The worker maintains the Discord Gateway connection and handles supported mentions and commands. It is a long-running worker, not an HTTP service, and therefore has no Railway HTTP health check. It writes a non-secret liveness heartbeat to PostgreSQL; the admin-only runtime-health API treats heartbeats older than two minutes as stale.
 
 ### PostgreSQL
 

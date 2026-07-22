@@ -15,6 +15,7 @@ Genesis is an ARK: Survival Ascended Game Instance owned by Cohorts in the Wild.
 - GitHub is the deployment source.
 - Railway runs the Flask/Gunicorn web service.
 - Railway runs Trog as a separate long-running worker.
+- The Trog worker reports a non-secret database heartbeat for admin-only runtime visibility.
 - Railway PostgreSQL stores application state.
 - Cloudflare routes `troglodyteworks.com` to Railway.
 - Nitrado hosts the Cohorts in the Wild Genesis service.
