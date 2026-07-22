@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import socket
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from urllib.parse import urlencode
@@ -68,6 +69,16 @@ class NitradoMalformedResponseError(NitradoProviderError):
 
     def __init__(self):
         super().__init__("Nitrado returned an unexpected response.")
+
+
+class NitradoSettingsVerificationError(NitradoProviderError):
+    code = "NITRADO_SETTINGS_NOT_VERIFIED"
+    http_status = 502
+
+    def __init__(self):
+        super().__init__(
+            "Nitrado accepted the setting request but did not confirm the mod was saved."
+        )
 
 
 @dataclass(frozen=True, repr=False)
@@ -146,7 +157,7 @@ class NitradoClient:
     def get_gameserver_players(self, service_id: str, credential: bytes) -> dict:
         if not service_id.isdigit():
             raise NitradoMalformedResponseError()
-        response = self._get(f"/services/{service_id}/gameservers", credential)
+        response = self._get(f"/services/{service_id}/gameservers/games/players", credential)
         return self._parse_gameserver_players(response.body)
 
     def get_gameserver_mods(self, service_id: str, credential: bytes) -> list[dict[str, str]]:
@@ -158,10 +169,11 @@ class NitradoClient:
     def set_gameserver_mods(self, service_id: str, credential: bytes, mod_ids: list[str]) -> None:
         if not service_id.isdigit() or any(not mod_id.isdigit() for mod_id in mod_ids):
             raise NitradoMalformedResponseError()
+        parameters = {"category": "general", "key": "activeMods", "value": ",".join(mod_ids)}
         self._post(
-            f"/services/{service_id}/gameservers/settings",
+            f"/services/{service_id}/gameservers/settings?{urlencode(parameters)}",
             credential,
-            {"category": "general", "key": "activeMods", "value": ",".join(mod_ids)},
+            {},
         )
 
     def restart_gameserver(self, service_id: str, credential: bytes) -> None:
@@ -311,18 +323,7 @@ class NitradoClient:
             data = payload["data"]
             if not isinstance(data, dict):
                 raise ValueError
-            gameserver = data.get("gameserver")
-            if gameserver is None:
-                gameservers = data.get("gameservers")
-                if not isinstance(gameservers, list) or len(gameservers) != 1:
-                    raise ValueError
-                gameserver = gameservers[0]
-            if not isinstance(gameserver, dict):
-                raise ValueError
-            query = gameserver.get("query")
-            if not isinstance(query, dict):
-                raise ValueError
-            rows = query.get("players")
+            rows = data.get("players")
             if not isinstance(rows, list):
                 raise ValueError
             players = []
@@ -330,7 +331,7 @@ class NitradoClient:
                 if not isinstance(row, dict):
                     raise ValueError
                 name = _safe_text(row.get("name"))
-                if name and not row.get("bot", False):
+                if name and not row.get("bot", False) and _player_is_online(row.get("online")):
                     players.append(name)
             return {"players": players}
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
@@ -499,7 +500,21 @@ class NitradoProvider:
             credential,
             [*existing_ids, mod_id],
         )
-        updated = [*mods, {"id": mod_id, "name": f"Mod {mod_id}"}]
+        # A successful settings response only means Nitrado accepted the
+        # request. Read the setting back before telling Discord it was saved.
+        updated = None
+        for attempt in range(3):
+            if attempt:
+                time.sleep(0.5)
+            confirmed = self._client.get_gameserver_mods(
+                context.resource.external_resource_id,
+                credential,
+            )
+            if mod_id in {mod["id"] for mod in confirmed}:
+                updated = confirmed
+                break
+        if updated is None:
+            raise NitradoSettingsVerificationError()
         return True, self._mod_catalog.enrich(updated) if self._mod_catalog else updated
 
     def restart(self, context: ProviderContext) -> None:
@@ -543,6 +558,19 @@ def _safe_text(value) -> str | None:
         return None
     rendered = str(value).strip()
     return rendered[:500] if rendered else None
+
+
+def _player_is_online(value) -> bool:
+    if value is None:
+        # The dedicated endpoint represents the current player list on games
+        # that omit the optional online marker.
+        return True
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in {"false", "0", "no", "offline"}:
+        return False
+    return True
 
 
 def _canonical_game_title(value: str | None) -> str:

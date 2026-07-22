@@ -20,6 +20,7 @@ from twe.services.nitrado_provider import (
     NitradoMalformedResponseError,
     NitradoProvider,
     NitradoRateLimitedError,
+    NitradoSettingsVerificationError,
     NitradoUnavailableError,
 )
 from twe.services.provider_contracts import (
@@ -43,12 +44,17 @@ class _Transport:
         self.calls.append((url, headers, timeout_seconds))
         if self.error:
             raise self.error
-        return self.response
+        return self._next_response()
 
     def post(self, url, headers, form, timeout_seconds):
         self.calls.append((url, headers, form, timeout_seconds))
         if self.error:
             raise self.error
+        return self._next_response()
+
+    def _next_response(self):
+        if isinstance(self.response, list):
+            return self.response.pop(0)
         return self.response
 
 
@@ -80,12 +86,7 @@ def _gameserver_players_response(players):
         status=200,
         body=json.dumps({
             "status": "success",
-            "data": {
-                "gameserver": {
-                    "status": "started",
-                    "query": {"player_current": len(players), "players": players},
-                },
-            },
+            "data": {"players": players},
         }).encode(),
     )
 
@@ -208,11 +209,12 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertNotIn("secret-token", rendered)
         self.assertNotIn("must-not-survive", rendered)
 
-    def test_reads_live_player_names_from_gameserver_query(self):
+    def test_reads_live_player_names_from_dedicated_player_endpoint(self):
         transport = _Transport(_gameserver_players_response([
-            {"name": "Chad", "id": 1, "bot": False},
+            {"name": "Chad", "id": 1, "bot": False, "online": "true"},
             {"name": "Helper Bot", "id": 2, "bot": True},
-            {"name": "Cave Friend", "id": 3, "bot": False},
+            {"name": "Former Player", "id": 3, "bot": False, "online": "false"},
+            {"name": "Cave Friend", "id": 4, "bot": False},
         ]))
 
         players = NitradoProvider(self.config, transport).read_players(self._context())
@@ -220,11 +222,11 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertEqual(players, {"players": ["Chad", "Cave Friend"]})
         self.assertEqual(
             transport.calls[0][0],
-            "https://api.nitrado.net/services/42/gameservers",
+            "https://api.nitrado.net/services/42/gameservers/games/players",
         )
         self.assertNotIn("secret-token", repr(players))
 
-    def test_player_read_rejects_missing_query_data(self):
+    def test_player_read_rejects_missing_player_data(self):
         provider = NitradoProvider(
             self.config,
             _Transport(_gameserver_response("started")),
@@ -301,18 +303,35 @@ class NitradoProviderTests(unittest.TestCase):
             self.assertEqual(mods, [{"id": "927090", "name": "Global Catalog Name"}])
 
     def test_add_mod_preserves_load_order_and_writes_active_mods(self):
-        transport = _Transport(_gameserver_mods_response("927090,928708"))
+        transport = _Transport([
+            _gameserver_mods_response("927090,928708"),
+            NitradoHttpResponse(200, b'{"status":"success","data":{}}'),
+            _gameserver_mods_response("927090,928708,999123"),
+        ])
         provider = NitradoProvider(self.config, transport)
 
         added, mods = provider.add_mod(self._context(), "999123")
 
         self.assertTrue(added)
         self.assertEqual([mod["id"] for mod in mods], ["927090", "928708", "999123"])
-        self.assertEqual(transport.calls[1][0], "https://api.nitrado.net/services/42/gameservers/settings")
         self.assertEqual(
-            transport.calls[1][2],
-            {"category": "general", "key": "activeMods", "value": "927090,928708,999123"},
+            transport.calls[1][0],
+            "https://api.nitrado.net/services/42/gameservers/settings?category=general&key=activeMods&value=927090%2C928708%2C999123",
         )
+        self.assertEqual(transport.calls[1][2], {})
+
+    @patch("twe.services.nitrado_provider.time.sleep", return_value=None)
+    def test_add_mod_fails_when_nitrado_does_not_confirm_the_setting(self, _sleep):
+        transport = _Transport([
+            _gameserver_mods_response("927090"),
+            NitradoHttpResponse(200, b'{"status":"success","data":{}}'),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
+            _gameserver_mods_response("927090"),
+        ])
+
+        with self.assertRaises(NitradoSettingsVerificationError):
+            NitradoProvider(self.config, transport).add_mod(self._context(), "999123")
 
     def test_add_existing_mod_is_idempotent_and_does_not_write(self):
         transport = _Transport(_gameserver_mods_response("927090,928708"))
