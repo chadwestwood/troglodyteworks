@@ -129,9 +129,9 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         self.assertTrue(count.allowed)
         self.assertTrue(names.allowed)
         self.assertFalse(wrong_channel.allowed)
-        self.assertEqual(wrong_channel.reason, "channel_disabled")
+        self.assertEqual(wrong_channel.reason, "channel_unmapped")
         self.assertFalse(restart.allowed)
-        self.assertIn(restart.reason, {"channel_disabled", "capability_not_granted"})
+        self.assertIn(restart.reason, {"channel_unmapped", "capability_not_granted"})
         self.assertIsNone(lizzlive)
 
     def test_unlinked_discord_identity_cannot_complete_verification(self):
@@ -158,6 +158,55 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
             decision = authorize(conn, self.guild_id, "333", "public-user", "instance.status.read")
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, "guild_not_connected")
+
+    def test_channels_route_one_discord_server_to_different_instances(self):
+        first_grant = self._active_grant_for_channel("333")
+        with self.db.connect() as conn:
+            family_community = fetch_one(
+                conn,
+                "INSERT INTO communities (name, slug, created_by) VALUES (%s,%s,%s) RETURNING id::text",
+                (f"Family {self.suffix}", f"family-{self.suffix}", self.owner["id"]),
+            )
+            family_server = fetch_one(
+                conn,
+                "INSERT INTO game_servers (community_id,name,slug,game_type,management_adapter) VALUES (%s,'Family ARK','family-ark','ARK','local_asa') RETURNING id::text",
+                (family_community["id"],),
+            )
+            family_instance = fetch_one(
+                conn,
+                "INSERT INTO game_instances (game_server_id,name,slug,instance_type,game_identifier,status) VALUES (%s,'Family Map','family-map','ark_map','Family','online') RETURNING id::text",
+                (family_server["id"],),
+            )
+            installation = fetch_one(conn, "SELECT id::text FROM discord_guild_installations WHERE discord_guild_id = %s", (self.guild_id,))
+            family_grant = fetch_one(
+                conn,
+                """
+                INSERT INTO discord_instance_access_grants
+                    (discord_guild_installation_id, provider_community_id, game_server_id, game_instance_id,
+                     requested_by, requester_discord_user_id, consumer_discord_guild_id, status, channel_scope,
+                     requested_channel_ids, provider_approved_by, provider_approved_at, discord_approved_by,
+                     discord_approver_user_id, discord_approved_at, installed_at, activated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,'active','allowlist',ARRAY['444'],%s,now(),%s,%s,now(),now(),now())
+                RETURNING id::text
+                """,
+                (installation["id"], family_community["id"], family_server["id"], family_instance["id"],
+                 self.matter["id"], self.discord_user_id, self.guild_id, self.owner["id"],
+                 self.matter["id"], self.discord_user_id),
+            )
+            execute(conn, "INSERT INTO discord_instance_access_grant_capabilities (discord_instance_access_grant_id,capability,granted_by) VALUES (%s,'instance.status.read',%s)", (family_grant["id"], self.owner["id"]))
+
+            genesis = authorize(conn, self.guild_id, "333", "public-user", "instance.status.read")
+            family = authorize(conn, self.guild_id, "444", "public-user", "instance.status.read")
+            unmapped = authorize(conn, self.guild_id, "555", "public-user", "instance.status.read")
+
+            execute(conn, "DELETE FROM communities WHERE id = %s", (family_community["id"],))
+
+        self.assertTrue(genesis.allowed)
+        self.assertEqual(genesis.context.instance_access_grant_id, first_grant)
+        self.assertTrue(family.allowed)
+        self.assertEqual(family.context.instance_name, "Family Map")
+        self.assertFalse(unmapped.allowed)
+        self.assertEqual(unmapped.reason, "channel_unmapped")
 
     def test_failed_instance_is_treated_as_a_stale_target(self):
         self._active_grant()
@@ -265,6 +314,28 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         approval = self.owner_client.post(
             f"/api/v1/discord/instance-access-requests/{grant_id}/provider-approval",
             json={"approved_capabilities": ["instance.status.read"]},
+        )
+        self.assertEqual(approval.status_code, 200)
+        return grant_id
+
+    def _active_grant_for_channel(self, channel_id):
+        response = self.matter_client.post(
+            "/api/v1/discord/instance-access-requests",
+            json={
+                "provider_community_id": self.community["id"],
+                "game_instance_id": self.instance["id"],
+                "requested_capabilities": ["instance.status.read"],
+                "channel_scope": "allowlist",
+                "allowed_channel_ids": [channel_id],
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        grant_id = response.get_json()["request"]["id"]
+        self._verify_discord(grant_id, self.discord_user_id, permissions=32)
+        self._install_trog(grant_id)
+        approval = self.owner_client.post(
+            f"/api/v1/discord/instance-access-requests/{grant_id}/provider-approval",
+            json={"approved_capabilities": ["instance.status.read"], "channel_scope": "allowlist"},
         )
         self.assertEqual(approval.status_code, 200)
         return grant_id

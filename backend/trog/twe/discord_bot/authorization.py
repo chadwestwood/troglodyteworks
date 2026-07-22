@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from ..authorization import can_request_capability
-from ..db import fetch_one
+from ..db import fetch_all, fetch_one
 
 
 PUBLIC_CAPABILITIES = frozenset(
@@ -29,6 +29,7 @@ class DiscordContext:
     instance_name: str | None = None
     provider_community_name: str | None = None
     channel_scope: str = "all"
+    allowed_channel_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -48,8 +49,8 @@ class AuthorizationDecision:
     identity: DiscordIdentity | None = None
 
 
-def resolve_guild(conn, discord_guild_id: str) -> DiscordContext | None:
-    grant_context = resolve_instance_access_grant(conn, discord_guild_id)
+def resolve_guild(conn, discord_guild_id: str, channel_id: str | None = None) -> DiscordContext | None:
+    grant_context = resolve_instance_access_grant(conn, discord_guild_id, channel_id)
     if grant_context:
         return grant_context
     if has_instance_access_grant(conn, discord_guild_id):
@@ -101,11 +102,11 @@ def has_instance_access_grant(conn, discord_guild_id: str) -> bool:
     return bool(row)
 
 
-def resolve_instance_access_grant(conn, discord_guild_id: str) -> DiscordContext | None:
+def resolve_instance_access_grant(conn, discord_guild_id: str, channel_id: str | None = None) -> DiscordContext | None:
     if not instance_access_tables_available(conn):
         return None
     try:
-        row = fetch_one(
+        rows = fetch_all(
             conn,
             """
             SELECT
@@ -120,7 +121,8 @@ def resolve_instance_access_grant(conn, discord_guild_id: str) -> DiscordContext
                 gs.management_adapter,
                 gi.id::text AS instance_id,
                 gi.name AS instance_name,
-                diag.channel_scope
+                diag.channel_scope,
+                diag.requested_channel_ids
             FROM discord_instance_access_grants diag
             JOIN discord_guild_installations dgi ON dgi.id = diag.discord_guild_installation_id
             JOIN communities c ON c.id = diag.provider_community_id
@@ -138,8 +140,18 @@ def resolve_instance_access_grant(conn, discord_guild_id: str) -> DiscordContext
         )
     except Exception:
         return None
-    if not row:
+    if channel_id is None:
+        matches = rows
+    else:
+        channel_id = str(channel_id)
+        exact = [row for row in rows if row["channel_scope"] == "allowlist" and channel_id in (row["requested_channel_ids"] or [])]
+        fallback = [row for row in rows if row["channel_scope"] == "all"]
+        matches = exact if exact else fallback
+    # Never guess between two hosted games. A conflicting route must be fixed
+    # by a Discord administrator before Trog will expose either game's data.
+    if len(matches) != 1:
         return None
+    row = matches[0]
     display_name = f"{row['provider_community_name']} - {row['instance_name']}"
     return DiscordContext(
         installation_id=row["installation_id"],
@@ -154,6 +166,7 @@ def resolve_instance_access_grant(conn, discord_guild_id: str) -> DiscordContext
         instance_name=row["instance_name"],
         provider_community_name=row["provider_community_name"],
         channel_scope=row["channel_scope"] or "all",
+        allowed_channel_ids=tuple(str(value) for value in (row["requested_channel_ids"] or [])),
     )
 
 
@@ -184,6 +197,8 @@ def resolve_identity(conn, discord_user_id: str, community_id: str) -> DiscordId
 
 
 def channel_enabled(conn, context: DiscordContext, channel_id: str, category: str) -> bool:
+    if context.instance_access_grant_id:
+        return context.channel_scope == "all" or str(channel_id) in context.allowed_channel_ids
     row = fetch_one(
         conn,
         """
@@ -219,9 +234,10 @@ def grant_capability_enabled(conn, context: DiscordContext, capability: str) -> 
 
 
 def authorize(conn, guild_id: str, channel_id: str, discord_user_id: str, capability: str) -> AuthorizationDecision:
-    context = resolve_guild(conn, guild_id)
+    context = resolve_guild(conn, guild_id, channel_id)
     if not context:
-        return AuthorizationDecision(False, "guild_not_connected", capability, None)
+        reason = "channel_unmapped" if has_instance_access_grant(conn, guild_id) else "guild_not_connected"
+        return AuthorizationDecision(False, reason, capability, None)
     category = "read" if capability in PUBLIC_CAPABILITIES else "administrative"
     if not channel_enabled(conn, context, channel_id, category):
         return AuthorizationDecision(False, "channel_disabled", capability, context)

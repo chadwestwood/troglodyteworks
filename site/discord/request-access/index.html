@@ -30,7 +30,7 @@
       <h1>Add Trog to your Discord server</h1>
       <p class="muted">Choose where Trog may answer game-server questions, confirm your Discord permissions, and approve the installation.</p>
       <p class="form-error" data-error hidden></p>
-      <div class="guidance-note" data-status>Most servers should choose all visible channels. You can limit Trog to one or more channels instead.
+      <div class="guidance-note" data-status>Choose specific channels when one Discord server discusses more than one hosted game. Each channel will use the Community and hosted game selected below.
       </div>
 
       <form class="stack-form" data-discord-access-form>
@@ -58,14 +58,14 @@
         </div>
 
         <fieldset>
-          <legend>Where should Trog respond?</legend>
-          <label><input type="radio" name="channel_scope" value="all" checked> All channels Trog can see</label>
-          <label><input type="radio" name="channel_scope" value="allowlist"> Only specific channels</label>
+          <legend>Which channels should use this hosted game?</legend>
+          <label><input type="radio" name="channel_scope" value="all" checked> All channels Trog can see (best for one game)</label>
+          <label><input type="radio" name="channel_scope" value="allowlist"> Only specific channels (best for multiple games)</label>
         </fieldset>
         <div data-channel-allowlist hidden>
           <label for="allowed_channel_ids">Allowed channel IDs</label>
           <input id="allowed_channel_ids" name="allowed_channel_ids" type="text" autocomplete="off" placeholder="123456789, 987654321">
-          <small class="muted">In Discord, enable Developer Mode under User Settings → Advanced. Right-click a channel, choose Copy Channel ID, and paste it here. Separate multiple IDs with commas.</small>
+          <small class="muted">In Discord, enable Developer Mode under User Settings → Advanced. Right-click each channel, choose Copy Channel ID, and paste it here. Separate multiple IDs with commas. You can connect the same hosted game to channels in another Discord server with a separate request.</small>
         </div>
 
         <button class="primary-button" type="submit">Verify and install Trog</button>

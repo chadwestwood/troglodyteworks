@@ -308,6 +308,8 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
     if not decision.allowed:
         if decision.reason == "guild_not_connected":
             return BotReply("This Discord server is not connected to a Troglodyte Works game server yet.", "guild_not_connected")
+        if decision.reason == "channel_unmapped":
+            return BotReply("This channel is not assigned to a hosted game yet. Ask a Discord administrator to choose which server Trog should use here.", "channel_unmapped")
         if decision.reason == "channel_disabled":
             return BotReply("Trog is not enabled for that capability in this channel.", "channel_disabled")
         if capability.endswith(".read"):

@@ -417,19 +417,9 @@ def finalize_bot_installation(conn, grant):
             """,
             (grant["consumer_discord_guild_id"], grant["provider_community_id"], grant["game_server_id"], g.current_user["id"]),
         )
-    execute(conn, "DELETE FROM discord_channel_policies WHERE discord_guild_installation_id = %s AND capability_category = 'read'", (installation["id"],))
-    for channel_id in grant["requested_channel_ids"]:
-        execute(
-            conn,
-            """
-            INSERT INTO discord_channel_policies
-                (discord_guild_installation_id, discord_channel_id, capability_category, enabled)
-            VALUES (%s, %s, 'read', true)
-            ON CONFLICT (discord_guild_installation_id, discord_channel_id, capability_category)
-            DO UPDATE SET enabled = true, updated_at = now()
-            """,
-            (installation["id"], channel_id),
-        )
+    # Channel routing belongs to the instance grant, not the shared bot
+    # installation. This lets one Discord server route different channels to
+    # different hosted games without one grant overwriting another.
     return fetch_one(
         conn,
         """
