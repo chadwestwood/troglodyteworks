@@ -21,6 +21,14 @@ class _Lookup:
 
 
 class AsaModCatalogTests(unittest.TestCase):
+    def test_shared_catalog_names_the_new_genesis_mod(self):
+        catalog = AsaModCatalog(ROOT / "data" / "asa_mod_catalog.json")
+
+        self.assertEqual(
+            catalog.enrich([{"id": "930381", "name": "Mod 930381"}]),
+            [{"id": "930381", "name": "Silent Structures"}],
+        )
+
     def test_reads_shared_names_and_resolves_then_persists_new_ids(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "asa_mod_catalog.json"
