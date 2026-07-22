@@ -6,6 +6,7 @@
 @import url("utilities.css?v=layout-tightening-v5");
 @import url("trog-ui-tokens.css?v=layout-tightening-v5");
 @import url("trog-components.css?v=layout-tightening-v5");
+@import url("products.css?v=products-v1");
 /* First-run choices intentionally read like two plain answers, not a dashboard. */
 .choice-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:var(--space-16); margin-top:var(--space-24); }
 .choice-card { text-align:left; padding:var(--space-24); border:1px solid var(--color-border); border-radius:20px; background:var(--color-surface); color:inherit; cursor:pointer; }

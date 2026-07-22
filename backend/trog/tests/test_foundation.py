@@ -77,6 +77,26 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(independent_hosting.status_code, 200)
         self.assertIn(b"Connect your hosted game", independent_hosting.data)
 
+    def test_product_comparison_and_detail_pages_are_served(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        comparison = client.get("/products/")
+        admin = client.get("/products/admin/")
+        missing = client.get("/products/unknown/")
+        script = client.get("/js/products.js")
+        self.assertEqual(comparison.status_code, 200)
+        self.assertIn(b"Choose how much work you want Trog to handle", comparison.data)
+        self.assertIn(b"subscription unlocks features", comparison.data)
+        self.assertEqual(admin.status_code, 200)
+        self.assertIn(b"data-product-detail", admin.data)
+        self.assertIn(b'configure and delegate only within the exact authority', script.data)
+        self.assertIn(b'name: "Free"', script.data)
+        self.assertIn(b'name: "Control"', script.data)
+        self.assertIn(b'name: "Assist"', script.data)
+        self.assertIn(b'name: "Admin"', script.data)
+        self.assertIn(b'name: "Pro"', script.data)
+        self.assertEqual(missing.status_code, 404)
+
     def test_genesis_page_includes_capability_aware_member_view(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
         client = app.test_client()

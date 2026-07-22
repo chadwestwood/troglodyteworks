@@ -13,6 +13,7 @@ Documentation is part of the product. Every document should identify whether it 
 7. `server-operation-lifecycle.md` — contract for audited operations.
 8. `vertical-slices/` — bounded implementation records.
 9. `codex-guidelines.md` — implementation-agent expectations.
+10. `products-and-entitlements.md` — customer plans and their separation from owner-granted authority.
 
 `engineering-tracker.md` describes a future TWE product capability. Linear is the current work-planning system of record.
 
@@ -30,6 +31,7 @@ Documentation is part of the product. Every document should identify whether it 
 - `discord-integration.md`
 - `server-operation-lifecycle.md`
 - `services.md`
+- `products-and-entitlements.md`
 
 ### Research
 

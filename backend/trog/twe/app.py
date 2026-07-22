@@ -104,6 +104,12 @@ def create_app(config=None, database=None, provider_registry=None):
     def site_index():
         return send_from_directory(site_root, "index.html")
 
+    @app.get("/products/<plan_slug>/")
+    def product_detail_page(plan_slug):
+        if plan_slug not in {"free", "control", "assist", "admin", "pro"}:
+            return api_error("NOT_FOUND", "Resource was not found.", 404)
+        return send_from_directory(site_root, "products/detail.html")
+
     @app.get("/invite/<token>/")
     def invite_page(token):
         return send_from_directory(site_root, "invite/index.html")
