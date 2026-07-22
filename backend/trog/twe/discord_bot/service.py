@@ -38,11 +38,16 @@ def main():
     except ModuleNotFoundError as exc:
         raise SystemExit("Install discord.py before running the Discord bot service.") from exc
 
-    intents = discord.Intents.default()
+    # Start from no Gateway privileges and enable only what Trog actually uses.
+    # This avoids silently gaining new event access when discord.py changes its
+    # defaults. Message content remains necessary for addressed natural-language
+    # questions; members, presences, reactions, typing, and voice are not used.
+    intents = discord.Intents.none()
     intents.guilds = True
     intents.messages = True
     intents.message_content = True
     client = discord.Client(intents=intents)
+    allowed_mentions = discord.AllowedMentions.none()
     tree = discord.app_commands.CommandTree(client)
     database = Database(config.database_url)
 
@@ -50,19 +55,31 @@ def main():
 
     @server_group.command(name="status", description="Show the connected server status")
     async def server_status(interaction):
-        await handle_interaction(interaction, "server_status", database, config, guild_map)
+        await handle_interaction(
+            interaction, "server_status", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+        )
 
     @server_group.command(name="players", description="List players on the connected server")
     async def server_players(interaction):
-        await handle_interaction(interaction, "player_list", database, config, guild_map)
+        await handle_interaction(
+            interaction, "player_list", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+        )
 
     @server_group.command(name="mods", description="List active mods on the connected server")
     async def server_mods(interaction):
-        await handle_interaction(interaction, "mod_list", database, config, guild_map)
+        await handle_interaction(
+            interaction, "mod_list", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+        )
 
     @server_group.command(name="restart", description="Request a server restart")
     async def server_restart(interaction):
-        await handle_interaction(interaction, "server_restart", database, config, guild_map)
+        await handle_interaction(
+            interaction, "server_restart", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+        )
 
     tree.add_command(server_group)
 
@@ -75,12 +92,17 @@ def main():
 
     @client.event
     async def on_message(message):
-        await handle_message(message, client.user, database, config, guild_map)
+        await handle_message(
+            message, client.user, database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+        )
 
     client.run(token)
 
 
-async def handle_message(message, bot_user, database, config, guild_map, logger=LOGGER):
+async def handle_message(
+    message, bot_user, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
+):
     if not bot_user:
         logger.warning("Discord message ignored because bot user is not ready.")
         return False
@@ -141,12 +163,15 @@ async def handle_message(message, bot_user, database, config, guild_map, logger=
         )
         reply = NO_RESULT_REPLY
 
-    await message.channel.send(reply.text)
+    send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
+    await message.channel.send(reply.text, **send_options)
     logger.info("Discord reply sent guild_id=%s response_code=%s", message.guild.id, reply.code)
     return True
 
 
-async def handle_interaction(interaction, intent, database, config, guild_map, logger=LOGGER):
+async def handle_interaction(
+    interaction, intent, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
+):
     guild_id = str(interaction.guild_id) if interaction.guild_id else ""
     channel_id = str(interaction.channel_id) if interaction.channel_id else ""
     author_id = str(interaction.user.id)
@@ -160,7 +185,8 @@ async def handle_interaction(interaction, intent, database, config, guild_map, l
         "Discord authorization result guild_id=%s channel_id=%s author_id=%s capability=%s response_code=%s",
         guild_id, channel_id, author_id, intent, reply.code,
     )
-    await interaction.response.send_message(reply.text)
+    send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
+    await interaction.response.send_message(reply.text, **send_options)
     return reply
 
 

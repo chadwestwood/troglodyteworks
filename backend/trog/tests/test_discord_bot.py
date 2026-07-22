@@ -388,6 +388,24 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(message.channel.sent), 1)
         self.assertIn("is the server up", message.channel.sent[0])
 
+    async def test_message_reply_disables_generated_mentions(self):
+        message = FakeMessage(
+            content="<@999> hello",
+            author=self.author,
+            guild=FakeGuild(222),
+            channel=FakeChannel(333),
+            mentions=[],
+        )
+        safe_mentions = object()
+
+        handled = await handle_message(
+            message, self.bot, FakeDatabase(), self.config, {},
+            allowed_mentions=safe_mentions,
+        )
+
+        self.assertTrue(handled)
+        self.assertIs(message.channel.last_send_options["allowed_mentions"], safe_mentions)
+
     async def test_answers_supported_status_question_even_without_direct_mention(self):
         message = FakeMessage(
             content="is the server up?",
@@ -507,9 +525,11 @@ class FakeChannel:
     def __init__(self, channel_id):
         self.id = channel_id
         self.sent = []
+        self.last_send_options = {}
 
-    async def send(self, text):
+    async def send(self, text, **options):
         self.sent.append(text)
+        self.last_send_options = options
 
 
 class FakeMessage:
