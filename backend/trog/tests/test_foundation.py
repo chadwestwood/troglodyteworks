@@ -53,6 +53,7 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"Community Invitation", invite.data)
         self.assertEqual(admin.status_code, 200)
         self.assertIn(b"Platform Admin", admin.data)
+        self.assertIn(b"data-admin-runtime-health", admin.data)
         community = client.get("/communities/cohorts-in-the-wild/")
         self.assertEqual(community.status_code, 200)
         self.assertIn(b"Connect a new game service", community.data)
@@ -69,6 +70,7 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"Request Trog access", page.data)
         self.assertIn(b"data-capabilities-panel", page.data)
         self.assertIn(b"configureGenesisAccessView", script.data)
+        self.assertIn(b"/admin/runtime-health", script.data)
         self.assertIn(b"Your Community role cannot request this Capability.", script.data)
 
     def test_nitrado_hosting_page_preserves_the_secret_boundary(self):

@@ -45,6 +45,17 @@
         <div class="admin-stat-grid" data-admin-overview></div>
       </section>
 
+      <section class="app-panel admin-runtime-panel">
+        <div class="admin-section-heading">
+          <div>
+            <p class="eyebrow">Runtime</p>
+            <h2>Service health</h2>
+          </div>
+        </div>
+        <p class="muted">Private liveness signals from long-running production services.</p>
+        <div class="resource-list" data-admin-runtime-health></div>
+      </section>
+
       <section class="app-panel">
         <div class="admin-section-heading">
           <div>
@@ -83,7 +94,7 @@
 
   <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
   <script src="/js/twe-api.js?v=admin-operations-v1"></script>
-  <script src="/js/twe-pages.js?v=admin-operations-v1"></script>
+  <script src="/js/twe-pages.js?v=admin-runtime-health-v1"></script>
 </body>
 
 </html>

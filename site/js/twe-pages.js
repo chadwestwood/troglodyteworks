@@ -128,17 +128,19 @@ async function initAccount() {
 
 async function initAdmin() {
   await requireCurrentUser();
-  const [overview, users, communities, discordAccess] = await Promise.all([
+  const [overview, users, communities, discordAccess, runtimeHealth] = await Promise.all([
     apiRequest("/admin/overview"),
     apiRequest("/admin/users"),
     apiRequest("/admin/communities"),
     apiRequest("/admin/discord-access"),
+    apiRequest("/admin/runtime-health"),
   ]);
   const state = {
     overview: overview.overview,
     users: users.users,
     communities: communities.communities,
     discordAccess: discordAccess.discord_access,
+    runtimeHealth: runtimeHealth.components,
     showTest: false,
     search: "",
   };
@@ -162,9 +164,39 @@ function renderAdminDashboard(state) {
   renderAdminUsers(visibleUsers);
   renderAdminCommunities(visibleCommunities);
   renderAdminDiscordAccess(visibleAccess);
+  renderAdminRuntimeHealth(state.runtimeHealth);
   setText("[data-admin-user-count]", visibleUsers.length);
   setText("[data-admin-community-count]", visibleCommunities.length);
   setText("[data-admin-access-count]", visibleAccess.length);
+}
+
+function renderAdminRuntimeHealth(components) {
+  const list = document.querySelector("[data-admin-runtime-health]");
+  clearNode(list);
+  if (!components.length) {
+    list.appendChild(createAdminRecord(
+      "Waiting for Trog worker heartbeat",
+      "The worker will report after its updated Railway deployment starts.",
+      [],
+      "pending",
+      "attention",
+    ));
+    return;
+  }
+  components.forEach((component) => {
+    const title = component.component === "trog_worker" ? "Trog Discord worker" : "Runtime service";
+    const guildCount = Number.isInteger(component.details?.guild_count)
+      ? `${component.details.guild_count} Discord server(s) visible`
+      : "Discord server count unavailable";
+    const age = `${component.age_seconds} second(s) since last signal`;
+    list.appendChild(createAdminRecord(
+      title,
+      guildCount,
+      [age],
+      component.status,
+      component.status === "ready" ? "active" : "attention",
+    ));
+  });
 }
 
 function adminRecordVisible(record, state) {
