@@ -31,7 +31,7 @@ from twe.discord_bot.authorization import (
     channel_enabled,
     resolve_identity,
 )
-from twe.discord_bot.service import handle_message
+from twe.discord_bot.service import handle_interaction, handle_message
 
 
 class DiscordBotCoreTests(unittest.TestCase):
@@ -510,6 +510,41 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(message.channel.sent), 1)
         self.assertIn("Reason:", message.channel.sent[0])
 
+    async def test_slash_command_is_deferred_before_provider_work(self):
+        interaction = FakeInteraction()
+        safe_mentions = object()
+
+        with patch(
+            "twe.discord_bot.service.respond_to_request",
+            return_value=BotReply("Genesis is ready.", "server_up"),
+        ):
+            reply = await handle_interaction(
+                interaction,
+                "server_status",
+                FakeDatabase(),
+                self.config,
+                {},
+                allowed_mentions=safe_mentions,
+            )
+
+        self.assertEqual(reply.code, "server_up")
+        self.assertEqual(interaction.events[0], ("defer", True, False))
+        self.assertEqual(interaction.events[1][0], "followup")
+        self.assertIs(interaction.events[1][3], safe_mentions)
+
+    async def test_restart_slash_response_is_ephemeral(self):
+        interaction = FakeInteraction()
+        with patch(
+            "twe.discord_bot.service.respond_to_request",
+            return_value=BotReply("Restart is disabled.", "restart_authorized_not_enabled"),
+        ):
+            await handle_interaction(
+                interaction, "server_restart", FakeDatabase(), self.config, {},
+            )
+
+        self.assertEqual(interaction.events[0], ("defer", True, True))
+        self.assertTrue(interaction.events[1][2])
+
 
 class FakeUser:
     def __init__(self, user_id):
@@ -539,6 +574,32 @@ class FakeMessage:
         self.guild = guild
         self.channel = channel
         self.mentions = mentions
+
+
+class FakeInteractionResponse:
+    def __init__(self, events):
+        self.events = events
+
+    async def defer(self, *, thinking, ephemeral):
+        self.events.append(("defer", thinking, ephemeral))
+
+
+class FakeInteractionFollowup:
+    def __init__(self, events):
+        self.events = events
+
+    async def send(self, text, *, ephemeral, allowed_mentions=None):
+        self.events.append(("followup", text, ephemeral, allowed_mentions))
+
+
+class FakeInteraction:
+    def __init__(self):
+        self.guild_id = 222
+        self.channel_id = 333
+        self.user = FakeUser(444)
+        self.events = []
+        self.response = FakeInteractionResponse(self.events)
+        self.followup = FakeInteractionFollowup(self.events)
 
 
 class FakeDatabase:

@@ -115,4 +115,9 @@ Railway runs the worker with:
 python -m twe.discord_bot.service
 ```
 
+Slash commands acknowledge Discord before performing provider reads and send the
+result through the interaction follow-up. This prevents normal provider latency
+from exceeding Discord's initial response deadline. Restart-related interaction
+responses are ephemeral; all generated replies disable mentions.
+
 The systemd template in `deploy/systemd/trog-discord.service` is operator-managed and must not be enabled automatically. Authorization logs contain identifiers, capability/intent, and result code, but not message content or secrets. Addressed messages retain a deterministic fallback response.

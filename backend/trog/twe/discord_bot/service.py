@@ -199,6 +199,11 @@ async def handle_interaction(
     guild_id = str(interaction.guild_id) if interaction.guild_id else ""
     channel_id = str(interaction.channel_id) if interaction.channel_id else ""
     author_id = str(interaction.user.id)
+    # Provider reads can legitimately take longer than Discord's initial
+    # interaction deadline. Acknowledge first, then deliver the result through
+    # the follow-up webhook. Administrative responses stay private.
+    ephemeral = intent == "server_restart"
+    await interaction.response.defer(thinking=True, ephemeral=ephemeral)
     try:
         with database.connect() as conn:
             reply = respond_to_request(intent, guild_id, channel_id, author_id, conn, config, guild_map)
@@ -210,7 +215,7 @@ async def handle_interaction(
         guild_id, channel_id, author_id, intent, reply.code,
     )
     send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
-    await interaction.response.send_message(reply.text, **send_options)
+    await interaction.followup.send(reply.text, ephemeral=ephemeral, **send_options)
     return reply
 
 
