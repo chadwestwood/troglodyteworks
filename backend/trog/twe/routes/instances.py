@@ -21,10 +21,12 @@ VALID_OPERATION_STATUSES = ACTIVE_STATUSES + ("completed", "failed", "cancelled"
 @require_user
 def get_instance(instance_id):
     with current_app.config["TWE_DB"].connect() as conn:
-        reconcile_instance(conn, current_app.config["TWE_CONFIG"], instance_id)
         row = instance_access(conn, g.current_user["id"], instance_id)
         if not row:
             return api_error("NOT_FOUND", "Game Instance was not found.", 404)
+        # Reconciliation may contact a provider and mutate Instance state. The
+        # tenant boundary must therefore be established before it is attempted.
+        reconcile_instance(conn, current_app.config["TWE_CONFIG"], instance_id)
         instance = fetch_one(
             conn,
             """

@@ -30,9 +30,13 @@ approval remains covered by the invitation integration suite.
 ## Authorize before Instance reconciliation
 
 **Severity:** Low  
-**State:** Validated; remediation pending
+**State:** Fixed and regression-tested 2026-07-22
 
-Instance routes must establish tenant/Instance access before reconciliation, provider reads, or other resource-specific work. This reduces cross-tenant timing and side-effect exposure and makes the authorization boundary explicit.
+The Instance detail route now establishes the requesting User's Community and
+Instance access before reconciliation. Unauthorized identifiers return the same
+not-found response without contacting a provider or mutating Instance state. The
+remaining Instance routes already authorized access before provider resolution,
+reads, capability checks, or operation queries.
 
 ## Completion standard
 

@@ -49,15 +49,14 @@ The 2026-07-22 standard security review identified three validated items:
 
 1. application-level password-login lockout — fixed and regression-tested 2026-07-22;
 2. reapply role hierarchy checks when invitation membership is approved — fixed and regression-tested 2026-07-22; and
-3. authorize Instance access before provider reconciliation or other tenant-specific work.
+3. authorize Instance access before provider reconciliation or other tenant-specific work — fixed and regression-tested 2026-07-22.
 
-Documentation must not claim the remaining Instance reconciliation boundary is
-fully enforced until its fix and regression tests are complete.
+All three findings from the 2026-07-22 standard review now have code fixes and
+targeted regression coverage.
 
 ## Immediate priorities
 
-1. Resolve and verify the three security findings.
-2. Expand reliable Nitrado read-only observability without exposing secrets or platform identifiers.
-3. Add production smoke tests for the domain, OAuth callbacks, web service, worker, and provider reads.
-4. Continue the eight-week plan in Linear.
-5. Keep current-state documentation updated whenever production topology changes.
+1. Expand reliable Nitrado read-only observability without exposing secrets or platform identifiers.
+2. Add production smoke tests for the domain, OAuth callbacks, web service, worker, and provider reads.
+3. Continue the eight-week plan, updating Linear only when explicitly requested.
+4. Keep current-state documentation updated whenever production topology changes.
