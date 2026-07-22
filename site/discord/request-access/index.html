@@ -34,12 +34,12 @@
       </div>
 
       <form class="stack-form" data-discord-access-form>
-        <label for="provider_community_id">Your Discord-connected setup</label>
+        <label for="provider_community_id">Which Community should Trog represent?</label>
         <select id="provider_community_id" name="provider_community_id" required data-provider-community-select>
           <option value="">Loading your Communities...</option>
         </select>
 
-        <label for="game_instance_id">Hosted game</label>
+        <label for="game_instance_id">Which hosted game should Trog answer questions about?</label>
         <select id="game_instance_id" name="game_instance_id" required data-game-instance-select>
           <option value="">Choose a Community first</option>
         </select>
@@ -78,8 +78,8 @@
         <span>Provider approval and installation status</span>
       </summary>
       <div class="disclosure-panel__body">
-        <p class="muted">Requesters can finish Discord installation here. Cohorts owners and admins can approve or
-          revoke provider access.</p>
+        <p class="muted">Requesters can finish Discord installation here. Community owners and admins can approve or
+          revoke access to their hosted game information.</p>
         <p class="muted">Requests remain capability-aware so unsupported actions are not exposed in Discord.</p>
         <div class="resource-list" data-discord-access-requests></div>
       </div>
@@ -88,7 +88,7 @@
 
   <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
   <script src="/js/twe-api.js?v=trog-oauth-v1"></script>
-  <script src="/js/discord-access.js?v=discord-verification-retry-v2"></script>
+  <script src="/js/discord-access.js?v=multi-community-v1"></script>
 </body>
 
 </html>

@@ -71,6 +71,11 @@ class FoundationTests(unittest.TestCase):
         community = client.get("/communities/cohorts-in-the-wild/")
         self.assertEqual(community.status_code, 200)
         self.assertIn(b"Connect a new game service", community.data)
+        independent = client.get("/communities/lizzlive/")
+        independent_hosting = client.get("/communities/lizzlive/hosting/")
+        self.assertEqual(independent.status_code, 200)
+        self.assertEqual(independent_hosting.status_code, 200)
+        self.assertIn(b"Connect your hosted game", independent_hosting.data)
 
     def test_genesis_page_includes_capability_aware_member_view(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
@@ -115,8 +120,22 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"I manage a Discord server", page.data)
         self.assertIn(b"I\xe2\x80\x99m a Discord member", page.data)
         self.assertIn(b"Copy message and setup link", page.data)
+        self.assertIn(b"Choose an existing Community instead", page.data)
         self.assertIn(b"/onboarding/discord-workspace", script.data)
         self.assertIn(b"/onboarding/discord-matches", script.data)
+        self.assertIn(b"communityData", script.data)
+
+    def test_community_chooser_supports_multiple_roles_and_ownership(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        page = client.get("/communities/")
+        script = client.get("/js/twe-pages.js")
+        discord = client.get("/discord/request-access/")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"Create my own Community", page.data)
+        self.assertIn(b"Add a Community's Trog to my Discord", page.data)
+        self.assertIn(b"communityPath", script.data)
+        self.assertIn(b"Which Community should Trog represent?", discord.data)
 
     def test_browser_cannot_self_assign_ownership_endpoint(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())

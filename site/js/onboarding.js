@@ -35,7 +35,12 @@
     node.appendChild(button);
   }
   async function loadManager() {
-    const data = await apiRequest("/discord/managed-guilds");
+    const [data, communityData] = await Promise.all([
+      apiRequest("/discord/managed-guilds"),
+      apiRequest("/communities"),
+    ]);
+    const existingOption = document.querySelector("[data-existing-community-option]");
+    if (existingOption) existingOption.hidden = !(communityData.communities || []).length;
     guildSelect.replaceChildren(new Option("Choose your Discord server", ""));
     data.guilds.forEach((guild) => guildSelect.appendChild(new Option(guild.name, guild.id)));
     const connect = document.querySelector("[data-discord-connect]");
@@ -92,7 +97,7 @@
       method: "POST", body: JSON.stringify({ discord_guild_id: guildSelect.value }),
     });
     remember("twe.community_id", data.workspace.id);
-    window.location.href = "/communities/cohorts-in-the-wild/hosting/?setup=1";
+    window.location.href = `/communities/${encodeURIComponent(data.workspace.slug)}/hosting/?setup=1`;
   });
   document.querySelector("[data-copy-message]")?.addEventListener("click", async (event) => {
     const message = document.querySelector("[data-share-message]").value;

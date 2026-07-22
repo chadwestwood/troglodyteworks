@@ -8,6 +8,10 @@ const routes = {
 
 const rolePriority = { owner: 4, admin: 3, moderator: 2, member: 1 };
 
+function communityPath(community) {
+  return `/communities/${encodeURIComponent(community.slug)}/`;
+}
+
 async function initSignIn() {
   configureOAuthStartLinks();
   const form = document.querySelector("[data-sign-in-form]");
@@ -58,7 +62,7 @@ async function resolvePostAuthRoute() {
     const communities = data.communities || [];
     if (communities.length === 1) {
       remember("twe.community_id", communities[0].id);
-      return routes.community;
+      return communityPath(communities[0]);
     }
     return communities.length ? routes.communities : "/onboarding/";
   } catch (_error) {
@@ -89,7 +93,7 @@ async function initCommunities() {
   }
   if (communities.length === 1 && !window.location.search.includes("chooser=1")) {
     remember("twe.community_id", communities[0].id);
-    window.location.href = routes.community;
+    window.location.href = communityPath(communities[0]);
     return;
   }
   communities.forEach((community) => {
@@ -98,7 +102,7 @@ async function initCommunities() {
       `${community.connected_services || 0} connected services`,
       `${community.attention_count || 0} needs attention`,
     ].join(" · ");
-    const row = createResourceRow(community.name, detail, communityRoleLabel(community.role), { href: routes.community });
+    const row = createResourceRow(community.name, detail, communityRoleLabel(community.role), { href: communityPath(community) });
     row.addEventListener("click", () => {
       remember("twe.community_id", community.id);
     });

@@ -38,9 +38,14 @@
       <label for="managed_guild">Discord server</label>
       <select id="managed_guild" data-managed-guild><option value="">Loading your servers…</option></select>
       <div class="button-row">
-        <button class="primary-button" type="button" data-create-workspace>Continue to Nitrado</button>
+        <button class="primary-button" type="button" data-create-workspace>Create this Community and continue to Nitrado</button>
         <button class="text-button" type="button" data-refresh-discord>Refresh Discord servers</button>
         <button class="text-button" type="button" data-back>Back</button>
+      </div>
+      <div class="guidance-note" data-existing-community-option hidden>
+        <strong>Already belong to another Community?</strong>
+        <span>You can add that Community's Trog and game information to a Discord server you manage without changing ownership.</span>
+        <a class="primary-button secondary" href="/discord/request-access/">Choose an existing Community instead</a>
       </div>
     </section>
 
@@ -62,6 +67,6 @@
   </main>
   <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
   <script src="/js/twe-api.js?v=onboarding-v1"></script>
-  <script src="/js/onboarding.js?v=onboarding-v1"></script>
+  <script src="/js/onboarding.js?v=multi-community-v1"></script>
 </body>
 </html>

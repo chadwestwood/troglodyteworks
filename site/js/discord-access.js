@@ -62,8 +62,8 @@
     return;
   } else if (callback.get("installed") === "1") {
     status.textContent = callback.get("status") === "active"
-      ? "Trog is installed and the Cohorts provider grant is active."
-      : "Trog is installed. A Cohorts owner or admin must approve the provider grant before read access becomes active.";
+      ? "Trog is installed and this Community connection is active."
+      : "Trog is installed. A Community owner or admin must approve access before its hosted game information becomes active.";
   }
 
   form.addEventListener("submit", async (event) => {

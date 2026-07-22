@@ -106,6 +106,29 @@ def create_app(config=None, database=None, provider_registry=None):
     def invite_page(token):
         return send_from_directory(site_root, "invite/index.html")
 
+    # Community pages use the selected Community from the API. Serve the shared
+    # page shells for every real slug so one user's Communities remain visibly
+    # distinct without duplicating static HTML for each Community.
+    @app.get("/communities/<community_slug>/")
+    def community_page(community_slug):
+        return send_from_directory(site_root, "communities/cohorts-in-the-wild/index.html")
+
+    @app.get("/communities/<community_slug>/hosting/")
+    def community_hosting_page(community_slug):
+        return send_from_directory(site_root, "communities/cohorts-in-the-wild/hosting/index.html")
+
+    @app.get("/communities/<community_slug>/invitations/")
+    def community_invitations_page(community_slug):
+        return send_from_directory(site_root, "communities/cohorts-in-the-wild/invitations/index.html")
+
+    @app.get("/communities/<community_slug>/game-servers/<game_slug>/")
+    def community_game_server_page(community_slug, game_slug):
+        return send_from_directory(site_root, "communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/index.html")
+
+    @app.get("/communities/<community_slug>/game-servers/<game_slug>/instances/<instance_slug>/")
+    def community_instance_page(community_slug, game_slug, instance_slug):
+        return send_from_directory(site_root, "communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/instances/genesis/index.html")
+
     @app.get("/<path:path>")
     def site_file(path):
         target = site_root / path
