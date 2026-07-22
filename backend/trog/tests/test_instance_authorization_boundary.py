@@ -10,7 +10,8 @@ sys.path.insert(0, str(ROOT))
 
 from twe.app import create_app
 from twe.config import Config
-from twe.routes.instances import get_instance
+from twe.routes.instances import get_health, get_instance
+from twe.services.nitrado_provider import NitradoRateLimitedError, NitradoUnavailableError
 
 
 class FakeDatabase:
@@ -41,6 +42,35 @@ class InstanceAuthorizationBoundaryTests(unittest.TestCase):
         self.assertEqual(response.get_json()["error"]["code"], "NOT_FOUND")
         access_mock.assert_called_once()
         reconcile_mock.assert_not_called()
+
+    @patch("twe.routes.instances.read_game_server_health", side_effect=NitradoRateLimitedError())
+    @patch("twe.routes.instances.resolve_game_server_provider", return_value=object())
+    @patch("twe.routes.instances.instance_access", return_value={"game_server_id": "server-id"})
+    def test_nitrado_rate_limit_has_stable_safe_response(
+        self, _access_mock, _resolve_mock, _health_mock,
+    ):
+        response, status = self._get_health()
+
+        self.assertEqual(status, 429)
+        self.assertEqual(response.get_json()["error"]["code"], "NITRADO_RATE_LIMITED")
+        self.assertNotIn("token", response.get_json()["error"]["message"].lower())
+
+    @patch("twe.routes.instances.read_game_server_health", side_effect=NitradoUnavailableError())
+    @patch("twe.routes.instances.resolve_game_server_provider", return_value=object())
+    @patch("twe.routes.instances.instance_access", return_value={"game_server_id": "server-id"})
+    def test_nitrado_outage_is_not_reported_as_application_failure(
+        self, _access_mock, _resolve_mock, _health_mock,
+    ):
+        response, status = self._get_health()
+
+        self.assertEqual(status, 503)
+        self.assertEqual(response.get_json()["error"]["code"], "NITRADO_UNAVAILABLE")
+
+    def _get_health(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=FakeDatabase())
+        with app.test_request_context("/api/v1/instances/instance-id/health"):
+            g.current_user = {"id": "requesting-user"}
+            return get_health.__wrapped__("instance-id")
 
 
 if __name__ == "__main__":

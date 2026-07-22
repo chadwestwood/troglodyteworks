@@ -9,6 +9,7 @@ from ..responses import api_error
 from ..serializers import operation_summary, operation_with_requester
 from ..services.adapters import adapter_for
 from ..services.instance_provisioning import reconcile_instance
+from ..services.nitrado_provider import NitradoProviderError
 from ..services.provider_resolution import read_game_server_health, resolve_game_server_provider
 
 instances_bp = Blueprint("twe_instances", __name__)
@@ -63,7 +64,13 @@ def get_health(instance_id):
         if not row:
             return api_error("NOT_FOUND", "Game Instance was not found.", 404)
         resolution = resolve_game_server_provider(conn, row["game_server_id"])
-    health = read_game_server_health(resolution, current_app.config["TWE_CONFIG"])
+    try:
+        health = read_game_server_health(resolution, current_app.config["TWE_CONFIG"])
+    except NitradoProviderError as error:
+        # Provider exceptions have fixed, secret-free messages and status codes.
+        # Preserve that contract instead of masking an expected outage or
+        # reauthorization condition as a generic application failure.
+        return api_error(error.code, str(error), error.http_status)
     if health is None:
         return jsonify(
             {

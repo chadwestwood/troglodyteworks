@@ -34,6 +34,7 @@ See `docs/production-architecture.md` for boundaries and request flow.
 - Genesis reports online through the Nitrado provider path.
 - `@Trog is the server up?` returns deterministic status information.
 - `@Trog who's on?` returns the available player names from Nitrado.
+- Nitrado rate limits, outages, and credential failures use stable secret-free API errors rather than generic application failures.
 
 ## Current operating constraints
 
@@ -41,7 +42,7 @@ See `docs/production-architecture.md` for boundaries and request flow.
 - Trog restart execution remains disabled.
 - Local `local_asa` documentation describes a superseded Genesis deployment and is not the production provider path.
 - Provider credentials must be revocable, encrypted at rest, and never returned to the browser after storage.
-- Linear is the current work-planning system of record; an internal TWE engineering tracker remains a future product capability.
+- The eight-week plan and current-state documentation guide work; Linear is updated only when explicitly requested.
 
 ## Known security work
 
