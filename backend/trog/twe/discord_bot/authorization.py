@@ -238,7 +238,10 @@ def authorize(conn, guild_id: str, channel_id: str, discord_user_id: str, capabi
         "membership_id": identity.membership_id,
         "role": identity.role,
         "game_server_id": context.game_server_id,
-        "instance_id": None,
+        # Preserve the exact instance selected by an instance-access grant.
+        # Dropping this value could let a server-wide grant mask an incorrectly
+        # scoped request and prevents instance-scoped grants from matching.
+        "instance_id": context.instance_id,
     }
     if not identity.membership_id:
         return AuthorizationDecision(False, "not_a_community_member", capability, context, identity)

@@ -294,6 +294,80 @@ class DiscordAuthorizationUnitTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, "capability_not_granted")
 
+    @patch("twe.discord_bot.authorization.resolve_identity")
+    @patch("twe.discord_bot.authorization.grant_capability_enabled", return_value=True)
+    @patch("twe.discord_bot.authorization.channel_enabled", return_value=True)
+    @patch("twe.discord_bot.authorization.resolve_guild")
+    def test_unlinked_identity_is_denied_administrative_access(
+        self, guild_mock, _channel_mock, _grant_mock, identity_mock,
+    ):
+        guild_mock.return_value = DiscordContext(
+            "installation", "222", "community", "server", "Server", "server", "local_asa",
+        )
+        identity_mock.return_value = DiscordIdentity("111", None, None, None)
+
+        decision = authorize(object(), "222", "333", "111", "instance.restart.execute")
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "identity_not_linked")
+
+    @patch("twe.discord_bot.authorization.resolve_identity")
+    @patch("twe.discord_bot.authorization.grant_capability_enabled", return_value=True)
+    @patch("twe.discord_bot.authorization.channel_enabled", return_value=True)
+    @patch("twe.discord_bot.authorization.resolve_guild")
+    def test_linked_identity_without_target_community_membership_is_denied(
+        self, guild_mock, _channel_mock, _grant_mock, identity_mock,
+    ):
+        guild_mock.return_value = DiscordContext(
+            "installation", "222", "target-community", "server", "Server", "server", "local_asa",
+        )
+        # The Discord account is linked globally, but has no membership in the
+        # provider community resolved from this guild's installation.
+        identity_mock.return_value = DiscordIdentity("111", "other-community-user", None, None)
+
+        decision = authorize(object(), "222", "333", "111", "instance.restart.execute")
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "not_a_community_member")
+
+    @patch("twe.discord_bot.authorization.resolve_identity")
+    @patch("twe.discord_bot.authorization.grant_capability_enabled", return_value=True)
+    @patch("twe.discord_bot.authorization.channel_enabled", return_value=True)
+    @patch("twe.discord_bot.authorization.resolve_guild")
+    def test_unknown_administrative_capability_is_fail_closed(
+        self, guild_mock, _channel_mock, _grant_mock, identity_mock,
+    ):
+        guild_mock.return_value = DiscordContext(
+            "installation", "222", "community", "server", "Server", "server", "local_asa",
+        )
+
+        decision = authorize(object(), "222", "333", "111", "instance.delete.execute")
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "unknown_capability")
+        identity_mock.assert_not_called()
+
+    @patch("twe.discord_bot.authorization.can_request_capability", return_value=True)
+    @patch("twe.discord_bot.authorization.resolve_identity")
+    @patch("twe.discord_bot.authorization.grant_capability_enabled", return_value=True)
+    @patch("twe.discord_bot.authorization.channel_enabled", return_value=True)
+    @patch("twe.discord_bot.authorization.resolve_guild")
+    def test_instance_target_is_preserved_during_capability_check(
+        self, guild_mock, _channel_mock, _grant_mock, identity_mock, capability_mock,
+    ):
+        guild_mock.return_value = DiscordContext(
+            "installation", "222", "community", "server", "Server", "server", "nitrado",
+            instance_access_grant_id="discord-grant", instance_id="genesis-instance",
+        )
+        identity_mock.return_value = DiscordIdentity("111", "user", "membership", "member")
+
+        decision = authorize(object(), "222", "333", "111", "instance.restart.execute")
+
+        self.assertTrue(decision.allowed)
+        access = capability_mock.call_args.args[0]
+        self.assertEqual(access["game_server_id"], "server")
+        self.assertEqual(access["instance_id"], "genesis-instance")
+
 
 class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

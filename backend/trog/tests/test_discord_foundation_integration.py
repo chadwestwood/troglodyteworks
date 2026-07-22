@@ -78,6 +78,26 @@ class DiscordFoundationIntegrationTests(unittest.TestCase):
             )
         self.assertTrue(decision.allowed)
 
+    def test_revoked_member_capability_grant_is_denied(self):
+        with self.db.connect() as conn:
+            grant = fetch_one(
+                conn,
+                """
+                INSERT INTO server_operation_capability_grants
+                    (community_membership_id, capability, game_server_id, granted_by, revoked_at)
+                VALUES (%s, 'instance.restart.execute', %s, %s, now())
+                RETURNING id
+                """,
+                (self.member_membership["id"], self.server["id"], self.owner["id"]),
+            )
+            self.assertIsNotNone(grant)
+            decision = authorize(
+                conn, self.guild_id, "333", self.member_discord_id,
+                "instance.restart.execute",
+            )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "capability_not_granted")
+
     def test_channel_policy_disables_read_capabilities(self):
         with self.db.connect() as conn:
             installation = resolve_guild(conn, self.guild_id)

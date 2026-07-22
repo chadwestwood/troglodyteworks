@@ -159,6 +159,26 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, "guild_not_connected")
 
+    def test_failed_instance_is_treated_as_a_stale_target(self):
+        self._active_grant()
+        with self.db.connect() as conn:
+            execute(conn, "UPDATE game_instances SET status = 'failed' WHERE id = %s", (self.instance["id"],))
+            decision = authorize(conn, self.guild_id, "333", "public-user", "instance.status.read")
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "guild_not_connected")
+
+    def test_discord_oauth_state_cannot_be_replayed(self):
+        grant_id = self._create_request()
+        self._link_identity(self.discord_user_id)
+        state = self._oauth_state(grant_id, "guild_verification")
+
+        first = self.matter_client.get(f"/api/v1/discord/oauth/callback?state={state}&code=first-code")
+        replay = self.matter_client.get(f"/api/v1/discord/oauth/callback?state={state}&code=replay-code")
+
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(replay.status_code, 400)
+        self.assertEqual(replay.get_json()["error"]["code"], "INVALID_OAUTH_STATE")
+
     def test_provider_can_deny_pending_request(self):
         grant_id = self._create_request()
         denied = self.owner_client.post(f"/api/v1/discord/instance-access-requests/{grant_id}/provider-denial")
