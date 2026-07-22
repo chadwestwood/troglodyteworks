@@ -28,6 +28,7 @@ READ_CAPABILITIES = frozenset(
         "instance.mods.names.read",
     }
 )
+OPERATOR_CAPABILITIES = frozenset({"instance.mods.write", "instance.restart.execute"})
 
 
 def _share_token_hash(token: str) -> str:
@@ -566,6 +567,67 @@ def deny_instance_access_request(grant_id):
     return jsonify({"request": request_response(updated)})
 
 
+@discord_access_bp.patch("/discord/instance-access-grants/<grant_id>/operator-rights")
+@require_user
+def update_instance_operator_rights(grant_id):
+    """Delegate or revoke administrative Trog commands for one exact instance."""
+    payload = request.get_json(silent=True) or {}
+    enabled = payload.get("enabled")
+    if not isinstance(enabled, bool):
+        return api_error("VALIDATION_ERROR", "enabled must be true or false.", 400)
+    with current_app.config["TWE_DB"].connect() as conn:
+        grant = grant_by_id(conn, grant_id)
+        if not grant:
+            return api_error("NOT_FOUND", "Instance access grant was not found.", 404)
+        owner_membership = membership_for_community(
+            conn, g.current_user["id"], grant["provider_community_id"],
+        )
+        if not owner_membership or owner_membership["role"] != "owner":
+            return api_error("FORBIDDEN", "Only the Community owner may delegate Trog operator rights.", 403)
+        if grant["status"] != "active" or not grant["requested_by"]:
+            return api_error("INVALID_REQUEST_STATE", "Activate this Trog connection before delegating operator rights.", 409)
+        recipient = membership_for_community(
+            conn, grant["requested_by"], grant["provider_community_id"],
+        )
+        if not recipient:
+            return api_error("MEMBERSHIP_REQUIRED", "The recipient must still belong to this Community.", 409)
+        if enabled:
+            for capability in sorted(OPERATOR_CAPABILITIES):
+                execute(conn, """
+                    INSERT INTO discord_instance_access_grant_capabilities
+                        (discord_instance_access_grant_id, capability, granted_by)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (grant_id, capability, g.current_user["id"]))
+                execute(conn, """
+                    INSERT INTO server_operation_capability_grants
+                        (community_membership_id, capability, game_instance_id, granted_by)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (recipient["id"], capability, grant["game_instance_id"], g.current_user["id"]))
+        else:
+            execute(conn, """
+                UPDATE discord_instance_access_grant_capabilities
+                SET revoked_at = now()
+                WHERE discord_instance_access_grant_id = %s
+                  AND capability = ANY(%s) AND revoked_at IS NULL
+            """, (grant_id, list(OPERATOR_CAPABILITIES)))
+            execute(conn, """
+                UPDATE server_operation_capability_grants
+                SET revoked_at = now()
+                WHERE community_membership_id = %s
+                  AND game_instance_id = %s
+                  AND capability = ANY(%s)
+                  AND revoked_at IS NULL
+            """, (recipient["id"], grant["game_instance_id"], list(OPERATOR_CAPABILITIES)))
+        audit(
+            conn, g.current_user["id"], grant["provider_community_id"],
+            "discord.instance_operator_rights.updated", "discord_instance_access_grant", grant_id,
+            {"enabled": enabled, "game_instance_id": grant["game_instance_id"]},
+        )
+    return jsonify({"grant_id": grant_id, "operator_rights": enabled})
+
+
 def finalize_bot_installation(conn, grant):
     installation = fetch_one(
             conn,
@@ -727,11 +789,13 @@ def list_discord_installations():
                 diag.channel_scope,
                 diag.requested_channel_ids,
                 diag.requested_by::text,
+                COALESCE(requester.display_name, requester.email, 'Discord administrator') AS requester_name,
                 diag.discord_approved_at,
                 diag.provider_approved_at,
                 diag.installed_at,
                 (diag.requested_by = %s) AS is_requester,
                 (cm.role IN ('owner', 'admin')) AS can_manage_provider,
+                (cm.role = 'owner') AS can_delegate_operator,
                 EXISTS (
                     SELECT 1
                     FROM discord_guild_authority_verifications auth
@@ -747,12 +811,22 @@ def list_discord_installations():
                       AND cap.revoked_at IS NULL
                     ORDER BY capability
                 ) AS capabilities,
+                NOT EXISTS (
+                    SELECT 1 FROM unnest(ARRAY['instance.mods.write','instance.restart.execute']::text[]) required(capability)
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM discord_instance_access_grant_capabilities cap
+                        WHERE cap.discord_instance_access_grant_id = diag.id
+                          AND cap.capability = required.capability
+                          AND cap.revoked_at IS NULL
+                    )
+                ) AS operator_rights,
                 diag.created_at,
                 diag.activated_at,
                 diag.revoked_at
             FROM discord_instance_access_grants diag
             JOIN communities c ON c.id = diag.provider_community_id
             JOIN game_instances gi ON gi.id = diag.game_instance_id
+            LEFT JOIN users requester ON requester.id = diag.requested_by
             LEFT JOIN community_memberships cm
               ON cm.community_id = diag.provider_community_id AND cm.user_id = %s
             WHERE diag.requested_by = %s

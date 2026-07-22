@@ -159,6 +159,30 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, "guild_not_connected")
 
+    def test_owner_can_delegate_and_revoke_instance_operator_rights(self):
+        grant_id = self._active_grant_for_channel("333")
+
+        delegated = self.owner_client.patch(
+            f"/api/v1/discord/instance-access-grants/{grant_id}/operator-rights",
+            json={"enabled": True},
+        )
+        self.assertEqual(delegated.status_code, 200)
+        with self.db.connect() as conn:
+            restart = authorize(conn, self.guild_id, "333", self.discord_user_id, "instance.restart.execute")
+            mods = authorize(conn, self.guild_id, "333", self.discord_user_id, "instance.mods.write")
+        self.assertTrue(restart.allowed)
+        self.assertTrue(mods.allowed)
+
+        revoked = self.owner_client.patch(
+            f"/api/v1/discord/instance-access-grants/{grant_id}/operator-rights",
+            json={"enabled": False},
+        )
+        self.assertEqual(revoked.status_code, 200)
+        with self.db.connect() as conn:
+            restart = authorize(conn, self.guild_id, "333", self.discord_user_id, "instance.restart.execute")
+        self.assertFalse(restart.allowed)
+        self.assertEqual(restart.reason, "capability_not_granted")
+
     def test_channels_route_one_discord_server_to_different_instances(self):
         first_grant = self._active_grant_for_channel("333")
         with self.db.connect() as conn:

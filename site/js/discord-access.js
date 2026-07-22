@@ -302,6 +302,35 @@ async function renderAccessRequests(list) {
       });
       row.appendChild(revoke);
     }
+    if (request.can_delegate_operator && request.status === "active" && request.requested_by) {
+      const operator = document.createElement("button");
+      operator.type = "button";
+      operator.className = "secondary-action";
+      operator.textContent = request.operator_rights
+        ? `Remove ${request.requester_name}'s Trog operator rights`
+        : `Grant ${request.requester_name} Trog operator rights`;
+      operator.addEventListener("click", async () => {
+        const enabling = !request.operator_rights;
+        const warning = enabling
+          ? `Allow ${request.requester_name} to add mods and restart only ${request.instance_name}?`
+          : `Remove ${request.requester_name}'s mod and restart rights for ${request.instance_name}?`;
+        if (!window.confirm(warning)) {
+          return;
+        }
+        operator.disabled = true;
+        try {
+          await apiRequest(`/discord/instance-access-grants/${request.id}/operator-rights`, {
+            method: "PATCH",
+            body: JSON.stringify({ enabled: enabling }),
+          });
+          await renderAccessRequests(list);
+        } catch (error) {
+          showError(error.message);
+          operator.disabled = false;
+        }
+      });
+      row.appendChild(operator);
+    }
     if (request.can_manage_discord && request.status === "active") {
       const route = document.createElement("button");
       route.type = "button";
