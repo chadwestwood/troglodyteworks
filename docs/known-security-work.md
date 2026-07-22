@@ -15,9 +15,13 @@ Application-level password sign-in needs rate limiting, progressive delay, tempo
 ## Invitation approval role hierarchy
 
 **Severity:** Medium  
-**State:** Validated; remediation pending
+**State:** Fixed and regression-tested 2026-07-22
 
-The membership approval path must re-evaluate the approver's current authority and `can_grant_role` hierarchy immediately before membership insertion. Authority captured when an invitation was created is not sufficient because roles and actors can change.
+The membership approval path re-evaluates the approver's current authority and
+`can_grant_role` hierarchy immediately before membership insertion. Regression
+coverage proves that a moderator cannot approve an owner-created admin invitation,
+no membership is inserted, and the redemption remains pending. Legitimate owner
+approval remains covered by the invitation integration suite.
 
 ## Authorize before Instance reconciliation
 
@@ -29,4 +33,3 @@ Instance routes must establish tenant/Instance access before reconciliation, pro
 ## Completion standard
 
 A finding is complete only after the code is fixed, targeted regression tests pass, the relevant contract is updated, and the Linear item is read back as completed. Do not place tokens, passwords, full connection strings, or provider responses in tickets or documentation.
-

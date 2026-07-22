@@ -4,6 +4,8 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from psycopg import OperationalError
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -39,7 +41,7 @@ class CommunityInvitationIntegrationTests(unittest.TestCase):
                 self._login(conn, self.owner_client, self.owner["id"])
                 self._login(conn, self.member_client, self.member["id"])
                 self._login(conn, self.invitee_client, self.invitee["id"])
-        except Exception as exc:
+        except OperationalError as exc:
             raise unittest.SkipTest(f"PostgreSQL unavailable for community invitation integration test: {exc.__class__.__name__}")
 
     def tearDown(self):
@@ -158,6 +160,47 @@ class CommunityInvitationIntegrationTests(unittest.TestCase):
         with self.db.connect() as conn:
             membership = fetch_one(conn, "SELECT role FROM community_memberships WHERE user_id = %s AND community_id = %s", (self.invitee["id"], self.community["id"]))
         self.assertEqual(membership["role"], "member")
+
+    def test_moderator_cannot_approve_pending_admin_membership(self):
+        created_response = self.owner_client.post(
+            f"/api/v1/communities/{self.community['id']}/invitations",
+            json={
+                "invitation_type": "link",
+                "initial_role": "admin",
+                "maximum_uses": 1,
+                "requires_approval": True,
+            },
+        )
+        self.assertEqual(created_response.status_code, 201)
+        token = created_response.get_json()["invitation"]["token"]
+        redeemed = self.invitee_client.post(f"/api/v1/community-invitations/{token}/accept")
+        self.assertEqual(redeemed.status_code, 200)
+        redemption_id = redeemed.get_json()["redemption"]["id"]
+
+        moderator_client = self.app.test_client()
+        with self.db.connect() as conn:
+            moderator = self._user(conn, "moderator")
+            self._membership(conn, moderator["id"], "moderator")
+            self._login(conn, moderator_client, moderator["id"])
+
+        denied = moderator_client.post(
+            f"/api/v1/communities/{self.community['id']}/invitation-redemptions/{redemption_id}/approve"
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(denied.get_json()["error"]["code"], "FORBIDDEN")
+        with self.db.connect() as conn:
+            membership = fetch_one(
+                conn,
+                "SELECT role FROM community_memberships WHERE user_id = %s AND community_id = %s",
+                (self.invitee["id"], self.community["id"]),
+            )
+            redemption = fetch_one(
+                conn,
+                "SELECT status FROM community_invitation_redemptions WHERE id = %s",
+                (redemption_id,),
+            )
+        self.assertIsNone(membership)
+        self.assertEqual(redemption["status"], "pending_approval")
 
     def test_link_defaults_to_24_hours_and_pending_request_survives_link_expiration(self):
         created_response = self.owner_client.post(

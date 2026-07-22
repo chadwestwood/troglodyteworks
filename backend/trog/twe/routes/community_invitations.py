@@ -306,6 +306,8 @@ def decide_pending_redemption(community_id: str, redemption_id: str, approved: b
         if not row:
             return api_error("NOT_FOUND", "Pending membership request was not found.", 404)
         if approved:
+            if not can_grant_role(actor["role"], row["initial_role"]):
+                return api_error("FORBIDDEN", "You cannot approve membership into that role.", 403)
             create_membership(conn, row, row["user_id"])
             redemption = fetch_one(
                 conn,

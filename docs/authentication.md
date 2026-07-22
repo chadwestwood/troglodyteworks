@@ -199,9 +199,9 @@ Role safety applies:
 - moderator may invite member;
 - owner cannot be granted through an invitation.
 
-The role hierarchy must be checked both when an invitation is created and when a
-membership request is approved. As of 2026-07-22, the approval-path recheck is a
-known security remediation item; this document states the required contract, not
-an assertion that the defect has already been fixed.
+The role hierarchy is checked both when an invitation is created and immediately
+before a membership request is approved. Approval uses the approver's current
+Community role and refuses the request before membership insertion when that role
+cannot grant the invitation's target role.
 
 Accepting an invitation creates only Community Membership. It does not grant Game Instance access, Discord installation approval, Server Operations, restart, save, mods, or ownership.
