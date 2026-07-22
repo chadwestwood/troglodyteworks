@@ -18,6 +18,7 @@ from .provider_contracts import (
     ProviderStatusCheck,
 )
 from .provider_secret_storage import AesGcmProviderSecretCipher
+from .mod_catalog import AsaModCatalog, CurseForgeModLookup
 
 
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
@@ -294,6 +295,18 @@ class NitradoProvider:
             config.nitrado_timeout_seconds,
             transport=transport,
         )
+        lookup = None
+        if config.curseforge_api_key:
+            lookup = CurseForgeModLookup(
+                config.curseforge_api_base_url,
+                config.curseforge_api_key,
+                config.nitrado_timeout_seconds,
+            )
+        self._mod_catalog = (
+            AsaModCatalog(config.asa_mod_catalog_path, lookup)
+            if config.asa_mod_catalog_path
+            else None
+        )
 
     def describe_connection(self) -> ConnectionDescription:
         return ConnectionDescription(
@@ -390,10 +403,11 @@ class NitradoProvider:
         if context.connection.provider_key != "nitrado":
             raise ValueError("Nitrado adapter received the wrong Provider Connection.")
         credential = self._credential(context)
-        return self._client.get_gameserver_mods(
+        mods = self._client.get_gameserver_mods(
             context.resource.external_resource_id,
             credential,
         )
+        return self._mod_catalog.enrich(mods) if self._mod_catalog else mods
 
     def _credential(self, context: ProviderContext) -> bytes:
         envelope = context.secret_accessor.read_envelope()

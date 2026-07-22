@@ -1,7 +1,9 @@
 import json
 import socket
 import sys
+import tempfile
 import unittest
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -276,6 +278,21 @@ class NitradoProviderTests(unittest.TestCase):
             {"id": "927090", "name": "Winter Wonderland"},
             {"id": "928708", "name": "Dino Depot"},
         ])
+
+    def test_enriches_nitrado_ids_from_the_shared_catalog(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path = Path(directory) / "asa_mod_catalog.json"
+            catalog_path.write_text(json.dumps({
+                "mods": [{"id": "927090", "name": "Global Catalog Name"}],
+            }))
+            config = replace(self.config, asa_mod_catalog_path=str(catalog_path))
+
+            mods = NitradoProvider(
+                config,
+                _Transport(_gameserver_mods_response("927090")),
+            ).read_mods(self._context())
+
+            self.assertEqual(mods, [{"id": "927090", "name": "Global Catalog Name"}])
 
     def test_normalizes_gameserver_transitions_without_claiming_ready(self):
         cases = {

@@ -53,6 +53,9 @@ class Config:
     provider_secret_keys: dict[str, bytes] = field(default_factory=dict, repr=False)
     nitrado_api_base_url: str = "https://api.nitrado.net"
     nitrado_timeout_seconds: float = 8.0
+    asa_mod_catalog_path: str | None = None
+    curseforge_api_base_url: str = "https://api.curseforge.com"
+    curseforge_api_key: str | None = field(default=None, repr=False)
 
     @property
     def session_lifetime(self) -> timedelta:
@@ -124,6 +127,15 @@ def load_config() -> Config:
         provider_secret_keys=provider_secret_keys,
         nitrado_api_base_url=os.environ.get("TWE_NITRADO_API_BASE_URL", "https://api.nitrado.net"),
         nitrado_timeout_seconds=float(os.environ.get("TWE_NITRADO_TIMEOUT_SECONDS", "8")),
+        asa_mod_catalog_path=os.environ.get(
+            "TWE_ASA_MOD_CATALOG_PATH",
+            str(Path(__file__).resolve().parents[1] / "data" / "asa_mod_catalog.json"),
+        ),
+        curseforge_api_base_url=os.environ.get(
+            "TWE_CURSEFORGE_API_BASE_URL",
+            "https://api.curseforge.com",
+        ),
+        curseforge_api_key=os.environ.get("TWE_CURSEFORGE_API_KEY"),
     )
 
 
