@@ -102,6 +102,30 @@ def has_instance_access_grant(conn, discord_guild_id: str) -> bool:
     return bool(row)
 
 
+def has_routable_instance_access_grant(conn, discord_guild_id: str) -> bool:
+    """Return whether the guild has an active, healthy target to route."""
+    if not instance_access_tables_available(conn):
+        return False
+    try:
+        row = fetch_one(
+            conn,
+            """
+            SELECT diag.id::text
+            FROM discord_instance_access_grants diag
+            JOIN discord_guild_installations dgi ON dgi.id = diag.discord_guild_installation_id
+            JOIN game_instances gi ON gi.id = diag.game_instance_id
+            WHERE dgi.discord_guild_id = %s
+              AND diag.status = 'active'
+              AND gi.status <> 'failed'
+            LIMIT 1
+            """,
+            (str(discord_guild_id),),
+        )
+    except Exception:
+        return False
+    return bool(row)
+
+
 def resolve_instance_access_grant(conn, discord_guild_id: str, channel_id: str | None = None) -> DiscordContext | None:
     if not instance_access_tables_available(conn):
         return None
@@ -236,7 +260,7 @@ def grant_capability_enabled(conn, context: DiscordContext, capability: str) -> 
 def authorize(conn, guild_id: str, channel_id: str, discord_user_id: str, capability: str) -> AuthorizationDecision:
     context = resolve_guild(conn, guild_id, channel_id)
     if not context:
-        reason = "channel_unmapped" if has_instance_access_grant(conn, guild_id) else "guild_not_connected"
+        reason = "channel_unmapped" if has_routable_instance_access_grant(conn, guild_id) else "guild_not_connected"
         return AuthorizationDecision(False, reason, capability, None)
     category = "read" if capability in PUBLIC_CAPABILITIES else "administrative"
     if not channel_enabled(conn, context, channel_id, category):
