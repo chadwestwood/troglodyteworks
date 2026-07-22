@@ -263,14 +263,25 @@ class NitradoClient:
     def _parse_gameserver_mods(body: bytes) -> list[dict[str, str]]:
         try:
             gameserver = _gameserver_from_body(body)
+            candidates = []
             for container_name in ("settings", "game_specific"):
                 container = gameserver.get(container_name)
                 if not isinstance(container, dict):
                     continue
-                value = _find_mod_value(container)
-                if value is not None:
-                    return _normalize_mods(value)
-            return []
+                candidates.extend(_find_mod_values(container))
+            if not candidates:
+                return []
+
+            ordered_mods = _normalize_mods(candidates[0])
+            names = {}
+            for candidate in candidates:
+                for mod in _normalize_mods(candidate):
+                    if mod["name"] != f"Mod {mod['id']}":
+                        names.setdefault(mod["id"], mod["name"])
+            return [
+                {"id": mod["id"], "name": names.get(mod["id"], mod["name"])}
+                for mod in ordered_mods
+            ]
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             raise NitradoMalformedResponseError() from None
 
@@ -441,22 +452,21 @@ def _gameserver_from_body(body: bytes) -> dict:
     return gameserver
 
 
-def _find_mod_value(container: dict):
+def _find_mod_values(container: dict) -> list:
     priority = ("active_mods", "activemods", "mods", "additional_mods", "additionalmods")
     normalized = {
         re.sub(r"[^a-z0-9]+", "", str(key).lower()): value
         for key, value in container.items()
     }
+    found = []
     for key in priority:
         value = normalized.get(key.replace("_", ""))
         if value not in (None, "", [], {}):
-            return value
+            found.append(value)
     for value in container.values():
         if isinstance(value, dict):
-            found = _find_mod_value(value)
-            if found is not None:
-                return found
-    return None
+            found.extend(_find_mod_values(value))
+    return found
 
 
 def _normalize_mods(value) -> list[dict[str, str]]:

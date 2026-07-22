@@ -250,6 +250,33 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertEqual(mods[0], {"id": "927090", "name": "Awesome SpyGlass"})
         self.assertEqual(mods[1], {"id": "928708", "name": "Dino Depot"})
 
+    def test_enriches_ordered_mod_ids_from_nested_provider_metadata(self):
+        response = json.dumps({
+            "status": "success",
+            "data": {
+                "gameserver": {
+                    "settings": {"general": {"activeMods": "927090,928708"}},
+                    "game_specific": {
+                        "available": {
+                            "mods": [
+                                {"id": "928708", "name": "Dino Depot"},
+                                {"project_id": 927090, "title": "Winter Wonderland"},
+                            ]
+                        }
+                    },
+                }
+            },
+        }).encode()
+
+        mods = NitradoProvider(self.config, _Transport(NitradoHttpResponse(200, response))).read_mods(
+            self._context()
+        )
+
+        self.assertEqual(mods, [
+            {"id": "927090", "name": "Winter Wonderland"},
+            {"id": "928708", "name": "Dino Depot"},
+        ])
+
     def test_normalizes_gameserver_transitions_without_claiming_ready(self):
         cases = {
             "stopped": "offline",
