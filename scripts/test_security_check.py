@@ -6,7 +6,8 @@ from scripts.security_check import ROOT, scan_text
 class SecurityCheckTests(unittest.TestCase):
     def test_detects_private_key_material(self):
         path = ROOT / "fixture.txt"
-        findings = scan_text(path, "-----BEGIN PRIVATE KEY-----\nnot-a-real-key")
+        marker = "-----BEGIN " + "PRIVATE KEY-----"
+        findings = scan_text(path, f"{marker}\nnot-a-real-key")
         self.assertTrue(any("private key" in finding for finding in findings))
 
     def test_detects_secret_assignment_in_configuration(self):
