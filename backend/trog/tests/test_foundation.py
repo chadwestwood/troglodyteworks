@@ -136,6 +136,8 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"open the exact hosted map or world", page.data)
         self.assertIn(b"communityPath", script.data)
         self.assertIn(b"Map or world Trog will represent", discord.data)
+        discord_script = client.get("/js/discord-access.js")
+        self.assertIn(b"instance.mods.names.read", discord_script.data)
 
     def test_browser_cannot_self_assign_ownership_endpoint(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())

@@ -141,6 +141,7 @@
             "instance.status.read",
             "instance.players.count.read",
             "instance.players.names.read",
+            "instance.mods.names.read",
           ],
           channel_scope: channelScope,
           allowed_channel_ids: allowedChannelIds,
