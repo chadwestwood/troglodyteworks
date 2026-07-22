@@ -43,7 +43,7 @@ See `docs/production-architecture.md` for boundaries and request flow.
 - Trog restart execution remains disabled.
 - Local `local_asa` documentation describes a superseded Genesis deployment and is not the production provider path.
 - Provider credentials must be revocable, encrypted at rest, and never returned to the browser after storage.
-- The eight-week plan and current-state documentation guide work; Linear is updated only when explicitly requested.
+- Linear remains the work-planning system of record but is updated only when explicitly requested.
 
 ## Known security work
 

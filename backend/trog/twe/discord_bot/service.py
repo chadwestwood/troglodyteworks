@@ -76,6 +76,13 @@ def main():
             allowed_mentions=allowed_mentions,
         )
 
+    @server_group.command(name="settings", description="Show status, players, and active mods")
+    async def server_settings(interaction):
+        await handle_interaction(
+            interaction, "server_settings", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+        )
+
     @server_group.command(name="restart", description="Request a server restart")
     async def server_restart(interaction):
         await handle_interaction(

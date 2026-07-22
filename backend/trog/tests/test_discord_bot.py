@@ -70,6 +70,11 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(classify_intent("<@123> list active mods"), "mod_list")
         self.assertIsNone(classify_intent("<@123> tell me a joke"))
 
+    def test_worker_registers_combined_server_settings_command(self):
+        service_source = (ROOT / "twe" / "discord_bot" / "service.py").read_text()
+        self.assertIn('@server_group.command(name="settings"', service_source)
+        self.assertIn('interaction, "server_settings"', service_source)
+
     def test_parse_guild_mapping(self):
         mapping = parse_guild_game_server_map("111=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa,222=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
         self.assertEqual(mapping["111"], "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")

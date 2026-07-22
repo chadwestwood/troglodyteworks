@@ -42,7 +42,7 @@ The former in-house server and `10.0.0.103` are not part of the current producti
 - DNS and public edge: Cloudflare
 - Database: Railway PostgreSQL
 - Game hosting for Genesis: Nitrado
-- Work planning: the eight-week plan and current-state documentation; Linear is updated only when explicitly requested
+- Work planning: Linear remains the system of record but is updated only when explicitly requested
 - Architecture and implementation contracts: `docs/`
 
 ## Repository layout
