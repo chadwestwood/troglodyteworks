@@ -67,6 +67,21 @@ def _gameserver_response(status):
     )
 
 
+def _gameserver_players_response(players):
+    return NitradoHttpResponse(
+        status=200,
+        body=json.dumps({
+            "status": "success",
+            "data": {
+                "gameserver": {
+                    "status": "started",
+                    "query": {"player_current": len(players), "players": players},
+                },
+            },
+        }).encode(),
+    )
+
+
 class NitradoProviderTests(unittest.TestCase):
     def setUp(self):
         self.key = b"k" * 32
@@ -174,6 +189,31 @@ class NitradoProviderTests(unittest.TestCase):
         rendered = repr(status)
         self.assertNotIn("secret-token", rendered)
         self.assertNotIn("must-not-survive", rendered)
+
+    def test_reads_live_player_names_from_gameserver_query(self):
+        transport = _Transport(_gameserver_players_response([
+            {"name": "Chad", "id": 1, "bot": False},
+            {"name": "Helper Bot", "id": 2, "bot": True},
+            {"name": "Cave Friend", "id": 3, "bot": False},
+        ]))
+
+        players = NitradoProvider(self.config, transport).read_players(self._context())
+
+        self.assertEqual(players, {"players": ["Chad", "Cave Friend"]})
+        self.assertEqual(
+            transport.calls[0][0],
+            "https://api.nitrado.net/services/42/gameservers",
+        )
+        self.assertNotIn("secret-token", repr(players))
+
+    def test_player_read_rejects_missing_query_data(self):
+        provider = NitradoProvider(
+            self.config,
+            _Transport(_gameserver_response("started")),
+        )
+
+        with self.assertRaises(NitradoMalformedResponseError):
+            provider.read_players(self._context())
 
     def test_normalizes_gameserver_transitions_without_claiming_ready(self):
         cases = {

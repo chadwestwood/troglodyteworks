@@ -121,6 +121,12 @@ class NitradoClient:
         response = self._get(f"/services/{service_id}/gameservers", credential)
         return self._parse_gameserver_status(response.body)
 
+    def get_gameserver_players(self, service_id: str, credential: bytes) -> dict:
+        if not service_id.isdigit():
+            raise NitradoMalformedResponseError()
+        response = self._get(f"/services/{service_id}/gameservers", credential)
+        return self._parse_gameserver_players(response.body)
+
     def _get(self, path: str, credential: bytes) -> NitradoHttpResponse:
         try:
             token = credential.decode("ascii")
@@ -210,6 +216,40 @@ class NitradoClient:
             if not status:
                 raise ValueError
             return status.lower()
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            raise NitradoMalformedResponseError() from None
+
+    @staticmethod
+    def _parse_gameserver_players(body: bytes) -> dict:
+        try:
+            payload = json.loads(body)
+            if payload.get("status") != "success":
+                raise ValueError
+            data = payload["data"]
+            if not isinstance(data, dict):
+                raise ValueError
+            gameserver = data.get("gameserver")
+            if gameserver is None:
+                gameservers = data.get("gameservers")
+                if not isinstance(gameservers, list) or len(gameservers) != 1:
+                    raise ValueError
+                gameserver = gameservers[0]
+            if not isinstance(gameserver, dict):
+                raise ValueError
+            query = gameserver.get("query")
+            if not isinstance(query, dict):
+                raise ValueError
+            rows = query.get("players")
+            if not isinstance(rows, list):
+                raise ValueError
+            players = []
+            for row in rows:
+                if not isinstance(row, dict):
+                    raise ValueError
+                name = _safe_text(row.get("name"))
+                if name and not row.get("bot", False):
+                    players.append(name)
+            return {"players": players}
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             raise NitradoMalformedResponseError() from None
 
@@ -303,6 +343,15 @@ class NitradoProvider:
                     message=f"Nitrado reports the game server as {provider_status}.",
                 ),
             ),
+        )
+
+    def read_players(self, context: ProviderContext) -> dict:
+        if context.connection.provider_key != "nitrado":
+            raise ValueError("Nitrado adapter received the wrong Provider Connection.")
+        credential = self._credential(context)
+        return self._client.get_gameserver_players(
+            context.resource.external_resource_id,
+            credential,
         )
 
     def _credential(self, context: ProviderContext) -> bytes:

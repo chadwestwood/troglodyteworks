@@ -210,11 +210,14 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertIn("**Online players**\n- Player One", reply.text)
         self.assertIn("**Active mods**\n- Mod One", reply.text)
 
-    @patch("twe.discord_bot.core._resolved_health_provider", return_value=lambda _config: {})
+    @patch(
+        "twe.discord_bot.core._resolved_read_providers",
+        return_value=(lambda _config: {}, lambda: {"players": []}),
+    )
     @patch("twe.discord_bot.core._read_reply")
     @patch("twe.discord_bot.core.authorize")
     def test_server_settings_authorizes_each_read_capability(
-        self, authorize_mock, read_reply_mock, _health_provider_mock
+        self, authorize_mock, read_reply_mock, _read_providers_mock
     ):
         authorize_mock.side_effect = lambda _conn, _guild, _channel, _user, capability: AuthorizationDecision(
             True, "authorized", capability, self._context(),

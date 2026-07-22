@@ -33,6 +33,17 @@ def read_game_server_health(resolution: ResolvedGameServerProvider, config) -> d
     return adapter.health(config) if adapter else None
 
 
+def read_game_server_players(resolution: ResolvedGameServerProvider, config) -> dict:
+    if resolution.mode == "provider":
+        reader = build_provider_registry(config).player_reader(
+            resolution.context.connection.provider_key
+        )
+        return reader.read_players(resolution.context)
+    from services.rcon import list_players
+
+    return list_players()
+
+
 def resolve_game_server_provider(
     conn,
     game_server_id: str,

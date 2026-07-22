@@ -146,3 +146,8 @@ class CredentialResourceDiscoverer(Protocol):
 class StatusReader(Protocol):
     def read_status(self, context: ProviderContext) -> ProviderStatus:
         raise NotImplementedError
+
+
+class PlayerReader(Protocol):
+    def read_players(self, context: ProviderContext) -> dict:
+        raise NotImplementedError
