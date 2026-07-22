@@ -44,6 +44,18 @@ def read_game_server_players(resolution: ResolvedGameServerProvider, config) -> 
     return list_players()
 
 
+def read_game_server_mods(resolution: ResolvedGameServerProvider, config) -> list[dict[str, str]]:
+    if resolution.mode == "provider":
+        reader = build_provider_registry(config).mod_reader(
+            resolution.context.connection.provider_key
+        )
+        return reader.read_mods(resolution.context)
+    adapter = adapter_for(resolution.management_adapter)
+    if not adapter or not hasattr(adapter, "installed_mods"):
+        raise LookupError("The connected server does not expose an installed mod list.")
+    return adapter.installed_mods(config)
+
+
 def resolve_game_server_provider(
     conn,
     game_server_id: str,

@@ -127,6 +127,12 @@ class NitradoClient:
         response = self._get(f"/services/{service_id}/gameservers", credential)
         return self._parse_gameserver_players(response.body)
 
+    def get_gameserver_mods(self, service_id: str, credential: bytes) -> list[dict[str, str]]:
+        if not service_id.isdigit():
+            raise NitradoMalformedResponseError()
+        response = self._get(f"/services/{service_id}/gameservers", credential)
+        return self._parse_gameserver_mods(response.body)
+
     def _get(self, path: str, credential: bytes) -> NitradoHttpResponse:
         try:
             token = credential.decode("ascii")
@@ -253,6 +259,21 @@ class NitradoClient:
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             raise NitradoMalformedResponseError() from None
 
+    @staticmethod
+    def _parse_gameserver_mods(body: bytes) -> list[dict[str, str]]:
+        try:
+            gameserver = _gameserver_from_body(body)
+            for container_name in ("settings", "game_specific"):
+                container = gameserver.get(container_name)
+                if not isinstance(container, dict):
+                    continue
+                value = _find_mod_value(container)
+                if value is not None:
+                    return _normalize_mods(value)
+            return []
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            raise NitradoMalformedResponseError() from None
+
 
 class NitradoProvider:
     def __init__(self, config, transport=None):
@@ -354,6 +375,15 @@ class NitradoProvider:
             credential,
         )
 
+    def read_mods(self, context: ProviderContext) -> list[dict[str, str]]:
+        if context.connection.provider_key != "nitrado":
+            raise ValueError("Nitrado adapter received the wrong Provider Connection.")
+        credential = self._credential(context)
+        return self._client.get_gameserver_mods(
+            context.resource.external_resource_id,
+            credential,
+        )
+
     def _credential(self, context: ProviderContext) -> bytes:
         envelope = context.secret_accessor.read_envelope()
         if (
@@ -391,6 +421,70 @@ def _safe_text(value) -> str | None:
 
 def _canonical_game_title(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
+
+
+def _gameserver_from_body(body: bytes) -> dict:
+    payload = json.loads(body)
+    if payload.get("status") != "success":
+        raise ValueError
+    data = payload["data"]
+    if not isinstance(data, dict):
+        raise ValueError
+    gameserver = data.get("gameserver")
+    if gameserver is None:
+        gameservers = data.get("gameservers")
+        if not isinstance(gameservers, list) or len(gameservers) != 1:
+            raise ValueError
+        gameserver = gameservers[0]
+    if not isinstance(gameserver, dict):
+        raise ValueError
+    return gameserver
+
+
+def _find_mod_value(container: dict):
+    priority = ("active_mods", "activemods", "mods", "additional_mods", "additionalmods")
+    normalized = {
+        re.sub(r"[^a-z0-9]+", "", str(key).lower()): value
+        for key, value in container.items()
+    }
+    for key in priority:
+        value = normalized.get(key.replace("_", ""))
+        if value not in (None, "", [], {}):
+            return value
+    for value in container.values():
+        if isinstance(value, dict):
+            found = _find_mod_value(value)
+            if found is not None:
+                return found
+    return None
+
+
+def _normalize_mods(value) -> list[dict[str, str]]:
+    if isinstance(value, str):
+        rendered = value.strip()
+        if not rendered:
+            return []
+        if rendered.startswith("["):
+            value = json.loads(rendered)
+        else:
+            value = [item for item in re.split(r"[,;\s]+", rendered) if item]
+    if not isinstance(value, list):
+        raise ValueError
+
+    mods = []
+    seen = set()
+    for item in value:
+        if isinstance(item, dict):
+            mod_id = _safe_text(item.get("id") or item.get("mod_id") or item.get("project_id"))
+            name = _safe_text(item.get("name") or item.get("title") or item.get("display_name"))
+        else:
+            mod_id = _safe_text(item)
+            name = None
+        if not mod_id or mod_id in seen:
+            continue
+        seen.add(mod_id)
+        mods.append({"id": mod_id, "name": name or f"Mod {mod_id}"})
+    return mods
 
 
 def _normalized_status(status: str) -> str:

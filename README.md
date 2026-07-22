@@ -82,7 +82,7 @@ Production changes flow through reviewed repository commits and Railway deployme
 
 ## Operational safety
 
-Current Nitrado integration is read-only for live status and player information. Destructive or disruptive actions—including restart, stop, restore, configuration mutation, and mod changes—must remain unavailable until their authorization, confirmation, audit, provider, and recovery contracts are explicitly implemented and reviewed.
+Current Nitrado integration is read-only for live status, player information, and the configured ASA mod list. Destructive or disruptive actions—including restart, stop, restore, configuration mutation, and mod changes—must remain unavailable until their authorization, confirmation, audit, provider, and recovery contracts are explicitly implemented and reviewed.
 
 ## Documentation
 

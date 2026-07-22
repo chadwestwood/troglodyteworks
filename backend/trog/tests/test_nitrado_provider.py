@@ -82,6 +82,16 @@ def _gameserver_players_response(players):
     )
 
 
+def _gameserver_mods_response(mods):
+    return NitradoHttpResponse(
+        status=200,
+        body=json.dumps({
+            "status": "success",
+            "data": {"gameserver": {"settings": {"general": {"activeMods": mods}}}},
+        }).encode(),
+    )
+
+
 class NitradoProviderTests(unittest.TestCase):
     def setUp(self):
         self.key = b"k" * 32
@@ -214,6 +224,31 @@ class NitradoProviderTests(unittest.TestCase):
 
         with self.assertRaises(NitradoMalformedResponseError):
             provider.read_players(self._context())
+
+    def test_reads_active_mods_from_gameserver_settings_in_load_order(self):
+        transport = _Transport(_gameserver_mods_response("927090, 928708,927090"))
+
+        mods = NitradoProvider(self.config, transport).read_mods(self._context())
+
+        self.assertEqual(mods, [
+            {"id": "927090", "name": "Mod 927090"},
+            {"id": "928708", "name": "Mod 928708"},
+        ])
+        self.assertEqual(
+            transport.calls[0][0],
+            "https://api.nitrado.net/services/42/gameservers",
+        )
+
+    def test_reads_provider_supplied_mod_names(self):
+        transport = _Transport(_gameserver_mods_response([
+            {"project_id": 927090, "title": "Awesome SpyGlass"},
+            {"id": "928708", "name": "Dino Depot"},
+        ]))
+
+        mods = NitradoProvider(self.config, transport).read_mods(self._context())
+
+        self.assertEqual(mods[0], {"id": "927090", "name": "Awesome SpyGlass"})
+        self.assertEqual(mods[1], {"id": "928708", "name": "Dino Depot"})
 
     def test_normalizes_gameserver_transitions_without_claiming_ready(self):
         cases = {

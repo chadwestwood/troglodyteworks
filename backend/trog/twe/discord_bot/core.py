@@ -6,6 +6,7 @@ from ..db import fetch_one
 from ..services.adapters import adapter_for
 from ..services.provider_resolution import (
     read_game_server_health,
+    read_game_server_mods,
     read_game_server_players,
     resolve_game_server_provider,
 )
@@ -285,13 +286,14 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
             "instance.mods.names.read",
         }:
             game_server = game_server_for_guild(conn, guild_id, guild_map)
-            health_provider, players_provider = _resolved_read_providers(conn, game_server, config, intent)
+            health_provider, players_provider, mods_provider = _resolved_read_providers(conn, game_server, config, intent)
             return _read_reply(
                 intent,
                 game_server,
                 config,
                 health_provider=health_provider,
                 players_provider=players_provider,
+                mods_provider=mods_provider,
             )
     if not decision.allowed:
         if decision.reason == "guild_not_connected":
@@ -312,13 +314,14 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
         slug=decision.context.game_server_slug,
         management_adapter=decision.context.management_adapter,
     )
-    health_provider, players_provider = _resolved_read_providers(conn, game_server, config, intent)
+    health_provider, players_provider, mods_provider = _resolved_read_providers(conn, game_server, config, intent)
     return _read_reply(
         intent,
         game_server,
         config,
         health_provider=health_provider,
         players_provider=players_provider,
+        mods_provider=mods_provider,
     )
 
 
@@ -328,6 +331,7 @@ def _read_reply(
     config: Config,
     health_provider=None,
     players_provider=None,
+    mods_provider=None,
 ) -> BotReply:
     if intent == "server_status":
         return server_status_reply(game_server, config, health_provider=health_provider)
@@ -339,7 +343,7 @@ def _read_reply(
             players_provider=players_provider,
         )
     if intent == "mod_list":
-        return mod_list_reply(game_server, config)
+        return mod_list_reply(game_server, config, mods_provider=mods_provider)
     return player_count_reply(
         game_server,
         config,
@@ -356,9 +360,13 @@ def _uses_players(intent: str) -> bool:
     return intent in {"player_count", "player_list"}
 
 
+def _uses_mods(intent: str) -> bool:
+    return intent == "mod_list"
+
+
 def _resolved_read_providers(conn, game_server: GameServerRef | None, config: Config, intent: str):
-    if not game_server or (not _uses_health(intent) and not _uses_players(intent)):
-        return None, None
+    if not game_server or (not _uses_health(intent) and not _uses_players(intent) and not _uses_mods(intent)):
+        return None, None, None
     resolution = resolve_game_server_provider(conn, game_server.id)
     conn.commit()
     health_provider = (
@@ -371,7 +379,12 @@ def _resolved_read_providers(conn, game_server: GameServerRef | None, config: Co
         if _uses_players(intent)
         else None
     )
-    return health_provider, players_provider
+    mods_provider = (
+        (lambda _config: read_game_server_mods(resolution, config))
+        if _uses_mods(intent)
+        else None
+    )
+    return health_provider, players_provider, mods_provider
 
 
 def _status_service_unavailable(overall: str | None, checks: list[dict]) -> bool:

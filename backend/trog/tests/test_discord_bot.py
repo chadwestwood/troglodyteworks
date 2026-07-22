@@ -212,7 +212,7 @@ class DiscordBotCoreTests(unittest.TestCase):
 
     @patch(
         "twe.discord_bot.core._resolved_read_providers",
-        return_value=(lambda _config: {}, lambda: {"players": []}),
+        return_value=(lambda _config: {}, lambda: {"players": []}, lambda _config: []),
     )
     @patch("twe.discord_bot.core._read_reply")
     @patch("twe.discord_bot.core.authorize")

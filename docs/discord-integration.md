@@ -83,7 +83,7 @@ TROG_DISCORD_GUILD_GAME_SERVER_MAP=
 
 `TROG_DISCORD_GUILD_GAME_SERVER_MAP` is a temporary read-only compatibility fallback for guilds not yet migrated to database-backed Instance Access Grants. PostgreSQL is checked first. If a guild has a pending, active, denied, or revoked Instance Access Grant, Trog does not fall back to the legacy Game Server map. The fallback never authorizes `/server restart` and should be removed after all installations are migrated and database integration tests pass reliably.
 
-Production Genesis status and player queries use the Nitrado provider adapter. The
+Production Genesis status, player, and installed-mod queries use the Nitrado provider adapter. The
 worker resolves the Discord grant to the exact TWE Instance and bound Nitrado
 Provider Resource before making a read-only provider call. Player replies expose
 only the display names returned through the normalized player service; provider
@@ -91,10 +91,11 @@ payloads, platform account identifiers, credentials, and service internals are n
 included in Discord output.
 
 The former `local_asa` and RCON implementation is a superseded Genesis deployment
-path. Local mod-catalog behavior may remain useful for self-hosted instances but is
-not a statement of current Nitrado capability. Do not promise mod names, map-setting
-summaries, or other provider data unless the selected adapter advertises and
-implements the corresponding capability.
+path. Local mod-catalog behavior may remain useful for self-hosted instances, while
+Nitrado mod reads use the configured ASA mod order and fall back to CurseForge
+project IDs when the provider does not return display names. Do not promise broader
+map-setting summaries or other provider data unless the selected adapter advertises
+and implements the corresponding capability.
 
 Tokens, provider credentials, passwords, OAuth secrets, and session secrets must
 never be logged or committed.

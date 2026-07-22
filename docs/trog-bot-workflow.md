@@ -2,7 +2,7 @@
 
 **Status:** Partially implemented
 
-**Verified production interactions:** status, player count, and player names for the Nitrado-hosted Genesis Instance
+**Verified production interactions:** status, player count, and player names for the Nitrado-hosted Genesis Instance. Installed-mod reads are implemented and awaiting live Discord verification.
 
 ## Purpose
 
@@ -41,7 +41,7 @@ Examples:
 @Trog is the server up?
 @Trog how many players are online?
 @Trog who's on?
-@Trog what mods are installed?  (provider capability required; not verified for Nitrado)
+@Trog what mods are installed?  (implemented for Nitrado; live verification pending)
 @Trog map settings             (combined provider capabilities required; not verified for Nitrado)
 ```
 
@@ -51,11 +51,11 @@ For external provider-owned access, replies identify the provider-owned instance
 Cohorts in the Wild - Genesis is up and ready for players.
 ```
 
-Installed-mod questions require `instance.mods.names.read`. The former local ASA
-adapter could read its local launch list, but production Genesis now uses Nitrado.
-Trog must return a clear unavailable response unless the selected provider adapter
-advertises and implements that capability. This is read-only and never grants mod
-management.
+Installed-mod questions require `instance.mods.names.read`. Production Genesis resolves
+that capability through its bound Nitrado resource and reads the ordered ASA mod list
+from the provider's game-server details. Trog uses provider-supplied display names when
+available and otherwise labels entries by their CurseForge project ID. Other providers
+remain provider-dependent. This is read-only and never grants mod management.
 
 The `map settings` summary combines server status, online player names, and
 the active mod list. Each section retains its corresponding read capability

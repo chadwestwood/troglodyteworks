@@ -151,3 +151,8 @@ class StatusReader(Protocol):
 class PlayerReader(Protocol):
     def read_players(self, context: ProviderContext) -> dict:
         raise NotImplementedError
+
+
+class ModReader(Protocol):
+    def read_mods(self, context: ProviderContext) -> list[dict[str, str]]:
+        raise NotImplementedError
