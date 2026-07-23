@@ -11,6 +11,7 @@ from ..services.provider_resolution import (
     resolve_game_server_provider,
 )
 from ..services.nitrado_provider import NitradoProvider, NitradoProviderError
+from ..services.railway_minecraft import RailwayMinecraft, RailwayMinecraftError
 from .authorization import authorize, resolve_guild
 
 
@@ -166,7 +167,7 @@ def server_status_reply(game_server: GameServerRef | None, config: Config, healt
         return BotReply("This Discord server is not connected to a Troglodyte Works game server yet.", "guild_not_connected")
 
     adapter = adapter_for(game_server.management_adapter)
-    if not adapter:
+    if not adapter and not health_provider:
         return BotReply("I cannot check that server right now because its status service is unavailable.", "status_unavailable")
 
     try:
@@ -364,11 +365,13 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
     )
 
 
-def _execute_nitrado_operation(conn, decision, config: Config, capability: str, argument: str | None = None) -> BotReply:
+def _execute_provider_operation(conn, decision, config: Config, capability: str, argument: str | None = None) -> BotReply:
     context = decision.context
     resolution = resolve_game_server_provider(conn, context.game_server_id)
+    if context.management_adapter == "railway" and capability == "instance.restart.execute":
+        return _execute_railway_restart(conn, decision, config)
     if not resolution or resolution.mode != "provider" or resolution.context.connection.provider_key != "nitrado":
-        return BotReply("That operation is currently available only for Nitrado-connected servers.", "provider_write_unavailable")
+        return BotReply("That operation is not available for this hosting provider yet.", "provider_write_unavailable")
     instance_id = context.instance_id
     if not instance_id:
         instances = fetch_all(
@@ -437,6 +440,73 @@ def _execute_nitrado_operation(conn, decision, config: Config, capability: str, 
         return BotReply(f"I could not complete that Nitrado operation: {safe_message}", "provider_operation_failed")
 
 
+# Compatibility name retained for tests and callers that exercise the Nitrado path directly.
+def _execute_nitrado_operation(conn, decision, config: Config, capability: str, argument: str | None = None) -> BotReply:
+    return _execute_provider_operation(conn, decision, config, capability, argument)
+
+
+def _execute_railway_restart(conn, decision, config: Config) -> BotReply:
+    context = decision.context
+    instance_id, service_id = _railway_target(conn, context)
+    if not instance_id or not service_id:
+        return BotReply("I could not identify the routed Minecraft world for this operation.", "instance_unavailable")
+    operation = fetch_one(
+        conn,
+        """
+        INSERT INTO server_operations
+            (game_instance_id, requested_by, capability, status, current_stage, started_at)
+        VALUES (%s, %s, 'instance.restart.execute', 'executing', 'provider_request', now())
+        RETURNING id::text
+        """,
+        (instance_id, decision.identity.user_id),
+    )
+    try:
+        RailwayMinecraft(config).deploy(service_id)
+        message = (
+            f"Railway accepted the restart request for **{context.game_server_name}**. "
+            "It may take several minutes to return. I will let this channel know when it is ready for players."
+        )
+        execute(
+            conn,
+            "UPDATE server_operations SET status='completed',current_stage='provider_accepted',completed_at=now(),result_message=%s WHERE id=%s",
+            (message, operation["id"]),
+        )
+        execute(
+            conn,
+            """
+            INSERT INTO audit_logs (user_id,community_id,action,target_type,target_id,details)
+            VALUES (%s,%s,'discord.server_operation.completed','server_operation',%s,
+                    jsonb_build_object('capability','instance.restart.execute'))
+            """,
+            (decision.identity.user_id, context.community_id, operation["id"]),
+        )
+        return BotReply(message, "restart_requested")
+    except RailwayMinecraftError as error:
+        safe_message = str(error)[:400]
+        execute(
+            conn,
+            "UPDATE server_operations SET status='failed',current_stage='failed',completed_at=now(),result_message=%s WHERE id=%s",
+            (safe_message, operation["id"]),
+        )
+        return BotReply(f"I could not complete that Railway operation: {safe_message}", "provider_operation_failed")
+
+
+def _railway_target(conn, context):
+    if context.instance_id:
+        row = fetch_one(
+            conn,
+            "SELECT id::text,provider_instance_id FROM game_instances WHERE id=%s AND game_server_id=%s",
+            (context.instance_id, context.game_server_id),
+        )
+        return (row["id"], row["provider_instance_id"]) if row else (None, None)
+    rows = fetch_all(
+        conn,
+        "SELECT id::text,provider_instance_id FROM game_instances WHERE game_server_id=%s ORDER BY sort_order,created_at LIMIT 2",
+        (context.game_server_id,),
+    )
+    return (rows[0]["id"], rows[0]["provider_instance_id"]) if len(rows) == 1 else (None, None)
+
+
 def _read_reply(
     intent: str,
     game_server: GameServerRef | None,
@@ -480,9 +550,19 @@ def _resolved_read_providers(conn, game_server: GameServerRef | None, config: Co
     if not game_server or (not _uses_health(intent) and not _uses_players(intent) and not _uses_mods(intent)):
         return None, None, None
     resolution = resolve_game_server_provider(conn, game_server.id)
+    railway_service_id = None
+    if game_server.management_adapter == "railway":
+        rows = fetch_all(
+            conn,
+            "SELECT provider_instance_id FROM game_instances WHERE game_server_id=%s ORDER BY sort_order,created_at LIMIT 2",
+            (game_server.id,),
+        )
+        railway_service_id = rows[0]["provider_instance_id"] if len(rows) == 1 else None
     conn.commit()
     health_provider = (
-        (lambda _config: read_game_server_health(resolution, config))
+        (lambda _config: RailwayMinecraft(config).health(railway_service_id))
+        if _uses_health(intent) and railway_service_id
+        else (lambda _config: read_game_server_health(resolution, config))
         if _uses_health(intent)
         else None
     )

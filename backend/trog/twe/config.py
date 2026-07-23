@@ -56,6 +56,11 @@ class Config:
     asa_mod_catalog_path: str | None = None
     curseforge_api_base_url: str = "https://api.curseforge.com"
     curseforge_api_key: str | None = field(default=None, repr=False)
+    railway_api_url: str = "https://backboard.railway.com/graphql/v2"
+    railway_api_token: str | None = field(default=None, repr=False)
+    railway_project_id: str | None = None
+    railway_environment_id: str | None = None
+    railway_minecraft_image: str = "itzg/minecraft-server:latest"
 
     @property
     def session_lifetime(self) -> timedelta:
@@ -136,6 +141,17 @@ def load_config() -> Config:
             "https://api.curseforge.com",
         ),
         curseforge_api_key=os.environ.get("TWE_CURSEFORGE_API_KEY"),
+        railway_api_url=os.environ.get(
+            "TWE_RAILWAY_API_URL",
+            "https://backboard.railway.com/graphql/v2",
+        ),
+        railway_api_token=os.environ.get("TWE_RAILWAY_API_TOKEN"),
+        railway_project_id=os.environ.get("TWE_RAILWAY_PROJECT_ID"),
+        railway_environment_id=os.environ.get("TWE_RAILWAY_ENVIRONMENT_ID"),
+        railway_minecraft_image=os.environ.get(
+            "TWE_RAILWAY_MINECRAFT_IMAGE",
+            "itzg/minecraft-server:latest",
+        ),
     )
 
 

@@ -6,6 +6,7 @@ from typing import Callable
 from .nitrado_provider import NitradoProvider
 from .pterodactyl_provider import PterodactylHostingProvider
 from .self_hosted_provider import SelfHostedProvider
+from .railway_minecraft import RailwayMinecraftHostingProvider
 
 
 class ProviderNotRegistered(LookupError):
@@ -88,6 +89,12 @@ def build_provider_registry(config, nitrado_transport=None) -> ProviderRegistry:
         "pterodactyl",
         ProviderRegistration(
             provisioning_factory=lambda: PterodactylHostingProvider(config),
+        ),
+    )
+    registry.register(
+        "railway",
+        ProviderRegistration(
+            provisioning_factory=lambda: RailwayMinecraftHostingProvider(config),
         ),
     )
     registry.register(

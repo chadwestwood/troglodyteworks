@@ -25,7 +25,7 @@
         <li data-progress="2"><strong>2</strong> Game</li>
         <li data-progress="3"><strong>3</strong> Modpack</li>
         <li data-progress="4"><strong>4</strong> Review</li>
-        <li data-progress="5"><strong>5</strong> Discord</li>
+        <li data-progress="5"><strong>5</strong> Install + Discord</li>
       </ol>
 
       <section data-step="1">
@@ -90,6 +90,15 @@
         <p class="eyebrow">Plan approved</p>
         <h2 data-result-title>Your Minecraft server plan is saved</h2>
         <p data-result-message></p>
+        <p class="status-line" data-install-status hidden></p>
+        <div class="guidance-note" data-final-charge hidden><strong>This click starts ongoing Railway usage charges.</strong> Installation creates a dedicated Minecraft service, persistent world volume, and public player address using the plan you just approved.</div>
+        <div class="button-row" data-install-actions hidden>
+          <button class="primary-button" type="button" data-install>Install my Minecraft server</button>
+        </div>
+        <div class="resource-row" data-online-result hidden>
+          <span><strong>Your Minecraft server is online</strong><small>Player address: <span data-player-address></span></small></span>
+          <a class="primary-button" href="#" data-world-link>Set up Trog for this world</a>
+        </div>
         <div class="guidance-note"><strong>Discord comes after the world exists.</strong> When installation finishes, open that exact Minecraft world and choose “Set up Trog for this world.” That binds Trog to the correct Discord server and channel so replies never refer to the wrong game.</div>
         <div class="button-row"><a class="primary-button" href="/communities/">Go to my Communities</a><a class="primary-button secondary" href="/onboarding/?path=manager">Check my Discord connection</a></div>
       </section>

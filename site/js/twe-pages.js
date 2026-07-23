@@ -724,16 +724,30 @@ async function initGameServer() {
   setText("[data-server-connected-service-name]", serverData.game_server.name);
   const list = document.querySelector("[data-instances-list]");
   clearNode(list);
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const communitySlug = parts[1] || "cohorts-in-the-wild";
+  const gameServerSlug = parts[3] || "ark-survival-ascended";
   instancesData.instances.forEach((instance) => {
-    remember("twe.instance_id", instance.id);
-    list.appendChild(createResourceRow(instance.name, instance.game_identifier, humanizeKey(instance.status), { href: routes.genesis }));
+    const query = new URLSearchParams({
+      community_id: recall("twe.community_id") || "",
+      game_server_id: gameServerId,
+      instance_id: instance.id,
+    });
+    const href = `/communities/${encodeURIComponent(communitySlug)}/game-servers/${encodeURIComponent(gameServerSlug)}/instances/${encodeURIComponent(instance.slug)}/?${query.toString()}`;
+    const row = createResourceRow(instance.name, instance.game_identifier, humanizeKey(instance.status), { href });
+    row.addEventListener("click", () => remember("twe.instance_id", instance.id));
+    list.appendChild(row);
   });
 }
 
 async function initGenesis() {
   await requireCurrentUser();
-  const instanceId = recall("twe.instance_id") || await findInstanceId();
-  const communityId = recall("twe.community_id") || await findCommunityId();
+  const location = new URLSearchParams(window.location.search);
+  const instanceId = location.get("instance_id") || recall("twe.instance_id") || await findInstanceId();
+  const communityId = location.get("community_id") || recall("twe.community_id") || await findCommunityId();
+  if (location.get("game_server_id")) remember("twe.game_server_id", location.get("game_server_id"));
+  remember("twe.instance_id", instanceId);
+  remember("twe.community_id", communityId);
   const [instanceData, healthData, capabilitiesData, communityData] = await Promise.all([
     apiRequest(`/instances/${instanceId}`),
     apiRequest(`/instances/${instanceId}/health`),
@@ -745,6 +759,7 @@ async function initGenesis() {
   );
   const hasOperatorAccess = visibleCapabilities.length > 0;
   setText("[data-instance-name]", instanceData.instance.name);
+  document.title = `${instanceData.instance.name} | Troglodyte Works`;
   setText("[data-trog-instance-name]", instanceData.instance.name);
   setText("[data-instance-summary]", "Connected service world and operations status");
   const trogLink = document.querySelector("[data-trog-instance-link]");

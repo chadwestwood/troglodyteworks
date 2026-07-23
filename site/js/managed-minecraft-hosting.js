@@ -1,7 +1,7 @@
 (async function initManagedMinecraftHosting() {
   "use strict";
   await requireCurrentUser();
-  const state = { community: null, modpack: null, file: null, capabilities: null };
+  const state = { community: null, modpack: null, file: null, capabilities: null, plan: null };
   const errorNode = document.querySelector("[data-error]");
 
   function fail(error) {
@@ -44,6 +44,23 @@
     communitySelect.appendChild(option);
   });
   document.querySelector("[data-no-community]").hidden = owned.length > 0;
+
+  async function resumeExistingPlan(communityId) {
+    if (!communityId) return false;
+    const data = await apiRequest(`/communities/${communityId}/managed-hosting-plans`);
+    const plan = (data.plans || []).find((item) => !["cancelled"].includes(item.status));
+    if (!plan) return false;
+    state.community = communityId;
+    state.plan = plan;
+    document.querySelector("[data-result-title]").textContent = plan.status === "online" ? "Your Minecraft server is online" : "Continue your Minecraft installation";
+    document.querySelector("[data-result-message]").textContent = `Plan: ${plan.server_name} · ${plan.modpack_name} · ${plan.modpack_version}`;
+    const canInstall = state.capabilities.railway_installation && ["awaiting_installation", "awaiting_platform_configuration", "failed"].includes(plan.status);
+    document.querySelector("[data-final-charge]").hidden = !canInstall;
+    document.querySelector("[data-install-actions]").hidden = !canInstall;
+    showStep(5);
+    if (["provisioning", "online"].includes(plan.status)) await pollPlan();
+    return true;
+  }
 
   async function search() {
     clearError();
@@ -103,9 +120,54 @@
       accept_beta: document.querySelector("[data-accept-beta]").checked,
     };
     const data = await apiRequest(`/communities/${state.community}/managed-hosting-plans`, { method: "POST", body: JSON.stringify(payload) });
+    state.plan = data.plan;
     document.querySelector("[data-result-title]").textContent = data.installation_available ? "Your server is approved for installation" : "Your exact server plan is saved";
     document.querySelector("[data-result-message]").textContent = data.next_step;
+    document.querySelector("[data-final-charge]").hidden = !data.installation_available;
+    document.querySelector("[data-install-actions]").hidden = !data.installation_available;
     showStep(5);
+  }
+
+  async function install() {
+    clearError();
+    if (!state.plan) throw new Error("Save an installation plan first.");
+    const button = document.querySelector("[data-install]");
+    button.disabled = true;
+    const status = document.querySelector("[data-install-status]");
+    status.hidden = false;
+    status.textContent = "Creating persistent storage and installing your CurseForge modpack…";
+    try {
+      await apiRequest(`/communities/${state.community}/managed-hosting-plans/${state.plan.id}/install`, { method: "POST", body: "{}" });
+      document.querySelector("[data-install-actions]").hidden = true;
+      await pollPlan();
+    } catch (error) {
+      button.disabled = false;
+      throw error;
+    }
+  }
+
+  async function pollPlan() {
+    const status = document.querySelector("[data-install-status]");
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      const data = await apiRequest(`/communities/${state.community}/managed-hosting-plans/${state.plan.id}`);
+      state.plan = data.plan;
+      if (data.plan.status === "online") {
+        status.textContent = "Installation complete. Your world is ready for players.";
+        document.querySelector("[data-player-address]").textContent = data.plan.public_endpoint;
+        document.querySelector("[data-world-link]").href = data.plan.world_url;
+        document.querySelector("[data-online-result]").hidden = false;
+        return;
+      }
+      if (data.plan.status === "failed") {
+        status.textContent = data.plan.last_error || "Installation stopped before the server came online.";
+        document.querySelector("[data-install-actions]").hidden = false;
+        document.querySelector("[data-install]").disabled = false;
+        return;
+      }
+      status.textContent = `Minecraft installation is ${String(data.plan.status).replaceAll("_", " ")}. Large modpacks can take several minutes.`;
+      await new Promise((resolve) => window.setTimeout(resolve, 5000));
+    }
+    status.textContent = "Installation is still running. You can safely leave this page and return later.";
   }
 
   document.querySelectorAll("[data-next]").forEach((button) => button.addEventListener("click", () => { try { requireStep(Number(button.dataset.next)); } catch (error) { fail(error); } }));
@@ -113,6 +175,8 @@
   document.querySelector("[data-search-button]").addEventListener("click", () => search().catch(fail));
   document.querySelector("[data-search]").addEventListener("keydown", (event) => { if (event.key === "Enter") search().catch(fail); });
   document.querySelector("[data-memory]").addEventListener("change", updateReview);
+  communitySelect.addEventListener("change", () => resumeExistingPlan(communitySelect.value).catch(fail));
   document.querySelector("[data-submit]").addEventListener("click", () => submit().catch(fail));
-  showStep(1);
+  document.querySelector("[data-install]").addEventListener("click", () => install().catch(fail));
+  if (!(await resumeExistingPlan(communitySelect.value))) showStep(1);
 })().catch((error) => showError(error.message));
