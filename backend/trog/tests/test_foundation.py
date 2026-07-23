@@ -159,6 +159,9 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"/onboarding/discord-workspace", script.data)
         self.assertIn(b"/onboarding/discord-matches", script.data)
         self.assertIn(b"communityData", script.data)
+        sign_in_script = client.get("/js/twe-pages.js")
+        self.assertIn(b"postAuthReturnPath() || await resolvePostAuthRoute()", sign_in_script.data)
+        self.assertIn(b'recall("twe.trog_return_to")', sign_in_script.data)
 
     def test_community_chooser_supports_multiple_roles_and_ownership(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
