@@ -127,7 +127,17 @@ def redeem_trog_share_link(token):
             execute(conn, "UPDATE discord_instance_share_links SET use_count = use_count + 1 WHERE id = %s", (link["id"],))
             audit(conn, g.current_user["id"], link["provider_community_id"], "discord.trog_share.redeemed",
                   "discord_instance_access_grant", grant["id"], {"share_link_id": link["id"]})
-    return jsonify({"request": request_response(grant), "continue_to": f"/discord/request-access/?request={grant['id']}"}), 201
+    return jsonify({
+        "request": request_response(grant),
+        "continue_to": (
+            "/discord/request-access/?"
+            + urlencode({
+                "request": grant["id"],
+                "community_id": link["provider_community_id"],
+                "instance_id": link["game_instance_id"],
+            })
+        ),
+    }), 201
 
 
 def _active_share_link(conn, token):
@@ -784,6 +794,7 @@ def list_discord_installations():
                 diag.consumer_discord_guild_id,
                 diag.consumer_discord_guild_name,
                 diag.provider_community_id::text,
+                diag.game_instance_id::text,
                 c.name AS provider_community_name,
                 gi.name AS instance_name,
                 diag.channel_scope,

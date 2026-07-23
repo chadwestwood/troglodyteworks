@@ -16,9 +16,13 @@
     return;
   }
   const pageParameters = new URLSearchParams(window.location.search);
-  const requestedCommunityId = pageParameters.get("community_id") || "";
-  const requestedInstanceId = pageParameters.get("instance_id") || "";
-  const setupReturnTo = requestedCommunityId && requestedInstanceId
+  const existingRequestId = pageParameters.get("request") || "";
+  let requestedCommunityId = pageParameters.get("community_id") || "";
+  let requestedInstanceId = pageParameters.get("instance_id") || "";
+  let existingRequest = null;
+  const setupReturnTo = existingRequestId
+    ? `/discord/request-access/?${new URLSearchParams({ request: existingRequestId })}`
+    : requestedCommunityId && requestedInstanceId
     ? `/discord/request-access/?${new URLSearchParams({ community_id: requestedCommunityId, instance_id: requestedInstanceId })}`
     : "/discord/request-access/";
   const allowlist = document.querySelector("[data-channel-allowlist]");
@@ -57,12 +61,38 @@
   }
   await populateManagedGuildChoices(discordGuildSelect, discordGuildHelp);
   refreshDiscordGuilds?.addEventListener("click", () => refreshManagedDiscordGuilds(refreshDiscordGuilds, setupReturnTo));
-  await populateProviderChoices(
-    communitySelect,
-    instanceSelect,
-    requestedCommunityId,
-    requestedInstanceId,
-  );
+  if (existingRequestId) {
+    const installationData = await apiRequest("/discord/installations");
+    existingRequest = installationData.installations.find((item) => item.id === existingRequestId) || null;
+    if (!existingRequest) {
+      showError("That Trog invitation request is unavailable. Ask the map owner for a new invitation.");
+      form.hidden = true;
+      return;
+    }
+    requestedCommunityId = existingRequest.provider_community_id;
+    requestedInstanceId = existingRequest.game_instance_id;
+    clearNode(communitySelect);
+    communitySelect.appendChild(new Option(
+      existingRequest.provider_community_name,
+      existingRequest.provider_community_id,
+      true,
+      true,
+    ));
+    clearNode(instanceSelect);
+    instanceSelect.appendChild(new Option(
+      existingRequest.instance_name,
+      existingRequest.game_instance_id,
+      true,
+      true,
+    ));
+  } else {
+    await populateProviderChoices(
+      communitySelect,
+      instanceSelect,
+      requestedCommunityId,
+      requestedInstanceId,
+    );
+  }
   if (requestedCommunityId && requestedInstanceId) {
     communitySelect.disabled = true;
     instanceSelect.disabled = true;
@@ -132,6 +162,10 @@
     const allowedChannelIds = [];
 
     try {
+      if (existingRequest) {
+        await startDiscordAuthorization(existingRequest.id, "guild_verification", discordGuildId);
+        return;
+      }
       const requestData = await apiRequest("/discord/instance-access-requests", {
         method: "POST",
         body: JSON.stringify({

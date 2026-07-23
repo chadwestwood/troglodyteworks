@@ -155,7 +155,7 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"I manage a Discord server", page.data)
         self.assertIn(b"I\xe2\x80\x99m a Discord member", page.data)
         self.assertIn(b"Copy message and setup link", page.data)
-        self.assertIn(b"Choose an existing Community instead", page.data)
+        self.assertIn(b"Choose an existing game instead", page.data)
         self.assertIn(b"/onboarding/discord-workspace", script.data)
         self.assertIn(b"/onboarding/discord-matches", script.data)
         self.assertIn(b"communityData", script.data)
