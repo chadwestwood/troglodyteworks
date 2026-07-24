@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 import hashlib
 import re
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
-from ..auth import current_user_from_cookie, user_response
+from ..auth import current_user_from_cookie, require_user, user_response
 from ..db import execute, fetch_one
 from ..responses import api_error
 from ..security import hash_password, hash_session_token, new_session_token, verify_password
@@ -122,6 +122,38 @@ def me():
     if not user:
         return api_error("UNAUTHENTICATED", "Authentication is required.", 401)
     return jsonify({"user": user_response(user)})
+
+
+@auth_bp.patch("/account/profile")
+@require_user
+def update_profile():
+    payload = request.get_json(silent=True) or {}
+    display_name = str(payload.get("display_name") or "").strip()
+    image_url = validate_image_value(payload.get("profile_image_url"))
+    if not display_name or len(display_name) > 80:
+        return api_error("VALIDATION_ERROR", "Display name must be between 1 and 80 characters.", 400)
+    if image_url is False:
+        return api_error("VALIDATION_ERROR", "Use a PNG, JPEG, or WebP image under 450 KB.", 400)
+    with current_app.config["TWE_DB"].connect() as conn:
+        user = fetch_one(conn, """
+            UPDATE users SET display_name = %s, profile_image_url = %s, updated_at = now()
+            WHERE id = %s
+            RETURNING id::text, email, display_name, profile_image_url
+        """, (display_name, image_url, g.current_user["id"]))
+    return jsonify({"user": user_response(user)})
+
+
+def validate_image_value(value):
+    value = str(value or "").strip() or None
+    if value is None:
+        return None
+    if len(value) > 600_000:
+        return False
+    if value.startswith("https://"):
+        return value
+    if re.match(r"^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$", value):
+        return value
+    return False
 
 
 def validate_registration_payload(payload):

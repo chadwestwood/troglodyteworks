@@ -57,6 +57,17 @@
         </div>
         <a class="primary-button" href="#" data-trog-instance-link>Set up Trog for this world</a>
       </section>
+      <section class="app-panel" data-instance-identity-panel hidden>
+        <p class="eyebrow">Appearance</p>
+        <h2>Server identity</h2>
+        <p class="muted">Change how this server appears throughout your Community. Provider details stay unchanged.</p>
+        <form class="identity-form" data-instance-identity-form>
+          <img class="image-preview" data-instance-preview alt="Server preview">
+          <label>Server name<input name="name" maxlength="120" required></label>
+          <label>Server image<input name="image" type="file" accept="image/png,image/jpeg,image/webp"></label>
+          <button class="primary-button" type="submit">Save server identity</button>
+        </form>
+      </section>
       <section class="app-panel" data-membership-approvals-panel hidden>
         <div>
           <p class="eyebrow">Cohorts in the Wild · Needs attention</p>
@@ -80,9 +91,9 @@
       </section>
     </main>
   </div>
-  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
-  <script src="/js/twe-api.js?v=site-admin-v2"></script>
-  <script src="/js/twe-pages.js?v=instance-trog-routing-v1"></script>
+  <script src="/js/navigation.js?v=identity-v1" defer></script>
+  <script src="/js/twe-api.js?v=identity-v1"></script>
+  <script src="/js/twe-pages.js?v=identity-v1"></script>
 </body>
 
 </html>

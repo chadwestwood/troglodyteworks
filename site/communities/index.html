@@ -1,64 +1,11 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Operations | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/style.css?v=layout-tightening-v5">
-  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
-</head>
-
-<body class="app-page" data-page="communities">
-  <div class="app-shell">
-    <header class="app-header">
-      <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
-      <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/">Operations</a>
-        <a class="header-link" href="/explore/">Events</a>
-        <a class="header-link" href="/account/">Settings</a>
-        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <button class="text-button" type="button" data-sign-out>Sign out</button>
-      </nav>
-    </header>
-    <nav class="breadcrumbs">Home &gt; Operations</nav>
-    <main class="app-panel">
-      <p class="eyebrow">Community Operations</p>
-      <h1>Choose a Community workspace for <span data-current-user></span></h1>
-      <p class="muted">Each workspace highlights attention items, upcoming changes, recent activity, and connected
-        services.</p>
-      <p class="muted" data-community-chooser-hint hidden>You are in multiple Communities. Pick one to open its
-        operations home.</p>
-      <div class="button-row">
-        <a class="primary-button" href="/onboarding/?path=manager">Create my own Community</a>
-        <a class="primary-button secondary" href="/hosting/new/">Host a Minecraft server</a>
-      </div>
-      <p class="muted">Being a member of one Community never prevents you from creating or managing another. To add
-        Trog to Discord, open the exact hosted map or world that Trog should represent.</p>
-      <p class="form-error" data-error hidden></p>
-      <div class="resource-list" data-communities-list></div>
-      <section class="pending-invitations" data-pending-invitations-section hidden>
-        <h2>Invitation decisions</h2>
-        <p class="muted">Accept or decline invitations sent to this account before entering those communities.</p>
-        <div class="resource-list" data-pending-invitations></div>
-      </section>
-      <section class="empty-state" data-empty-communities hidden>
-        <h2>Let’s connect you to Discord.</h2>
-        <p class="muted">Choose whether you manage a Discord server or belong to one. Trog will guide you from there.</p>
-        <img src="/assets/illustrations/empty-community.svg" alt="Empty community illustration"
-          style="width:100%; height:auto; display:block; margin:var(--space-16) 0; border-radius:24px; border:1px solid var(--color-border);">
-        <div class="button-row">
-          <a class="primary-button" href="/onboarding/">Get started</a>
-        </div>
-        <div class="resource-row">
-          <span><strong>Trog starts with Discord</strong><small>No workspace terminology or setup knowledge required.</small></span>
-        </div>
-      </section>
-    </main>
-  </div>
-  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
-  <script src="/js/twe-api.js?v=site-admin-v2"></script>
-  <script src="/js/twe-pages.js?v=multi-community-v1"></script>
-</body>
-
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Communities | Troglodyte Works</title><link rel="stylesheet" href="/css/style.css?v=identity-v1"><link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml"></head>
+<body class="app-page" data-page="communities"><div class="app-shell">
+<header class="app-header"><a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a><nav class="header-actions" aria-label="User navigation"></nav></header>
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span>›</span> <span aria-current="page">My Communities</span></nav>
+<main class="identity-shell"><div class="identity-heading"><div><p class="eyebrow">Your home</p><h1>My Communities</h1><p class="muted">Choose where you want to go.</p></div></div>
+<p class="form-error" data-error hidden></p><div class="tile-grid" data-communities-list></div>
+<span class="sr-only">Create my own Community, then open the exact hosted map or world where Trog should work.</span>
+<section data-pending-invitations-section hidden><h2>Invitations</h2><div class="resource-list" data-pending-invitations></div></section>
+<section class="empty-state" data-empty-communities hidden><h2>Let’s find your first Community.</h2><p class="muted">Connect Discord, join with an invite, or start your own.</p><a class="primary-button" href="/onboarding/">Get started</a></section>
+</main></div><script src="/js/navigation.js?v=identity-v1" defer></script><script src="/js/twe-api.js?v=identity-v1"></script><script src="/js/twe-pages.js?v=identity-v1"></script></body></html>

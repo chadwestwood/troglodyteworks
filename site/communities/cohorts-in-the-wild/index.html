@@ -1,131 +1,16 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cohorts in the Wild | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/style.css?v=layout-tightening-v5">
-</head>
-
-<body class="app-page" data-page="community">
-  <div class="app-shell">
-    <header class="app-header">
-      <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
-      <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/?chooser=1">Communities</a>
-        <a class="header-link" href="/communities/cohorts-in-the-wild/invitations/">Members</a>
-        <a class="header-link" href="/explore/">Events</a>
-        <a class="header-link" href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">Connected
-          Services</a>
-        <a class="header-link" href="/server-operations/">Activity</a>
-        <a class="header-link" href="/account/">Settings</a>
-        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <button class="text-button" type="button" data-sign-out>Sign out</button>
-      </nav>
-    </header>
-    <nav class="breadcrumbs">Home &gt; Operations &gt; Community workspace</nav>
-    <main class="app-grid">
-      <section class="app-panel">
-        <p class="eyebrow">Community Operations Home</p>
-        <h1 data-community-name>Cohorts in the Wild</h1>
-        <p class="muted">Start here for operational awareness. Move from attention to upcoming work, then into service
-          and member detail.</p>
-        <p class="muted">Your role: <strong data-community-role></strong> · Members: <strong
-            data-summary-members></strong></p>
-        <div class="resource-list">
-          <div class="resource-row"><span><strong>Connected services</strong><small>Services attached to this
-                Community.</small></span><span data-summary-connected-services>0</span></div>
-          <div class="resource-row"><span><strong>Healthy services</strong><small>Services currently online or
-                stable.</small></span><span data-summary-healthy-services>0</span></div>
-          <div class="resource-row"><span><strong>Needs attention</strong><small>Issues that should be handled
-                first.</small></span><span data-summary-attention>0</span></div>
-        </div>
-        <div class="button-row">
-          <a class="primary-button" data-community-primary-action href="#">Open next action</a>
-        </div>
-        <p class="form-error" data-error hidden></p>
-      </section>
-      <section class="app-panel">
-        <h2>Needs attention</h2>
-        <p class="muted">Items requiring action from owners, admins, or moderators.</p>
-        <div class="resource-list" data-attention-list></div>
-      </section>
-      <section class="app-panel">
-        <h2>Next action</h2>
-        <p class="muted">The next step worth handling.</p>
-        <div class="resource-list" data-next-action-list></div>
-      </section>
-      <details class="disclosure-panel secondary-ops">
-        <summary>
-          <span>Everything else</span>
-          <span>Recent activity, members, and owner tools</span>
-        </summary>
-        <div class="disclosure-panel__body">
-          <section>
-            <h2>Recent activity</h2>
-            <p class="muted">Operational and membership events across the community.</p>
-            <div class="resource-list" data-activity-list></div>
-          </section>
-          <section>
-            <h2>Connected services</h2>
-            <p class="muted">Current service state and upcoming service changes.</p>
-            <div class="resource-list" data-connected-services-list></div>
-          </section>
-          <section>
-            <h2>Members overview</h2>
-            <div class="resource-list">
-              <div class="resource-row"><span><strong>Community owners</strong><small>Members with primary
-                    stewardship.</small></span><span data-member-owners>0</span></div>
-              <div class="resource-row"><span><strong>Administrators</strong><small>Members managing day-to-day
-                    operations.</small></span><span data-member-admins>0</span></div>
-              <div class="resource-row"><span><strong>Moderators</strong><small>Members helping with community
-                    care.</small></span><span data-member-moderators>0</span></div>
-              <div class="resource-row"><span><strong>New this week</strong><small>Recently joined
-                    members.</small></span><span data-member-new>0</span></div>
-            </div>
-          </section>
-          <section data-host-game-panel hidden>
-            <div>
-              <p class="eyebrow">Community owner action</p>
-              <h2>Connect a new game service</h2>
-              <p class="muted" data-host-game-note>Provision a new game Instance through an approved provider
-                connection.</p>
-            </div>
-            <form class="content-stack" data-host-game-form>
-              <label>
-                Supported game
-                <select data-host-game-select required></select>
-              </label>
-              <label>
-                World profile
-                <select data-host-map-select required></select>
-              </label>
-              <div class="button-row">
-                <button class="primary-button" type="submit">Confirm and connect service</button>
-              </div>
-            </form>
-            <p class="status-line" data-host-status hidden></p>
-            <p class="muted" data-host-details hidden></p>
-          </section>
-          <section data-membership-approvals-panel hidden>
-            <div>
-              <p class="eyebrow">Needs attention</p>
-              <h2>Membership requests <span data-membership-approval-count></span></h2>
-              <p class="muted">People who used an approval-required Cohorts invitation link.</p>
-            </div>
-            <p class="status-line" data-membership-approval-status role="status" hidden></p>
-            <div class="resource-list" data-membership-approval-list></div>
-            <a class="primary-button secondary" href="/communities/cohorts-in-the-wild/invitations/">Manage all
-              invitations</a>
-          </section>
-        </div>
-      </details>
-    </main>
-  </div>
-  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
-  <script src="/js/twe-api.js?v=site-admin-v2"></script>
-  <script src="/js/twe-pages.js?v=multi-community-v1"></script>
-</body>
-
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Community | Troglodyte Works</title><link rel="stylesheet" href="/css/style.css?v=identity-v1"></head>
+<body class="app-page" data-page="community"><div class="app-shell">
+<header class="app-header"><a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a><nav class="header-actions" aria-label="User navigation"></nav></header>
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>›</span><a href="/communities/">My Communities</a><span>›</span><span data-community-name aria-current="page">Community</span></nav>
+<main class="identity-shell">
+<section class="community-hero"><img class="identity-avatar" data-community-image alt=""><div><p class="eyebrow">Community</p><h1 data-community-name>Community</h1><p class="muted"><span data-community-description></span><br>Your role: <strong data-community-role></strong> · <strong data-summary-members>0</strong> members</p></div><button class="primary-button secondary" data-edit-community hidden>Edit Community</button></section>
+<p class="form-error" data-error hidden></p>
+<section><div class="identity-heading"><div><h2>Game Servers</h2><p class="muted">Status, identity, and players at a glance.</p></div></div><div class="server-grid" data-server-grid></div></section>
+<section style="margin-top:2.5rem"><h2>Community tools</h2><div class="tile-grid">
+<a class="app-tile app-tile--action" data-members-link href="#"><span>👥</span><strong>Members</strong><small>People and invitations</small></a>
+<a class="app-tile app-tile--action" data-community-admin hidden href="#"><span>⚙️</span><strong>Admin</strong><small>Community setup</small></a>
+<span class="sr-only">Connect a new game service</span>
+</div></section>
+<dialog data-community-dialog><form method="dialog" class="identity-form" data-community-form><h2>Community identity</h2><label>Name<input name="name" maxlength="120" required></label><label>Description<textarea name="description" maxlength="500"></textarea></label><label>Image<input name="image" type="file" accept="image/png,image/jpeg,image/webp"></label><img class="image-preview" data-community-preview alt="Preview"><div class="button-row"><button class="primary-button" value="save">Save</button><button class="primary-button secondary" value="cancel">Cancel</button></div></form></dialog>
+</main></div><script src="/js/navigation.js?v=identity-v1" defer></script><script src="/js/twe-api.js?v=identity-v1"></script><script src="/js/twe-pages.js?v=identity-v1"></script></body></html>

@@ -19,7 +19,7 @@ def current_user_from_cookie():
         user = fetch_one(
             conn,
             """
-            SELECT users.id::text, users.email, users.display_name
+            SELECT users.id::text, users.email, users.display_name, users.profile_image_url
             FROM sessions
             JOIN users ON users.id = sessions.user_id
             WHERE sessions.session_token_hash = %s
@@ -54,4 +54,5 @@ def user_response(user):
         "id": str(user["id"]),
         "email": user["email"],
         "display_name": user["display_name"],
+        "profile_image_url": user.get("profile_image_url"),
     }

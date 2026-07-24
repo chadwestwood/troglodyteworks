@@ -60,10 +60,6 @@ async function resolvePostAuthRoute() {
   try {
     const data = await apiRequest("/communities");
     const communities = data.communities || [];
-    if (communities.length === 1) {
-      remember("twe.community_id", communities[0].id);
-      return communityPath(communities[0]);
-    }
     return communities.length ? routes.communities : "/onboarding/";
   } catch (_error) {
     return routes.communities;
@@ -91,23 +87,39 @@ async function initCommunities() {
   if (chooserHint) {
     chooserHint.hidden = communities.length < 2;
   }
-  if (communities.length === 1 && !window.location.search.includes("chooser=1")) {
-    remember("twe.community_id", communities[0].id);
-    window.location.href = communityPath(communities[0]);
-    return;
-  }
   communities.forEach((community) => {
-    const detail = [
-      `${community.member_count || 0} members`,
-      `${community.connected_services || 0} connected services`,
-      `${community.attention_count || 0} needs attention`,
-    ].join(" · ");
-    const row = createResourceRow(community.name, detail, communityRoleLabel(community.role), { href: communityPath(community) });
-    row.addEventListener("click", () => {
+    const tile = document.createElement("a");
+    tile.className = "app-tile";
+    tile.href = communityPath(community);
+    const media = identityMedia(community.image_url, community.name);
+    const content = document.createElement("span");
+    content.className = "app-tile__content";
+    content.innerHTML = `<strong>${escapeHtml(community.name)}</strong><small>${community.member_count || 0} members · ${community.connected_services || 0} servers</small>`;
+    tile.append(media, content);
+    tile.addEventListener("click", () => {
       remember("twe.community_id", community.id);
     });
-    list.appendChild(row);
+    list.appendChild(tile);
   });
+  list.appendChild(actionTile("＋", "Join with invite", "/onboarding/?path=member"));
+  list.appendChild(actionTile("✦", "Create my own Community", "/onboarding/?path=manager"));
+}
+
+function identityMedia(url, name) {
+  if (url) {
+    const image = document.createElement("img"); image.src = url; image.alt = ""; return image;
+  }
+  const fallback = document.createElement("span"); fallback.className = "app-tile__fallback";
+  fallback.textContent = String(name || "C").slice(0, 1).toUpperCase(); return fallback;
+}
+
+function actionTile(symbol, label, href) {
+  const tile = document.createElement("a"); tile.className = "app-tile app-tile--action"; tile.href = href;
+  tile.innerHTML = `<span>${symbol}</span><strong>${label}</strong>`; return tile;
+}
+
+function escapeHtml(value) {
+  const node = document.createElement("span"); node.textContent = value ?? ""; return node.innerHTML;
 }
 
 function rankCommunitiesByRole(communities) {
@@ -445,29 +457,103 @@ function renderPendingInvitations(invitations) {
 
 async function initCommunity() {
   await requireCurrentUser();
-  const communityId = recall("twe.community_id") || await findCommunityId();
+  const communityId = await communityIdForCurrentPath();
   if (!communityId) {
     window.location.href = routes.communities;
     return;
   }
   const operationsHome = await apiRequest(`/communities/${communityId}/operations-home`);
+  const communityData = await apiRequest(`/communities/${communityId}`);
+  const instancesData = await apiRequest(`/communities/${communityId}/game-instances`);
   setText("[data-community-name]", operationsHome.community.name);
+  setText("[data-community-description]", communityData.community.description || "A place to play, organize, and grow together.");
   setText("[data-community-role]", communityRoleLabel(operationsHome.community.viewer_role));
   setText("[data-summary-connected-services]", operationsHome.summary.connected_services || 0);
   setText("[data-summary-healthy-services]", operationsHome.summary.healthy_services || 0);
   setText("[data-summary-attention]", operationsHome.summary.attention_count || 0);
   setText("[data-summary-members]", operationsHome.community.member_count || 0);
-  renderPrimaryCommunityAction(operationsHome);
-  renderOperationsHomeRows("[data-attention-list]", operationsHome.attention_items, "No urgent items", "Your services and operations are currently stable.");
-  renderNextAction("[data-next-action-list]", operationsHome);
-  renderOperationsHomeRows("[data-activity-list]", operationsHome.recent_activity, "No recent activity", "Operations and membership activity will appear here.");
-  renderConnectedServiceCards(operationsHome.connected_services || []);
-  setText("[data-member-owners]", operationsHome.member_summary.owners || 0);
-  setText("[data-member-admins]", operationsHome.member_summary.administrators || 0);
-  setText("[data-member-moderators]", operationsHome.member_summary.moderators || 0);
-  setText("[data-member-new]", operationsHome.member_summary.new_members || 0);
-  await initHostGame(communityId, operationsHome.community.viewer_role);
-  await initMembershipApprovals(communityId, operationsHome.community.viewer_role);
+  const image = document.querySelector("[data-community-image]");
+  image.src = communityData.community.image_url || "/assets/illustrations/empty-community.svg";
+  const basePath = communityPath(communityData.community);
+  document.querySelector("[data-members-link]").href = `${basePath}invitations/`;
+  document.querySelector("[data-community-admin]").href = `${basePath}hosting/`;
+  const canEdit = ["owner", "admin"].includes(communityData.community.current_user_role);
+  document.querySelector("[data-edit-community]").hidden = !canEdit;
+  document.querySelector("[data-community-admin]").hidden = !canEdit;
+  renderServerTiles(instancesData.instances || [], basePath);
+  setupCommunityIdentityForm(communityData.community);
+}
+
+async function communityIdForCurrentPath() {
+  const slug = decodeURIComponent(window.location.pathname.split("/").filter(Boolean)[1] || "");
+  const data = await apiRequest("/communities");
+  const community = data.communities.find((item) => item.slug === slug) || data.communities[0];
+  remember("twe.community_id", community?.id); return community?.id;
+}
+
+function renderServerTiles(instances, basePath) {
+  const grid = document.querySelector("[data-server-grid]"); clearNode(grid);
+  if (!instances.length) {
+    grid.appendChild(createResourceRow("No game servers yet", "An owner can connect the first server."));
+    return;
+  }
+  instances.forEach((instance) => {
+    remember("twe.game_server_id", instance.game_server_id);
+    const card = document.createElement("a"); card.className = "server-card";
+    card.href = `${basePath}game-servers/${encodeURIComponent(instance.game_server_slug)}/instances/${encodeURIComponent(instance.slug)}/`;
+    if (instance.image_url) { const image = document.createElement("img"); image.src = instance.image_url; image.alt = ""; card.appendChild(image); }
+    const status = document.createElement("span"); status.className = `server-card__status ${["online","ready"].includes(instance.status) ? "is-online" : ""}`; status.textContent = humanizeKey(instance.status);
+    const name = document.createElement("strong"); name.className = "server-card__name"; name.textContent = serverIdentity(instance);
+    const players = document.createElement("span"); players.className = "server-card__players"; players.textContent = instance.player_count == null ? "Players —" : `${instance.player_count} playing`;
+    card.append(status, name, players);
+    card.addEventListener("click", () => { remember("twe.game_server_id", instance.game_server_id); remember("twe.instance_id", instance.id); });
+    grid.appendChild(card);
+  });
+}
+
+function serverIdentity(instance) {
+  const prefix = /minecraft/i.test(instance.game_type) ? "MC" : /ark/i.test(instance.game_type) ? "ASA" : instance.game_type;
+  return `${prefix}: ${instance.display_name}`;
+}
+
+function setupCommunityIdentityForm(community) {
+  const dialog = document.querySelector("[data-community-dialog]"), form = document.querySelector("[data-community-form]");
+  if (!dialog || !form) return;
+  form.elements.name.value = community.name; form.elements.description.value = community.description || "";
+  const preview = form.querySelector("[data-community-preview]"); preview.src = community.image_url || "/assets/illustrations/empty-community.svg";
+  let imageValue = community.image_url || null;
+  form.elements.image.addEventListener("change", async () => { imageValue = await readIdentityImage(form.elements.image.files[0]); preview.src = imageValue; });
+  document.querySelector("[data-edit-community]")?.addEventListener("click", () => dialog.showModal());
+  form.addEventListener("submit", async (event) => {
+    if (event.submitter?.value === "cancel") return;
+    event.preventDefault();
+    try {
+      await apiRequest(`/communities/${community.id}`, {method:"PATCH", body:JSON.stringify({name:form.elements.name.value,description:form.elements.description.value,image_url:imageValue})});
+      window.location.reload();
+    } catch (error) { showError(error.message); }
+  });
+}
+
+async function readIdentityImage(file) {
+  if (!file) return null;
+  if (file.size > 450000) throw new Error("Choose an image smaller than 450 KB.");
+  return await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+}
+
+async function initProfile() {
+  const user = await requireCurrentUser();
+  const form = document.querySelector("[data-profile-form]"), preview = document.querySelector("[data-profile-preview]");
+  form.elements.display_name.value = user.display_name; preview.src = user.profile_image_url || "/assets/illustrations/empty-community.svg";
+  let imageValue = user.profile_image_url || null;
+  form.elements.image.addEventListener("change", async () => { imageValue = await readIdentityImage(form.elements.image.files[0]); preview.src = imageValue; });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const data = await apiRequest("/account/profile", {method:"PATCH",body:JSON.stringify({display_name:form.elements.display_name.value,profile_image_url:imageValue})});
+      preview.src = data.user.profile_image_url || preview.src;
+      const status = document.querySelector("[data-profile-status]"); status.hidden = false; status.textContent = "Profile saved.";
+    } catch (error) { showError(error.message); }
+  });
 }
 
 function renderPrimaryCommunityAction(operationsHome) {
@@ -769,12 +855,32 @@ async function initGenesis() {
   }
   renderGenesisHealth(healthData.health, hasOperatorAccess);
   configureGenesisAccessView(hasOperatorAccess);
+  setupInstanceIdentity(instanceData.instance);
   if (hasOperatorAccess) {
     const operationsData = await apiRequest(`/instances/${instanceId}/server-operations?limit=10`);
     renderCapabilities(instanceId, visibleCapabilities);
     renderOperations(operationsData.server_operations);
   }
   await initMembershipApprovals(communityId, communityData.community.current_user_role);
+}
+
+function setupInstanceIdentity(instance) {
+  const panel = document.querySelector("[data-instance-identity-panel]");
+  const form = document.querySelector("[data-instance-identity-form]");
+  if (!panel || !form || !["owner", "admin"].includes(instance.viewer_role)) return;
+  panel.hidden = false;
+  form.elements.name.value = instance.name;
+  const preview = form.querySelector("[data-instance-preview]");
+  preview.src = instance.image_url || "/assets/illustrations/empty-community.svg";
+  let imageValue = instance.image_url || null;
+  form.elements.image.addEventListener("change", async () => { imageValue = await readIdentityImage(form.elements.image.files[0]); preview.src = imageValue; });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await apiRequest(`/instances/${instance.id}/identity`, {method:"PATCH",body:JSON.stringify({name:form.elements.name.value,image_url:imageValue})});
+      window.location.reload();
+    } catch (error) { showError(error.message); }
+  });
 }
 
 function configureGenesisAccessView(hasOperatorAccess) {
@@ -1022,6 +1128,7 @@ const initializers = {
   signIn: initSignIn,
   register: initRegister,
   account: initAccount,
+  profile: initProfile,
   admin: initAdmin,
   communities: initCommunities,
   community: initCommunity,

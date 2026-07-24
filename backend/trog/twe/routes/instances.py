@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, current_app, g, jsonify, request
 
 from ..auth import require_user
+from .auth import validate_image_value
 from ..authorization import can_request_capability, instance_access
 from ..db import execute, fetch_all, fetch_one
 from ..responses import api_error
@@ -31,7 +32,7 @@ def get_instance(instance_id):
         instance = fetch_one(
             conn,
             """
-            SELECT hosting_provider, provider_instance_id, provider_state, provisioning_error
+            SELECT hosting_provider, provider_instance_id, provider_state, provisioning_error, image_url
             FROM game_instances
             WHERE id = %s
             """,
@@ -51,9 +52,39 @@ def get_instance(instance_id):
                 "provider_instance_id": instance["provider_instance_id"],
                 "provider_state": instance["provider_state"],
                 "provisioning_error": instance["provisioning_error"],
+                "image_url": instance.get("image_url"),
+                "viewer_role": row["role"],
             }
         }
     )
+
+
+@instances_bp.patch("/instances/<instance_id>/identity")
+@require_user
+def update_instance_identity(instance_id):
+    payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name") or "").strip()
+    image_url = validate_image_value(payload.get("image_url"))
+    if not name or len(name) > 120:
+        return api_error("VALIDATION_ERROR", "Server name must be between 1 and 120 characters.", 400)
+    if image_url is False:
+        return api_error("VALIDATION_ERROR", "Use a PNG, JPEG, or WebP image under 450 KB.", 400)
+    with current_app.config["TWE_DB"].connect() as conn:
+        access = instance_access(conn, g.current_user["id"], instance_id)
+        if not access or access["role"] not in {"owner", "admin"}:
+            return api_error("FORBIDDEN", "Only Community owners and admins can change this server identity.", 403)
+        duplicate = fetch_one(conn, """
+            SELECT gi.id FROM game_instances gi
+            JOIN game_servers gs ON gs.id = gi.game_server_id
+            WHERE gs.community_id = %s AND lower(gi.name) = lower(%s) AND gi.id <> %s
+        """, (access["community_id"], name, instance_id))
+        if duplicate:
+            return api_error("NAME_ALREADY_USED", "Another server in this Community already uses that name.", 409)
+        instance = fetch_one(conn, """
+            UPDATE game_instances SET name = %s, image_url = %s, updated_at = now()
+            WHERE id = %s RETURNING id::text, name, slug, status, image_url
+        """, (name, image_url, instance_id))
+    return jsonify({"instance": instance})
 
 
 @instances_bp.get("/instances/<instance_id>/health")

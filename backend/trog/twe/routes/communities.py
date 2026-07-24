@@ -3,6 +3,7 @@ import re
 from flask import Blueprint, current_app, g, jsonify, request
 
 from ..auth import require_user
+from .auth import validate_image_value
 from ..authorization import membership_for_community
 from ..db import execute, fetch_all, fetch_one
 from ..responses import api_error
@@ -115,6 +116,7 @@ def list_communities():
             SELECT c.id::text,
                    c.name,
                    c.slug,
+                   c.image_url,
                    cm.role,
                    (SELECT count(*)::int FROM community_memberships cm2 WHERE cm2.community_id = c.id) AS member_count,
                    (SELECT count(*)::int FROM game_servers gs WHERE gs.community_id = c.id) AS connected_services,
@@ -147,7 +149,7 @@ def get_community(community_id):
     with current_app.config["TWE_DB"].connect() as conn:
         community = fetch_one(
             conn,
-            "SELECT id::text, name, slug, description FROM communities WHERE id = %s",
+            "SELECT id::text, name, slug, description, image_url FROM communities WHERE id = %s",
             (community_id,),
         )
         if not community:
@@ -156,6 +158,32 @@ def get_community(community_id):
         if not membership:
             return api_error("FORBIDDEN", "You do not have access to this Community.", 403)
 
+    community["current_user_role"] = membership["role"]
+    return jsonify({"community": community})
+
+
+@communities_bp.patch("/communities/<community_id>")
+@require_user
+def update_community_identity(community_id):
+    payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name") or "").strip()
+    description = str(payload.get("description") or "").strip()
+    image_url = validate_image_value(payload.get("image_url"))
+    if not name or len(name) > 120 or len(description) > 500:
+        return api_error("VALIDATION_ERROR", "Check the Community name and description lengths.", 400)
+    if image_url is False:
+        return api_error("VALIDATION_ERROR", "Use a PNG, JPEG, or WebP image under 450 KB.", 400)
+    with current_app.config["TWE_DB"].connect() as conn:
+        membership = membership_for_community(conn, g.current_user["id"], community_id)
+        if not membership or membership["role"] not in {"owner", "admin"}:
+            return api_error("FORBIDDEN", "Only Community owners and admins can change its identity.", 403)
+        duplicate = fetch_one(conn, "SELECT id FROM communities WHERE lower(name) = lower(%s) AND id <> %s", (name, community_id))
+        if duplicate:
+            return api_error("NAME_ALREADY_USED", "Another Community already uses that name.", 409)
+        community = fetch_one(conn, """
+            UPDATE communities SET name = %s, description = %s, image_url = %s, updated_at = now()
+            WHERE id = %s RETURNING id::text, name, slug, description, image_url
+        """, (name, description, image_url, community_id))
     community["current_user_role"] = membership["role"]
     return jsonify({"community": community})
 
@@ -177,6 +205,25 @@ def list_game_servers(community_id):
             (community_id,),
         )
     return jsonify({"game_servers": rows})
+
+
+@communities_bp.get("/communities/<community_id>/game-instances")
+@require_user
+def list_community_instances(community_id):
+    with current_app.config["TWE_DB"].connect() as conn:
+        membership = membership_for_community(conn, g.current_user["id"], community_id)
+        if not membership:
+            return api_error("FORBIDDEN", "You do not have access to this Community.", 403)
+        rows = fetch_all(conn, """
+            SELECT gi.id::text, gi.name, gi.slug, gi.status, gi.image_url,
+                   gs.id::text AS game_server_id, gs.slug AS game_server_slug, gs.game_type,
+                   COALESCE(NULLIF(gi.name, ''), gs.name) AS display_name
+            FROM game_instances gi
+            JOIN game_servers gs ON gs.id = gi.game_server_id
+            WHERE gs.community_id = %s
+            ORDER BY gs.name, gi.sort_order, gi.name
+        """, (community_id,))
+    return jsonify({"instances": rows, "viewer_role": membership["role"]})
 
 
 @communities_bp.get("/communities/<community_id>/operations-home")
