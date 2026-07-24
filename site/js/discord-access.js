@@ -115,7 +115,7 @@
     }
     activeRoute.hidden = false;
     activeRouteTitle.textContent = `Choose channels for ${existingRequest.instance_name}`;
-    activeRouteSummary.textContent = `${existingRequest.consumer_discord_guild_name || "Discord server"} · ${existingRequest.provider_community_name}`;
+    activeRouteSummary.textContent = `Discord server: ${existingRequest.consumer_discord_guild_name || "Connected server"}`;
     if (existingRequest.can_manage_discord) {
       await renderChannelRouteEditor(activeRouteChannels, existingRequest);
     } else {
