@@ -820,11 +820,11 @@ async function initGameServer() {
   });
 }
 
-async function initGenesis() {
+async function initWorld() {
   await requireCurrentUser();
   const location = new URLSearchParams(window.location.search);
-  const instanceId = location.get("instance_id") || recall("twe.instance_id") || await findInstanceId();
-  const communityId = location.get("community_id") || recall("twe.community_id") || await findCommunityId();
+  const instanceId = location.get("instance_id") || await findInstanceId();
+  const communityId = location.get("community_id") || await findCommunityId();
   if (location.get("game_server_id")) remember("twe.game_server_id", location.get("game_server_id"));
   remember("twe.instance_id", instanceId);
   remember("twe.community_id", communityId);
@@ -837,7 +837,23 @@ async function initGenesis() {
     (capability) => capability.available
   );
   const hasOperatorAccess = visibleCapabilities.length > 0;
-  setText("[data-instance-name]", instanceData.instance.name);
+  document.querySelectorAll("[data-instance-name]").forEach((node) => {
+    node.textContent = instanceData.instance.name;
+  });
+  document.querySelectorAll("[data-community-name]").forEach((node) => {
+    node.textContent = instanceData.instance.community_name;
+  });
+  document.querySelectorAll("[data-game-server-name]").forEach((node) => {
+    node.textContent = instanceData.instance.game_server_name;
+  });
+  const pathParts = window.location.pathname.split("/").filter(Boolean);
+  const communitySlug = pathParts[0] === "communities" ? pathParts[1] : "";
+  document.querySelectorAll("[data-community-link]").forEach((link) => {
+    link.href = `/communities/${encodeURIComponent(communitySlug)}/`;
+  });
+  document.querySelectorAll("[data-game-server-link]").forEach((link) => {
+    link.href = `/communities/${encodeURIComponent(communitySlug)}/game-servers/${encodeURIComponent(instanceData.instance.game_server_slug)}/`;
+  });
   document.title = `${instanceData.instance.name} | Troglodyte Works`;
   document.querySelectorAll("[data-trog-instance-link]").forEach((trogLink) => {
     const query = new URLSearchParams({ community_id: communityId, instance_id: instanceId });
@@ -846,9 +862,9 @@ async function initGenesis() {
   const heroImage = document.querySelector("[data-instance-hero-image]");
   if (heroImage) {
     heroImage.src = instanceData.instance.image_url || "/assets/illustrations/empty-community.svg";
-    heroImage.alt = `${instanceData.instance.name} map`;
+    heroImage.alt = `${instanceData.instance.name} World`;
   }
-  renderInstanceOverview(overviewData.overview);
+  renderInstanceOverview(overviewData.overview, instanceData.instance.name);
   configureInstanceManager(instanceData.instance, hasOperatorAccess);
   setupInstanceIdentity(instanceData.instance);
   if (hasOperatorAccess) {
@@ -856,9 +872,9 @@ async function initGenesis() {
   }
 }
 
-function renderInstanceOverview(overview) {
+function renderInstanceOverview(overview, worldName = "World") {
   const health = overview.health || { overall_status: "unknown", checks: [] };
-  const status = genesisStatusPresentation(health.overall_status);
+  const status = worldStatusPresentation(health.overall_status, worldName);
   setText("[data-health-status]", status.label);
   setText("[data-health-status-copy]", status.label.toLowerCase());
   setText("[data-health-summary]", status.summary);
@@ -885,7 +901,7 @@ function renderInstanceOverview(overview) {
     return;
   }
   if (!mods.length) {
-    modList?.appendChild(createResourceRow("No active mods", "Genesis is currently using its base game setup."));
+    modList?.appendChild(createResourceRow("No active mods", `${worldName} is currently using its base game setup.`));
     return;
   }
   mods.forEach((mod) => {
@@ -1028,7 +1044,7 @@ async function initOperation() {
 }
 
 function renderGenesisHealth(health, showDetails) {
-  const status = genesisStatusPresentation(health.overall_status);
+  const status = worldStatusPresentation(health.overall_status, "World");
   setText("[data-health-status]", status.label);
   setText("[data-health-summary]", status.summary);
   const list = document.querySelector("[data-health-checks]");
@@ -1041,14 +1057,14 @@ function renderGenesisHealth(health, showDetails) {
   });
 }
 
-function genesisStatusPresentation(status) {
+function worldStatusPresentation(status, worldName = "World") {
   const presentations = {
-    ready: { label: "Online", summary: "Genesis is running and responding normally." },
-    degraded: { label: "Needs attention", summary: "Genesis is reachable, but one or more checks need attention." },
-    offline: { label: "Offline", summary: "Genesis is not currently available." },
-    unavailable: { label: "Offline", summary: "Genesis is not currently available." },
+    ready: { label: "Online", summary: `${worldName} is running and responding normally.` },
+    degraded: { label: "Needs attention", summary: `${worldName} is reachable, but one or more checks need attention.` },
+    offline: { label: "Offline", summary: `${worldName} is not currently available.` },
+    unavailable: { label: "Offline", summary: `${worldName} is not currently available.` },
   };
-  return presentations[status] || { label: "Status unavailable", summary: "TWE could not confirm the current Genesis status." };
+  return presentations[status] || { label: "Status unavailable", summary: `TWE could not confirm the current status of ${worldName}.` };
 }
 
 function healthCheckLabel(name) {
@@ -1132,23 +1148,31 @@ function humanizeKey(value) {
 
 async function findCommunityId() {
   const data = await apiRequest("/communities");
-  const community = data.communities.find((item) => item.slug === "cohorts-in-the-wild") || data.communities[0];
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const communitySlug = parts[0] === "communities" ? parts[1] : null;
+  const community = data.communities.find((item) => item.slug === communitySlug) || data.communities[0];
   remember("twe.community_id", community?.id);
   return community?.id;
 }
 
 async function findGameServerId() {
-  const communityId = recall("twe.community_id") || await findCommunityId();
+  const communityId = await findCommunityId();
   const data = await apiRequest(`/communities/${communityId}/game-servers`);
-  const server = data.game_servers.find((item) => item.slug === "ark-survival-ascended") || data.game_servers[0];
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const gameServerIndex = parts.indexOf("game-servers");
+  const gameServerSlug = gameServerIndex >= 0 ? parts[gameServerIndex + 1] : null;
+  const server = data.game_servers.find((item) => item.slug === gameServerSlug) || data.game_servers[0];
   remember("twe.game_server_id", server?.id);
   return server?.id;
 }
 
 async function findInstanceId() {
-  const gameServerId = recall("twe.game_server_id") || await findGameServerId();
+  const gameServerId = await findGameServerId();
   const data = await apiRequest(`/game-servers/${gameServerId}/instances`);
-  const instance = data.instances.find((item) => item.slug === "genesis") || data.instances[0];
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const instanceIndex = parts.indexOf("instances");
+  const worldSlug = instanceIndex >= 0 ? parts[instanceIndex + 1] : null;
+  const instance = data.instances.find((item) => item.slug === worldSlug) || data.instances[0];
   remember("twe.instance_id", instance?.id);
   return instance?.id;
 }
@@ -1163,7 +1187,8 @@ const initializers = {
   communities: initCommunities,
   community: initCommunity,
   gameServer: initGameServer,
-  genesis: initGenesis,
+  world: initWorld,
+  genesis: initWorld,
   operation: initOperation,
 };
 

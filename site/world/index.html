@@ -4,11 +4,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Genesis | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/style.css?v=instance-home-v1">
+  <title>World | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=world-home-v1">
 </head>
 
-<body class="app-page" data-page="genesis">
+<body class="app-page" data-page="world">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
@@ -19,17 +19,17 @@
     </header>
     <nav class="breadcrumbs" aria-label="Breadcrumb">
       <a href="/communities/">My Communities</a><span>›</span>
-      <a href="/communities/cohorts-in-the-wild/">Cohorts in the Wild</a><span>›</span>
-      <a href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">ARK: Survival Ascended</a><span>›</span>
-      <span aria-current="page">Genesis</span>
+      <a href="#" data-community-link><span data-community-name>Community</span></a><span>›</span>
+      <a href="#" data-game-server-link><span data-game-server-name>Game</span></a><span>›</span>
+      <span aria-current="page" data-instance-name>World</span>
     </nav>
     <main class="instance-home">
       <section class="instance-hero" data-instance-hero>
         <img class="instance-hero__image" data-instance-hero-image alt="">
         <div class="instance-hero__shade"></div>
         <div class="instance-hero__content">
-          <p class="eyebrow">Cohorts in the Wild · ARK: Survival Ascended</p>
-          <h1 data-instance-name>Genesis</h1>
+          <p class="eyebrow"><span data-community-name>Community</span> · <span data-game-server-name>Game</span></p>
+          <h1 data-instance-name>World</h1>
           <div class="instance-facts" aria-label="Live server summary">
             <span class="instance-fact"><i data-health-dot></i><strong data-health-status>Checking</strong></span>
             <span class="instance-fact"><strong data-player-count>—</strong> players</span>
@@ -39,7 +39,7 @@
       </section>
       <p class="form-error" data-error hidden></p>
 
-      <section class="instance-actions" aria-label="Genesis options">
+      <section class="instance-actions" aria-label="World options">
         <a class="instance-action-card" href="#" data-trog-instance-link>
           <span class="instance-action-card__icon" aria-hidden="true">T</span>
           <span><strong>Use Trog</strong><small>Ask questions and get help in Discord</small></span>
@@ -57,7 +57,7 @@
         </a>
         <a class="instance-action-card" href="#manage" data-manage-shortcut hidden>
           <span class="instance-action-card__icon" aria-hidden="true">⚙</span>
-          <span><strong>Manage Genesis</strong><small>Owner and administrator controls</small></span>
+          <span><strong>Manage World</strong><small>Owner and administrator controls</small></span>
           <span aria-hidden="true">→</span>
         </a>
       </section>
@@ -65,7 +65,7 @@
       <section class="instance-section" aria-labelledby="status-title">
         <div>
           <p class="eyebrow">Right now</p>
-          <h2 id="status-title">Genesis is <span data-health-status-copy>being checked</span></h2>
+          <h2 id="status-title"><span data-instance-name>World</span> is <span data-health-status-copy>being checked</span></h2>
           <p class="muted" data-health-summary>Checking whether the map is available.</p>
         </div>
         <div class="instance-status-card">
@@ -79,7 +79,7 @@
         <div>
           <p class="eyebrow">How this map plays</p>
           <h2 id="mods-title">Installed mods</h2>
-          <p class="muted">The active additions currently configured for Genesis.</p>
+          <p class="muted">The active additions currently configured for this World.</p>
         </div>
         <div class="mod-grid" data-mod-list>
           <p class="muted">Loading installed mods…</p>
@@ -88,7 +88,7 @@
 
       <details class="instance-manager" id="manage" data-manager-panel hidden>
         <summary>
-          <span><strong>Manage Genesis</strong><small>Appearance and approved server controls</small></span>
+          <span><strong>Manage World</strong><small>Appearance and approved server controls</small></span>
           <span aria-hidden="true">+</span>
         </summary>
         <div class="instance-manager__body">
@@ -112,14 +112,14 @@
 
       <section class="instance-help">
         <p><strong>Looking for something else?</strong> Ask Trog in the connected Discord channel. Trog already knows
-          you mean Genesis.</p>
+          which World you mean.</p>
         <a class="text-link" href="#" data-trog-instance-link>Open Trog setup →</a>
       </section>
     </main>
   </div>
   <script src="/js/navigation.js?v=identity-v1" defer></script>
-  <script src="/js/twe-api.js?v=instance-home-v1"></script>
-  <script src="/js/twe-pages.js?v=instance-home-v1"></script>
+  <script src="/js/twe-api.js?v=world-home-v1"></script>
+  <script src="/js/twe-pages.js?v=world-home-v1"></script>
 </body>
 
 </html>

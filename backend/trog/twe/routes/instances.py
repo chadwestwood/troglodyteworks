@@ -48,6 +48,11 @@ def get_instance(instance_id):
             "instance": {
                 "id": row["instance_id"],
                 "game_server_id": row["game_server_id"],
+                "game_server_name": row["game_server_name"],
+                "game_server_slug": row["game_server_slug"],
+                "game_type": row["game_type"],
+                "community_id": row["community_id"],
+                "community_name": row["community_name"],
                 "name": row["instance_name"],
                 "slug": row["instance_slug"],
                 "instance_type": row["instance_type"],

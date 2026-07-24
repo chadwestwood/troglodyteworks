@@ -123,11 +123,34 @@ Examples:
 
 A game server is a product-level concept and does not necessarily represent one operating-system process.
 
-### Game Instance
+### World
+
+The universal, user-facing term for one playable game environment connected to
+a Community.
+
+Use **World** throughout the website, onboarding, navigation, help text, product
+copy, and conversations with customers. It deliberately replaces game-specific
+or infrastructure-specific terms such as map, instance, realm, shard, save, and
+server when TWE is referring to the playable environment a member opens and
+uses.
+
+Examples:
+
+- an ARK Genesis map is a World;
+- a Minecraft Enigmatica save is a World;
+- a Palworld realm is a World.
+
+A World page uses the shared TWE World experience: current status, player count,
+game details, installed content, Trog access, Community members, and
+permission-gated management. Provider logs and raw operation history are not
+part of the member-facing World page.
+
+### Game Instance (Internal)
 
 An independently manageable playable environment belonging to a game server.
 
-TWE uses Game Instance as the universal internal term.
+TWE uses Game Instance as the internal database and API term. It is called a
+**World** in the user interface.
 
 Game-specific interfaces may display another label.
 
