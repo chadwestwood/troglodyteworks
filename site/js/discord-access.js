@@ -99,7 +99,18 @@
     status.textContent = "This setup is locked to the map or world you opened. Choose only the Discord server and channels where its Trog should answer.";
   }
   communitySelect?.addEventListener("change", () => populateInstanceChoices(communitySelect.value, instanceSelect));
-  await renderAccessRequests(requestList);
+  const shouldOpenInstalledChannels = Boolean(
+    existingRequestId
+    && pageParameters.get("installed") === "1"
+    && pageParameters.get("status") === "active",
+  );
+  if (shouldOpenInstalledChannels) {
+    requestList?.closest("details")?.setAttribute("open", "");
+  }
+  await renderAccessRequests(requestList, {
+    focusRequestId: existingRequestId,
+    openChannels: shouldOpenInstalledChannels,
+  });
   createShareButton?.addEventListener("click", async () => {
     if (!communitySelect.value || !instanceSelect.value) {
       showError("Choose a Community and hosted game first.");
@@ -241,7 +252,7 @@ async function populateManagedGuildChoices(select, help) {
   }
 }
 
-async function renderAccessRequests(list) {
+async function renderAccessRequests(list, options = {}) {
   if (!list) {
     return;
   }
@@ -251,7 +262,18 @@ async function renderAccessRequests(list) {
     list.appendChild(createResourceRow("No Trog access requests yet.", "Create a request above to begin."));
     return;
   }
-  data.installations.forEach((request) => {
+  const installations = [...data.installations].sort((left, right) => {
+    if (left.id === options.focusRequestId) {
+      return -1;
+    }
+    if (right.id === options.focusRequestId) {
+      return 1;
+    }
+    return 0;
+  });
+  let focusedRow = null;
+  let focusedRoute = null;
+  for (const request of installations) {
     const guild = request.consumer_discord_guild_name || request.consumer_discord_guild_id || "Discord verification pending";
     const channels = request.requested_channel_ids.length
       ? `${request.requested_channel_ids.length} allowed channel(s)`
@@ -260,6 +282,10 @@ async function renderAccessRequests(list) {
       `${request.provider_community_name} - ${request.instance_name}`,
       `${guild} · ${request.status.replaceAll("_", " ")} · ${channels}`,
     );
+    row.dataset.discordRequestId = request.id;
+    if (request.id === options.focusRequestId) {
+      focusedRow = row;
+    }
     if (request.is_requester && !request.discord_approved_at && !["denied", "revoked"].includes(request.status)) {
       const verify = document.createElement("button");
       verify.type = "button";
@@ -372,9 +398,18 @@ async function renderAccessRequests(list) {
       route.textContent = "Choose Discord channels";
       route.addEventListener("click", () => renderChannelRouteEditor(row, request, route));
       row.appendChild(route);
+      if (request.id === options.focusRequestId) {
+        focusedRoute = route;
+      }
     }
     list.appendChild(row);
-  });
+  }
+  if (options.openChannels && focusedRow && focusedRoute) {
+    await renderChannelRouteEditor(focusedRow, installations.find(
+      (request) => request.id === options.focusRequestId,
+    ), focusedRoute);
+    focusedRow.scrollIntoView({ block: "nearest" });
+  }
 }
 
 async function renderChannelRouteEditor(row, request, button) {
