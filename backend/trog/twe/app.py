@@ -144,8 +144,9 @@ def create_app(config=None, database=None, provider_registry=None):
     def community_game_server_page(community_slug, game_slug):
         return send_from_directory(site_root, "communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/index.html")
 
-    @app.get("/communities/<community_slug>/game-servers/<game_slug>/instances/<instance_slug>/")
-    def community_instance_page(community_slug, game_slug, instance_slug):
+    @app.get("/communities/<community_slug>/game-servers/<game_slug>/worlds/<world_slug>/")
+    @app.get("/communities/<community_slug>/game-servers/<game_slug>/instances/<world_slug>/")
+    def community_world_page(community_slug, game_slug, world_slug):
         # Every playable environment uses one provider-neutral, member-facing
         # World page. Database and API models retain the internal "instance"
         # term, while the interface consistently calls it a World.

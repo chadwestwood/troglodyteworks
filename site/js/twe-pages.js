@@ -494,7 +494,7 @@ function renderServerTiles(instances, basePath) {
   instances.forEach((instance) => {
     remember("twe.game_server_id", instance.game_server_id);
     const card = document.createElement("a"); card.className = "server-card";
-    card.href = `${basePath}game-servers/${encodeURIComponent(instance.game_server_slug)}/instances/${encodeURIComponent(instance.slug)}/`;
+    card.href = `${basePath}game-servers/${encodeURIComponent(instance.game_server_slug)}/worlds/${encodeURIComponent(instance.slug)}/`;
     if (instance.image_url) { const image = document.createElement("img"); image.src = instance.image_url; image.alt = ""; card.appendChild(image); }
     const status = document.createElement("span"); status.className = `server-card__status ${["online","ready"].includes(instance.status) ? "is-online" : ""}`; status.textContent = humanizeKey(instance.status);
     const name = document.createElement("strong"); name.className = "server-card__name"; name.textContent = serverIdentity(instance);
@@ -813,7 +813,7 @@ async function initGameServer() {
       game_server_id: gameServerId,
       instance_id: instance.id,
     });
-    const href = `/communities/${encodeURIComponent(communitySlug)}/game-servers/${encodeURIComponent(gameServerSlug)}/instances/${encodeURIComponent(instance.slug)}/?${query.toString()}`;
+    const href = `/communities/${encodeURIComponent(communitySlug)}/game-servers/${encodeURIComponent(gameServerSlug)}/worlds/${encodeURIComponent(instance.slug)}/?${query.toString()}`;
     const row = createResourceRow(instance.name, instance.game_identifier, humanizeKey(instance.status), { href });
     row.addEventListener("click", () => remember("twe.instance_id", instance.id));
     list.appendChild(row);
@@ -1170,7 +1170,7 @@ async function findInstanceId() {
   const gameServerId = await findGameServerId();
   const data = await apiRequest(`/game-servers/${gameServerId}/instances`);
   const parts = window.location.pathname.split("/").filter(Boolean);
-  const instanceIndex = parts.indexOf("instances");
+  const instanceIndex = Math.max(parts.indexOf("worlds"), parts.indexOf("instances"));
   const worldSlug = instanceIndex >= 0 ? parts[instanceIndex + 1] : null;
   const instance = data.instances.find((item) => item.slug === worldSlug) || data.instances[0];
   remember("twe.instance_id", instance?.id);
