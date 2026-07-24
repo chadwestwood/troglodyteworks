@@ -262,10 +262,11 @@ async function decideRedemption(communityId, redemptionId, decision) {
 }
 
 async function findCohortsCommunityId() {
+  const slug = decodeURIComponent(window.location.pathname.split("/").filter(Boolean)[1] || "");
   const data = await apiRequest("/communities");
-  const community = data.communities.find((item) => item.slug === "cohorts-in-the-wild");
+  const community = data.communities.find((item) => item.slug === slug);
   if (!community) {
-    throw new Error("Cohorts in the Wild is not available to this account. No other Community was selected.");
+    throw new Error("This Community is not available to your account.");
   }
   remember("twe.community_id", community.id);
   return community.id;

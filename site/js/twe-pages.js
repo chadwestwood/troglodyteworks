@@ -488,7 +488,10 @@ async function initCommunity() {
 async function communityIdForCurrentPath() {
   const slug = decodeURIComponent(window.location.pathname.split("/").filter(Boolean)[1] || "");
   const data = await apiRequest("/communities");
-  const community = data.communities.find((item) => item.slug === slug) || data.communities[0];
+  const community = data.communities.find((item) => item.slug === slug);
+  if (!community) {
+    throw new Error("This Community is not available to your account.");
+  }
   remember("twe.community_id", community?.id); return community?.id;
 }
 
