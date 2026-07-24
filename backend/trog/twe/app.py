@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, redirect, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 from .config import load_config
+from .auth import current_user_from_cookie
 from .db import Database
 from .db import fetch_all
 from .responses import api_error
@@ -106,6 +107,8 @@ def create_app(config=None, database=None, provider_registry=None):
 
     @app.get("/")
     def site_index():
+        if current_user_from_cookie():
+            return redirect("/communities/")
         return send_from_directory(site_root, "index.html")
 
     @app.get("/products/<plan_slug>/")

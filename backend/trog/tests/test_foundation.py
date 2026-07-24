@@ -48,6 +48,18 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Sign In", response.data)
 
+    def test_root_shows_landing_page_to_visitors_and_communities_to_signed_in_users(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        visitor = client.get("/")
+        self.assertEqual(visitor.status_code, 200)
+        self.assertIn(b"Troglodyte Works gaming clubhouse", visitor.data)
+
+        with patch("twe.app.current_user_from_cookie", return_value={"id": "user-1"}):
+            signed_in = client.get("/")
+        self.assertEqual(signed_in.status_code, 302)
+        self.assertEqual(signed_in.headers["Location"], "/communities/")
+
     def test_static_register_and_explore_pages_are_served(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
         client = app.test_client()

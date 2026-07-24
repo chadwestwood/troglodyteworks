@@ -76,13 +76,6 @@ async function initCommunities() {
   const communities = rankCommunitiesByRole(data.communities || []);
   clearNode(list);
   renderPendingInvitations(pendingData.invitations);
-  if (communities.length === 0) {
-    window.location.replace("/onboarding/");
-    if (chooserHint) {
-      chooserHint.hidden = true;
-    }
-    return;
-  }
   emptyState.hidden = true;
   if (chooserHint) {
     chooserHint.hidden = communities.length < 2;
@@ -101,6 +94,7 @@ async function initCommunities() {
     });
     list.appendChild(tile);
   });
+  list.appendChild(actionTile("⌁", "Discover communities", "/explore/"));
   list.appendChild(actionTile("＋", "Join with invite", "/onboarding/?path=member"));
   list.appendChild(actionTile("✦", "Create my own Community", "/onboarding/?path=manager"));
 }
