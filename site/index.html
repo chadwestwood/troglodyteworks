@@ -4,73 +4,165 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Troglodyte Works</title>
-  <link rel="stylesheet" href="css/style.css?v=layout-tightening-v5">
+  <meta name="description"
+    content="Connect your Discord community to the game servers you already use. Trog answers player questions and helps trusted staff manage routine server work.">
+  <title>Troglodyte Works | Your game community, connected</title>
+  <link rel="stylesheet" href="/css/style.css?v=identity-v1">
+  <link rel="stylesheet" href="/css/home.css?v=home-v1">
   <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
 
-<body class="landing-page">
-  <div class="site-shell">
-    <header class="site-header" aria-label="Primary navigation">
-      <a class="brand" href="index.html" aria-label="Troglodyte Works home">
-        <span class="brand-mark" aria-hidden="true">TW</span>
+<body class="landing-page home-page">
+  <div class="site-shell home-shell">
+    <header class="site-header home-header" aria-label="Primary navigation">
+      <a class="brand home-brand" href="/" aria-label="Troglodyte Works home">
+        <img src="/assets/brand/trog-mark.svg" alt="" width="42" height="42">
         <span>Troglodyte Works</span>
       </a>
       <nav class="header-actions" aria-label="Visitor navigation">
-        <a class="header-link" href="products/">Products</a>
-        <a class="header-link" href="beta/">Public Beta</a>
-        <a class="header-link" href="explore/">Explore</a>
-        <a class="header-link" href="auth/sign-in.html">Sign In</a>
-        <a class="header-link" href="auth/register.html">Create Account</a>
+        <a class="header-link" href="/explore/">Discover / Join</a>
+        <a class="header-link" href="/onboarding/">Create</a>
+        <a class="header-link" href="/auth/sign-in.html">Log in</a>
       </nav>
     </header>
 
-    <main class="landing-main">
-      <section class="landing-intro" aria-labelledby="landing-title">
-        <p class="eyebrow">Community Operations Platform</p>
-        <h1 id="landing-title">Run your gaming community from one trusted workspace.</h1>
-        <p class="subtitle">
-          Troglodyte Works connects the game services you already use, so owners, moderators, and members can see what
-          is happening, what needs attention, and what comes next.
-        </p>
-      </section>
-
-      <section class="journey-panel" aria-labelledby="journey-question">
-        <div class="question-stack">
-          <p class="step-label">Get started</p>
-          <h2 id="journey-question">Choose your next step.</h2>
-          <p id="journey-summary" class="question-summary">
-            Start with the clearest path for you. Learn how Trog fits, or go straight to operations if you already
-            have an account.
+    <main>
+      <section class="home-hero" aria-labelledby="home-title">
+        <div class="home-hero__copy">
+          <p class="home-kicker"><span aria-hidden="true"></span>Built for gaming communities</p>
+          <h1 id="home-title">Your game server.<br>Your Discord.<br><em>One Trog.</em></h1>
+          <p class="home-lede">
+            Connect the places your players talk with the servers where they play. Trog answers everyday questions
+            and helps trusted people handle routine server work—without making everyone learn another dashboard.
           </p>
+          <div class="home-actions">
+            <a class="home-button home-button--primary" href="/auth/register.html">Get started free <span
+                aria-hidden="true">→</span></a>
+            <a class="home-button home-button--quiet" href="/explore/">See how it works</a>
+          </div>
+          <p class="home-note">Start with Discord. Connect Nitrado when you are ready.</p>
         </div>
 
-        <div class="journey-choices" aria-label="Visitor journey choices">
-          <a class="journey-card" href="beta/">
-            <span class="journey-card__label">Join the public beta</span>
-            <span class="journey-card__copy">Follow the supported path from account setup to a connected server and working Trog commands.</span>
-          </a>
-
-          <a class="journey-card is-selected" href="explore/">
-            <span class="journey-card__label">Understand the platform</span>
-            <span class="journey-card__copy">See how Troglodyte Works supports members, staff, events, and connected
-              services.</span>
-          </a>
-
-          <a class="journey-card" href="auth/sign-in.html">
-            <span class="journey-card__label">Open operations</span>
-            <span class="journey-card__copy">Sign in and continue with your communities.</span>
-          </a>
-
-          <p class="muted">Need an account? <a href="auth/register.html">Create one</a> before joining a community.</p>
+        <div class="trog-demo" aria-label="Example Discord conversation with Trog">
+          <div class="trog-demo__top">
+            <span class="trog-demo__status"><i aria-hidden="true"></i> Trog is online</span>
+            <span># genesis</span>
+          </div>
+          <div class="trog-message trog-message--person">
+            <span class="trog-avatar trog-avatar--member" aria-hidden="true">CW</span>
+            <div>
+              <strong>Chad <small>8:42 PM</small></strong>
+              <p><span class="mention">@Trog</span> is the server up?</p>
+            </div>
+          </div>
+          <div class="trog-message">
+            <img class="trog-avatar" src="/assets/brand/trog-mark.svg" alt="">
+            <div>
+              <strong>Trog <b>APP</b> <small>8:42 PM</small></strong>
+              <p><strong>Cohorts in the Wild – Genesis</strong> is online and ready for players.</p>
+              <div class="server-glance">
+                <span><i class="is-online" aria-hidden="true"></i> Online</span>
+                <span><strong>4</strong> players</span>
+                <span><strong>16</strong> mods</span>
+              </div>
+            </div>
+          </div>
+          <div class="trog-message trog-message--person">
+            <span class="trog-avatar trog-avatar--second" aria-hidden="true">L</span>
+            <div>
+              <strong>Lizz <small>8:43 PM</small></strong>
+              <p><span class="mention">@Trog</span> who’s playing?</p>
+            </div>
+          </div>
+          <div class="trog-demo__footer">
+            <span aria-hidden="true">＋</span>
+            <span>Message #genesis</span>
+          </div>
         </div>
       </section>
 
-      <section class="journey-panel" aria-label="Community operations preview">
-        <img src="/assets/illustrations/community-operations-hero.svg" alt="Community operations dashboard preview"
-          style="width:100%; height:auto; display:block; border-radius:24px; border:1px solid var(--color-border);">
+      <section class="home-paths" aria-labelledby="path-title">
+        <div class="home-section-heading">
+          <p class="eyebrow">Start with what you already have</p>
+          <h2 id="path-title">What brings you here?</h2>
+          <p>No setup maze. Choose the answer that sounds like you and Trog will guide the next step.</p>
+        </div>
+
+        <div class="home-path-grid">
+          <a class="home-path-card home-path-card--owner" href="/onboarding/?path=manager">
+            <span class="home-path-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><path d="M6 25v-2.2c0-3 3.2-5.4 7.1-5.4h5.8c3.9 0 7.1 2.4 7.1 5.4V25M16 14.1a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/><path d="m23.5 7.5 1.3 1.3 2.7-3"/></svg>
+            </span>
+            <span class="home-path-card__eyebrow">Discord owner or admin</span>
+            <strong>I manage a Discord server</strong>
+            <span>Connect your server, choose where Trog responds, and link the games your community plays.</span>
+            <b>Set up Trog <span aria-hidden="true">→</span></b>
+          </a>
+
+          <a class="home-path-card home-path-card--member" href="/onboarding/?path=member">
+            <span class="home-path-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><path d="M3.8 24.8v-1.7c0-3.1 3.1-5.6 7-5.6s7 2.5 7 5.6v1.7H3.8ZM10.8 14.2a4.7 4.7 0 1 0 0-9.4 4.7 4.7 0 0 0 0 9.4ZM19 17.8c.7-.2 1.4-.3 2.2-.3 3.9 0 7 2.5 7 5.6v1.7h-7.5M20.5 14.2a4.7 4.7 0 1 0-1.8-9"/></svg>
+            </span>
+            <span class="home-path-card__eyebrow">Discord member</span>
+            <strong>My community should use Trog</strong>
+            <span>Find a community already connected to Trog or send a simple setup invitation to an admin.</span>
+            <b>Find or invite a community <span aria-hidden="true">→</span></b>
+          </a>
+
+          <a class="home-path-card home-path-card--host" href="/onboarding/?path=host">
+            <span class="home-path-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="9" rx="2"/><rect x="4" y="18" width="24" height="9" rx="2"/><path d="M9 9.5h.1M9 22.5h.1M14 9.5h9M14 22.5h9"/></svg>
+            </span>
+            <span class="home-path-card__eyebrow">Game host</span>
+            <strong>I want to host a game</strong>
+            <span>Start a supported server, connect an existing host, or prepare a self-hosted computer for Trog.</span>
+            <b>Explore hosting <span aria-hidden="true">→</span></b>
+          </a>
+        </div>
+      </section>
+
+      <section class="home-explainer" aria-labelledby="explainer-title">
+        <div class="home-explainer__intro">
+          <p class="eyebrow">One helpful connection</p>
+          <h2 id="explainer-title">Trog meets your community where it already lives.</h2>
+          <p>Your hosting provider keeps the game running. Discord keeps your people connected. Troglodyte Works gives
+            both sides a shared, permission-aware assistant.</p>
+          <a href="/products/">Explore Trog products <span aria-hidden="true">→</span></a>
+        </div>
+        <ol class="home-steps">
+          <li><span>1</span><div><strong>Connect Discord</strong><p>Choose the server and channel where each game’s Trog should respond.</p></div></li>
+          <li><span>2</span><div><strong>Connect a game</strong><p>Link Nitrado today, with more hosted and self-hosted options growing over time.</p></div></li>
+          <li><span>3</span><div><strong>Ask Trog</strong><p>Check status, players, and mods. Trusted roles can unlock approved server actions.</p></div></li>
+        </ol>
+      </section>
+
+      <section class="home-capabilities" aria-label="Trog capabilities">
+        <div><span aria-hidden="true">●</span><strong>Know what’s happening</strong><p>Server status, players, mods, and activity in plain language.</p></div>
+        <div><span aria-hidden="true">◆</span><strong>Keep control</strong><p>Map owners decide which people and Discord channels receive each permission.</p></div>
+        <div><span aria-hidden="true">✦</span><strong>Do routine work</strong><p>Restart servers and manage approved changes without hunting through control panels.</p></div>
+      </section>
+
+      <section class="home-final-cta" aria-labelledby="final-cta-title">
+        <img src="/assets/brand/trog-mark.svg" alt="" width="72" height="72">
+        <div>
+          <p class="eyebrow">Simple. Clear. Powerful.</p>
+          <h2 id="final-cta-title">Give your community a Trog.</h2>
+          <p>Create a free account and we’ll guide you one decision at a time.</p>
+        </div>
+        <a class="home-button home-button--light" href="/auth/register.html">Create your account <span
+            aria-hidden="true">→</span></a>
       </section>
     </main>
+
+    <footer class="home-footer">
+      <a class="brand" href="/"><img src="/assets/brand/trog-mark.svg" alt="" width="34" height="34"><span>Troglodyte Works</span></a>
+      <p>Community operations without the cave maze.</p>
+      <nav aria-label="Footer navigation">
+        <a href="/products/">Products</a>
+        <a href="/architecture/">Architecture</a>
+        <a href="/auth/sign-in.html">Log in</a>
+      </nav>
+    </footer>
   </div>
   <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
 </body>
