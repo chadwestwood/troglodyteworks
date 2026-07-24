@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Trog Discord Access | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/style.css?v=layout-tightening-v5">
+  <link rel="stylesheet" href="/css/style.css?v=focused-channel-setup-v3">
   <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
 
@@ -32,7 +32,18 @@
       <p class="form-error" data-error hidden></p>
       <div class="guidance-note" data-status>Choose specific channels when one Discord server discusses more than one hosted game. Each channel will use the Community and hosted game selected below.
       </div>
-      <p class="muted">After Trog is installed, this page shows Discord channel names and lets an administrator change the route without copying IDs.</p>
+
+      <section class="discord-route-card" data-active-discord-route hidden>
+        <div class="discord-route-card__header">
+          <div>
+            <p class="eyebrow">Trog is connected</p>
+            <h2 data-active-route-title>Choose where Trog should answer</h2>
+            <p class="muted" data-active-route-summary></p>
+          </div>
+          <span class="status-badge status-badge--success">Ready</span>
+        </div>
+        <div data-active-route-channels></div>
+      </section>
 
       <form class="stack-form" data-discord-access-form>
         <label for="provider_community_id">Community</label>
@@ -70,19 +81,21 @@
         <button class="primary-button" type="submit">Verify and install Trog</button>
       </form>
 
-      <hr>
-      <h2>Share this Trog with another Discord owner</h2>
-      <p class="muted">Community owners and admins can create a private, expiring link. It shares read-only game information without adding the recipient to your Community.</p>
-      <div class="button-row">
-        <button class="primary-button secondary" type="button" data-create-trog-share>Create private invitation link</button>
+      <div data-discord-share-section>
+        <hr>
+        <h2>Share this Trog with another Discord owner</h2>
+        <p class="muted">Community owners and admins can create a private, expiring link. It shares read-only game information without adding the recipient to your Community.</p>
+        <div class="button-row">
+          <button class="primary-button secondary" type="button" data-create-trog-share>Create private invitation link</button>
+        </div>
+        <div class="guidance-note" data-trog-share-result hidden></div>
       </div>
-      <div class="guidance-note" data-trog-share-result hidden></div>
     </section>
 
     <details class="disclosure-panel">
       <summary>
-        <span>Request history</span>
-        <span>Provider approval and installation status</span>
+        <span>Advanced options and history</span>
+        <span>Permissions, revocation, and earlier requests</span>
       </summary>
       <div class="disclosure-panel__body">
         <p class="muted">Requesters can finish Discord installation here. Community owners and admins can approve or
@@ -95,7 +108,7 @@
 
   <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
   <script src="/js/twe-api.js?v=trog-oauth-v1"></script>
-  <script src="/js/discord-access.js?v=channel-return-v2"></script>
+  <script src="/js/discord-access.js?v=focused-channel-setup-v3"></script>
 </body>
 
 </html>

@@ -518,6 +518,91 @@
     gap: var(--space-16);
 }
 
+.discord-route-card {
+    display: grid;
+    gap: var(--space-18);
+    margin-top: var(--space-18);
+    padding: clamp(var(--space-18), 3vw, var(--space-24));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
+    border-radius: var(--radius-large);
+    background: var(--color-surface-strong);
+    box-shadow: var(--shadow-card);
+}
+
+.discord-route-card__header,
+.discord-channel-picker__action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+}
+
+.discord-route-card__header h2 {
+    margin-bottom: var(--space-4);
+}
+
+.status-badge--success {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+}
+
+.discord-channel-picker {
+    display: grid;
+    gap: var(--space-14);
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.discord-channel-picker legend {
+    margin-bottom: var(--space-6);
+    color: var(--color-text);
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.discord-channel-picker__choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: var(--space-10);
+}
+
+.discord-channel-choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    min-height: 3.25rem;
+    padding: var(--space-12) var(--space-14);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.discord-channel-choice:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+}
+
+.discord-channel-choice input {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+@media (max-width: 640px) {
+    .discord-route-card__header,
+    .discord-channel-picker__action {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .discord-channel-picker__action .primary-button {
+        width: 100%;
+    }
+}
+
 .sr-only {
     position: absolute;
     width: 1px;

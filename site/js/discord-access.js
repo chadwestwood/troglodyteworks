@@ -12,6 +12,11 @@
   const requestList = document.querySelector("[data-discord-access-requests]");
   const createShareButton = document.querySelector("[data-create-trog-share]");
   const shareResult = document.querySelector("[data-trog-share-result]");
+  const shareSection = document.querySelector("[data-discord-share-section]");
+  const activeRoute = document.querySelector("[data-active-discord-route]");
+  const activeRouteTitle = document.querySelector("[data-active-route-title]");
+  const activeRouteSummary = document.querySelector("[data-active-route-summary]");
+  const activeRouteChannels = document.querySelector("[data-active-route-channels]");
   if (!form) {
     return;
   }
@@ -99,17 +104,35 @@
     status.textContent = "This setup is locked to the map or world you opened. Choose only the Discord server and channels where its Trog should answer.";
   }
   communitySelect?.addEventListener("change", () => populateInstanceChoices(communitySelect.value, instanceSelect));
-  const shouldOpenInstalledChannels = Boolean(
+  const shouldShowInstalledChannels = Boolean(
     existingRequestId
-    && pageParameters.get("installed") === "1"
-    && pageParameters.get("status") === "active",
+    && existingRequest?.status === "active",
   );
-  if (shouldOpenInstalledChannels) {
-    requestList?.closest("details")?.setAttribute("open", "");
+  if (shouldShowInstalledChannels && existingRequest) {
+    form.hidden = true;
+    if (shareSection) {
+      shareSection.hidden = true;
+    }
+    activeRoute.hidden = false;
+    activeRouteTitle.textContent = `Choose channels for ${existingRequest.instance_name}`;
+    activeRouteSummary.textContent = `${existingRequest.consumer_discord_guild_name || "Discord server"} · ${existingRequest.provider_community_name}`;
+    if (existingRequest.can_manage_discord) {
+      await renderChannelRouteEditor(activeRouteChannels, existingRequest);
+    } else {
+      const verification = document.createElement("p");
+      verification.className = "guidance-note";
+      verification.textContent = "Discord needs to confirm that you still manage this server before it can show its channels.";
+      const refresh = document.createElement("button");
+      refresh.type = "button";
+      refresh.className = "primary-button";
+      refresh.textContent = "Confirm Discord access";
+      refresh.addEventListener("click", () => refreshManagedDiscordGuilds(refresh, setupReturnTo));
+      activeRouteChannels.append(verification, refresh);
+    }
   }
   await renderAccessRequests(requestList, {
     focusRequestId: existingRequestId,
-    openChannels: shouldOpenInstalledChannels,
+    excludeRequestId: shouldShowInstalledChannels ? existingRequestId : "",
   });
   createShareButton?.addEventListener("click", async () => {
     if (!communitySelect.value || !instanceSelect.value) {
@@ -262,7 +285,9 @@ async function renderAccessRequests(list, options = {}) {
     list.appendChild(createResourceRow("No Trog access requests yet.", "Create a request above to begin."));
     return;
   }
-  const installations = [...data.installations].sort((left, right) => {
+  const installations = data.installations
+    .filter((request) => request.id !== options.excludeRequestId)
+    .sort((left, right) => {
     if (left.id === options.focusRequestId) {
       return -1;
     }
@@ -271,8 +296,6 @@ async function renderAccessRequests(list, options = {}) {
     }
     return 0;
   });
-  let focusedRow = null;
-  let focusedRoute = null;
   for (const request of installations) {
     const guild = request.consumer_discord_guild_name || request.consumer_discord_guild_id || "Discord verification pending";
     const channels = request.requested_channel_ids.length
@@ -283,9 +306,6 @@ async function renderAccessRequests(list, options = {}) {
       `${guild} · ${request.status.replaceAll("_", " ")} · ${channels}`,
     );
     row.dataset.discordRequestId = request.id;
-    if (request.id === options.focusRequestId) {
-      focusedRow = row;
-    }
     if (request.is_requester && !request.discord_approved_at && !["denied", "revoked"].includes(request.status)) {
       const verify = document.createElement("button");
       verify.type = "button";
@@ -398,43 +418,60 @@ async function renderAccessRequests(list, options = {}) {
       route.textContent = "Choose Discord channels";
       route.addEventListener("click", () => renderChannelRouteEditor(row, request, route));
       row.appendChild(route);
-      if (request.id === options.focusRequestId) {
-        focusedRoute = route;
-      }
     }
     list.appendChild(row);
   }
-  if (options.openChannels && focusedRow && focusedRoute) {
-    await renderChannelRouteEditor(focusedRow, installations.find(
-      (request) => request.id === options.focusRequestId,
-    ), focusedRoute);
-    focusedRow.scrollIntoView({ block: "nearest" });
+  if (!installations.length) {
+    list.appendChild(createResourceRow("No earlier requests.", "This active connection is shown above."));
   }
 }
 
-async function renderChannelRouteEditor(row, request, button) {
-  button.disabled = true;
+async function renderChannelRouteEditor(row, request, button = null) {
+  if (button) {
+    button.disabled = true;
+  }
   try {
     const data = await apiRequest(`/discord/installations/${request.consumer_discord_guild_id}/channels`);
     const panel = document.createElement("fieldset");
-    panel.className = "content-stack";
+    panel.className = "discord-channel-picker";
     const legend = document.createElement("legend");
-    legend.textContent = `Channels that should use ${request.provider_community_name} - ${request.instance_name}`;
+    legend.textContent = "Where should Trog answer?";
     panel.appendChild(legend);
+    const help = document.createElement("p");
+    help.className = "muted";
+    help.textContent = "Choose the Discord channels that discuss this map. Trog will use this map whenever someone speaks to it there.";
+    panel.appendChild(help);
+    const choices = document.createElement("div");
+    choices.className = "discord-channel-picker__choices";
     const selected = new Set(request.requested_channel_ids || []);
     data.channels.forEach((channel) => {
       const label = document.createElement("label");
+      label.className = "discord-channel-choice";
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.value = channel.id;
       checkbox.checked = selected.has(channel.id);
       label.append(checkbox, document.createTextNode(` #${channel.name}`));
-      panel.appendChild(label);
+      choices.appendChild(label);
     });
+    panel.appendChild(choices);
+    const action = document.createElement("div");
+    action.className = "discord-channel-picker__action";
+    const selectionStatus = document.createElement("strong");
     const save = document.createElement("button");
     save.type = "button";
     save.className = "primary-button";
-    save.textContent = "Save channel routing";
+    const updateSelectionState = () => {
+      const count = panel.querySelectorAll('input[type="checkbox"]:checked').length;
+      selectionStatus.textContent = count
+        ? `${count} channel${count === 1 ? "" : "s"} selected`
+        : "Choose at least one channel";
+      save.textContent = count
+        ? `Save ${count} selected channel${count === 1 ? "" : "s"}`
+        : "Save channels";
+      save.disabled = count === 0;
+    };
+    choices.addEventListener("change", updateSelectionState);
     save.addEventListener("click", async () => {
       const channelIds = [...panel.querySelectorAll('input[type="checkbox"]:checked')]
         .map((checkbox) => checkbox.value);
@@ -448,18 +485,23 @@ async function renderChannelRouteEditor(row, request, button) {
           method: "PATCH",
           body: JSON.stringify({ channel_ids: channelIds }),
         });
-        await renderAccessRequests(document.querySelector("[data-discord-access-requests]"));
+        selectionStatus.textContent = "Saved. Trog is ready in the selected channels.";
+        save.textContent = "Channels saved";
       } catch (error) {
         showError(error.message);
         save.disabled = false;
       }
     });
-    panel.appendChild(save);
+    action.append(selectionStatus, save);
+    panel.appendChild(action);
     row.appendChild(panel);
-    button.remove();
+    updateSelectionState();
+    button?.remove();
   } catch (error) {
     showError(error.message);
-    button.disabled = false;
+    if (button) {
+      button.disabled = false;
+    }
   }
 }
 
