@@ -4,7 +4,8 @@ Ideas listed here are not committed roadmap work until promoted into Linear and 
 
 Current deferred areas include:
 
-- disruptive Nitrado operations such as restart, restore, configuration, and mod mutation;
+- remaining Nitrado operations such as stop, restore, arbitrary configuration,
+  mod removal, file access, and backups;
 - Beacon integration;
 - an internal TWE engineering tracker;
 - additional hosting providers;

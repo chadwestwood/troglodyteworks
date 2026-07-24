@@ -1,7 +1,7 @@
 # Production Architecture
 
 **Status:** Current  
-**Last verified:** 2026-07-22
+**Last verified:** 2026-07-24
 
 ## Topology
 
@@ -45,7 +45,7 @@ Cloudflare owns public DNS and edge routing for `troglodyteworks.com`. Railway t
 
 ### Nitrado
 
-Nitrado is the current provider for the Cohorts in the Wild Genesis Instance. TWE stores a revocable, service-scoped credential through the provider-secret boundary and binds the discovered Nitrado service to the existing TWE Game Server. Current production calls are read-only status and player queries.
+Nitrado is the current provider for the Cohorts in the Wild Genesis Instance. TWE stores a revocable, service-scoped credential through the provider-secret boundary and binds the discovered Nitrado service to the existing TWE Game Server. Current production calls include status, player, settings, and installed-mod reads plus narrowly authorized restart and ASA mod-add operations.
 
 ## Change path
 
@@ -73,4 +73,7 @@ verification procedures rather than being faked by the public smoke command.
 - Discord identity, installation, Community Membership, capability grant, and provider approval are separate authorities.
 - Browser input never proves Discord ownership, installation, or provider state.
 - Read access must be authorized before tenant-specific reconciliation or provider calls.
-- Disruptive provider operations require a separate reviewed lifecycle and are currently disabled.
+- Provider writes are denied by default. The reviewed Nitrado restart and ASA
+  mod-add paths require exact World resolution, delegated capability, audit,
+  verification, and provider-owner boundaries. Other disruptive operations
+  remain disabled.

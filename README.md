@@ -20,7 +20,7 @@ Cloudflare DNS
 
 Nitrado
   -> Cohorts in the Wild / Genesis
-  -> read-only status and player information
+  -> status, players, mods, and narrowly authorized operations
 ```
 
 Verified production capabilities include:
@@ -30,7 +30,8 @@ Verified production capabilities include:
 - Community Membership and capability-based authorization;
 - Discord guild installation and provider-approved Instance access;
 - encrypted Nitrado credential storage, service discovery, and resource binding;
-- read-only Genesis status and player-name responses through Trog; and
+- Genesis status, player-name, settings, and installed-mod responses through Trog;
+- capability-checked, audited Nitrado restart and ASA mod-add operations;
 - separate Railway web and long-running Discord worker services.
 
 The former in-house server and `10.0.0.103` are not part of the current production path. Historical local-server documentation is retained only where it explains prior decisions.
@@ -112,12 +113,18 @@ revocation and rotation even after the value is removed from the current branch.
 
 ## Operational safety
 
-Current Nitrado integration is read-only for live status, player information, and the configured ASA mod list. Destructive or disruptive actions—including restart, stop, restore, configuration mutation, and mod changes—must remain unavailable until their authorization, confirmation, audit, provider, and recovery contracts are explicitly implemented and reviewed.
+Current Nitrado integration supports reads plus two narrowly reviewed write
+operations: restart and add an ASA mod by project ID. Both require exact World
+resolution, delegated capability, provider ownership, audit records, and
+post-action verification. Stop, restore, arbitrary configuration mutation, mod
+removal, file access, and other provider writes remain unavailable until their
+own contracts are designed and reviewed.
 
 ## Documentation
 
 Start with:
 
+- repository-root `AGENTS.md` and `docs/project-context.md` for a fresh task;
 - `docs/current-state.md` for deployed reality;
 - `docs/production-architecture.md` for runtime topology;
 - `docs/database-schema.md` for the canonical persistence model;

@@ -1,8 +1,10 @@
 # Trog Bot Workflow
 
-**Status:** Partially implemented
+**Status:** Implemented foundation; expanding provider workflows
 
-**Verified production interactions:** status, player count, and player names for the Nitrado-hosted Genesis Instance. Installed-mod reads are implemented and awaiting live Discord verification.
+**Verified production interactions:** status, player count, player names,
+settings, installed mods, bounded restart, and authorized ASA mod addition for
+the Nitrado-hosted Genesis World.
 
 ## Purpose
 
@@ -41,8 +43,10 @@ Examples:
 @Trog is the server up?
 @Trog how many players are online?
 @Trog who's on?
-@Trog what mods are installed?  (implemented for Nitrado; live verification pending)
-@Trog map settings             (combined provider capabilities required; not verified for Nitrado)
+@Trog what mods are installed?
+@Trog map settings
+@Trog restart
+@Trog add 930381 to the map
 ```
 
 For external provider-owned access, replies identify the provider-owned instance:
@@ -54,8 +58,10 @@ Cohorts in the Wild - Genesis is up and ready for players.
 Installed-mod questions require `instance.mods.names.read`. Production Genesis resolves
 that capability through its bound Nitrado resource and reads the ordered ASA mod list
 from the provider's game-server details. Trog uses provider-supplied display names when
-available and otherwise labels entries by their CurseForge project ID. Other providers
-remain provider-dependent. This is read-only and never grants mod management.
+available and otherwise labels entries by their CurseForge project ID. Other
+providers remain provider-dependent. Reading the catalog does not itself grant
+mod management; mod addition requires its separate delegated capability and
+operation lifecycle.
 
 The `map settings` summary combines server status, online player names, and
 the active mod list. Each section retains its corresponding read capability

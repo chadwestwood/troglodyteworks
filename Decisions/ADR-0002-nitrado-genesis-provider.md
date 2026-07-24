@@ -3,6 +3,9 @@
 **Status:** Accepted  
 **Date:** 2026-07-22
 
+**Operational extension:** ADR-0004 supersedes this ADR's initial read-only
+operation limit while preserving the Nitrado hosting and credential decision.
+
 ## Decision
 
 The Cohorts in the Wild Genesis Instance is hosted by Nitrado and bound to TWE through a discovered Provider Resource. TWE uses a revocable, service-scoped long-life credential stored through the encrypted provider-secret boundary.
@@ -13,4 +16,3 @@ The Cohorts in the Wild Genesis Instance is hosted by Nitrado and bound to TWE t
 - Current production capabilities are read-only status and player information.
 - Restart, stop, restore, configuration, mod, and other disruptive operations remain disabled until separately designed, authorized, audited, and verified.
 - Community identity and history remain provider-neutral.
-

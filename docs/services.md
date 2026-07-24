@@ -2,8 +2,8 @@
 
 **Status:** Mixed catalog. Items described as examples are product direction, not
 proof of production implementation. Current verified hosting capabilities are
-Nitrado connection/discovery/binding plus read-only Genesis status and player
-information.
+Nitrado connection/discovery/binding, Genesis status/player/settings/mod reads,
+and narrowly authorized restart and ASA mod-add operations.
 
 Services are capabilities that Members may enable within their Communities.
 

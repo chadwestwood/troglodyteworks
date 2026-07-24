@@ -48,7 +48,11 @@ Discord installation, Discord identity, Community Membership, provider approval,
 
 ## Operations
 
-Server Operations record requested capabilities, authorization, execution, verification, results, and audit history. Current Nitrado production operations are read-only. Disruptive operations require the reviewed lifecycle in `server-operation-lifecycle.md`.
+Server Operations record requested capabilities, authorization, execution,
+verification, results, and audit history. Current Nitrado production writes are
+limited to reviewed restart and ASA mod-add workflows. Every other disruptive
+operation requires its own reviewed lifecycle in
+`server-operation-lifecycle.md`.
 
 ## Retired model
 

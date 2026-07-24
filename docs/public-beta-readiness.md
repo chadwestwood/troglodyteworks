@@ -25,7 +25,10 @@
 
 ## Deliberate beta limits
 
-- Server restart execution remains disabled even when the capability is authorized.
+- Nitrado restart and ASA mod addition are the only enabled provider writes and
+  remain capability-checked, audited, and verified.
+- Stop, restore, arbitrary settings changes, mod removal, and file access remain
+  disabled.
 - The first hosting integration is Nitrado ASA; unsupported services remain visible but cannot be attached.
 - Community creation is still guided rather than fully self-service.
 - Production alerts currently use GitHub Actions failure notifications; a dedicated paging destination can be added after beta traffic establishes the appropriate escalation policy.

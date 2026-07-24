@@ -24,7 +24,12 @@ Structured commands provide the durable command surface:
 
 Discord command visibility never grants authority. The backend resolves the guild, channel policy, immutable Discord user ID, TWE identity link, Community Membership, and Capability Grant for every administrative request.
 
-`instance.restart.execute` is recognized and authorized, but execution is deliberately disabled. An authorized request receives an explicit not-enabled response; an unauthorized request receives a denial. Trog does not call a management adapter or RCON restart command. Future execution must create a Server Operation and follow `docs/server-operation-lifecycle.md`.
+The production Nitrado adapter supports two bounded write workflows:
+`instance.restart.execute` and authorized ASA mod addition. Each operation is
+locked to the exact World resolved from the Discord grant, follows the Server
+Operation lifecycle, records authorization and verification, and never grants a
+consumer Discord guild ownership of the provider Community's World. Other
+provider mutations remain unavailable.
 
 ## Persistence and authorization
 
@@ -83,9 +88,10 @@ TROG_DISCORD_GUILD_GAME_SERVER_MAP=
 
 `TROG_DISCORD_GUILD_GAME_SERVER_MAP` is a temporary read-only compatibility fallback for guilds not yet migrated to database-backed Instance Access Grants. PostgreSQL is checked first. If a guild has a pending, active, denied, or revoked Instance Access Grant, Trog does not fall back to the legacy Game Server map. The fallback never authorizes `/server restart` and should be removed after all installations are migrated and database integration tests pass reliably.
 
-Production Genesis status, player, and installed-mod queries use the Nitrado provider adapter. The
+Production Genesis status, player, settings, installed-mod, restart, and
+authorized mod-add workflows use the Nitrado provider adapter. The
 worker resolves the Discord grant to the exact TWE Instance and bound Nitrado
-Provider Resource before making a read-only provider call. Player replies expose
+Provider Resource before making a provider call. Player replies expose
 only the display names returned through the normalized player service; provider
 payloads, platform account identifiers, credentials, and service internals are not
 included in Discord output.
@@ -115,10 +121,12 @@ Railway runs the worker with:
 python -m twe.discord_bot.service
 ```
 
-Slash commands acknowledge Discord before performing provider reads and send the
+Slash commands acknowledge Discord before performing provider work and send the
 result through the interaction follow-up. This prevents normal provider latency
 from exceeding Discord's initial response deadline. Restart-related interaction
-responses are ephemeral; all generated replies disable mentions.
+responses are ephemeral; after an accepted restart, Trog polls bounded provider
+evidence and notifies the originating channel when the World is ready again. All
+generated replies disable mentions.
 
 The read-only command set includes `/server help`, `/server status`, `/server count`, `/server players`,
 `/server mods`, and `/server settings`. The settings command combines status,

@@ -4,16 +4,21 @@ Documentation is part of the product. Every document should identify whether it 
 
 ## Start here
 
-1. `current-state.md` — deployed reality and immediate constraints.
-2. `production-architecture.md` — current runtime topology and boundaries.
-3. `glossary.md` — shared product language.
-4. `database-schema.md` — canonical persistence and object model.
-5. `authentication.md` — identity and authorization rules.
-6. `api-design.md` — HTTP contracts.
-7. `server-operation-lifecycle.md` — contract for audited operations.
-8. `vertical-slices/` — bounded implementation records.
-9. `codex-guidelines.md` — implementation-agent expectations.
-10. `products-and-entitlements.md` — customer plans and their separation from owner-granted authority.
+1. `project-context.md` — concise bootstrap for every new task.
+2. `current-state.md` — deployed reality and immediate constraints.
+3. `production-architecture.md` — current runtime topology and boundaries.
+4. `glossary.md` — shared product language.
+5. `database-schema.md` — canonical persistence and object model.
+6. `authentication.md` — identity and authorization rules.
+7. `api-design.md` — HTTP contracts.
+8. `server-operation-lifecycle.md` — contract for audited operations.
+9. `vertical-slices/` — bounded implementation records.
+10. `codex-guidelines.md` — implementation-agent expectations.
+11. `products-and-entitlements.md` — customer plans and their separation from owner-granted authority.
+
+Repository-root `AGENTS.md` tells a fresh Codex task to load the bootstrap.
+`task-starters.md` provides reusable prompts for focused tasks without depending
+on another chat's transcript.
 
 `engineering-tracker.md` describes a future TWE product capability. Linear is the current work-planning system of record.
 
@@ -49,6 +54,9 @@ Files under `Meetings/` record what was understood at the time. A later architec
 ### Vertical slices
 
 Each vertical slice is a bounded implementation contract. Its status applies to that slice and date; later slices may extend or supersede it. Important current milestones include provider-neutral foundations, multi-provider authentication, Discord Instance access, Nitrado connection/discovery, and read-only Genesis operations.
+The later controlled-operation decision in
+`../Decisions/ADR-0004-controlled-nitrado-operations.md` extends that initial
+read-only milestone with bounded restart and ASA mod-add workflows.
 
 ## Source-of-truth precedence
 
