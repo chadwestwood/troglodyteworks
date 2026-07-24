@@ -395,7 +395,9 @@ function renderIdentities(identities) {
 }
 
 function configureOAuthStartLinks() {
-  const next = requestedReturnPath() || pendingInvitePath() || routes.communities;
+  // Sign-in is a fresh entry into TWE, not permission to resume an old
+  // administrative screen. Only a genuine invitation survives authentication.
+  const next = pendingInvitePath() || routes.communities;
   document.querySelectorAll("[data-oauth-start]").forEach((link) => {
     const provider = link.dataset.oauthStart;
     link.href = `/api/v1/auth/${provider}/start?next=${encodeURIComponent(next)}`;
@@ -1225,16 +1227,8 @@ function pendingInvitePath() {
   return token ? `/invite/${token}/` : null;
 }
 
-function requestedReturnPath() {
-  const path = new URLSearchParams(window.location.search).get("next");
-  if (!path || !path.startsWith("/") || path.startsWith("//")) {
-    return null;
-  }
-  return path;
-}
-
 function postAuthReturnPath() {
-  const path = requestedReturnPath() || pendingInvitePath();
+  const path = pendingInvitePath();
   if (!path || !path.startsWith("/") || path.startsWith("//")) {
     return null;
   }
