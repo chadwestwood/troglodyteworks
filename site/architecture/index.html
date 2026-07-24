@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Map | Troglodyte Works</title>
+  <meta name="description" content="A living, plain-language map of the Troglodyte Works platform, its data rails, action rails, knowledge system, and roadmap.">
+  <link rel="stylesheet" href="/css/style.css?v=layout-tightening-v5">
+  <link rel="stylesheet" href="/css/architecture.css?v=system-map-v1">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+</head>
+<body class="app-page architecture-page">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <nav class="header-actions" aria-label="System map navigation">
+        <a class="header-link" href="/admin/">Admin</a>
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" href="/products/">Products</a>
+      </nav>
+    </header>
+    <nav class="breadcrumbs">Home &gt; System Map</nav>
+    <main class="architecture-shell">
+      <section class="app-panel architecture-hero">
+        <div>
+          <p class="eyebrow">Living Owner's Manual</p>
+          <h1>See how Troglodyte Works fits together.</h1>
+          <p class="subtitle">Start with the calm overview. Open a rail when you need to understand how information,
+            actions, or knowledge move through the platform.</p>
+        </div>
+        <div class="map-summary" aria-label="Map status">
+          <span><strong>Current</strong> production truth</span>
+          <span><strong>Building</strong> active foundation</span>
+          <span><strong>Planned</strong> intentionally not live</span>
+        </div>
+      </section>
+      <nav class="map-tabs" aria-label="System map views">
+        <button type="button" class="map-tab is-active" data-map-view="overview" aria-pressed="true">Overview</button>
+        <button type="button" class="map-tab" data-map-view="data" aria-pressed="false">Data rails</button>
+        <button type="button" class="map-tab" data-map-view="actions" aria-pressed="false">Action rails</button>
+        <button type="button" class="map-tab" data-map-view="knowledge" aria-pressed="false">Knowledge</button>
+        <button type="button" class="map-tab" data-map-view="roadmap" aria-pressed="false">Roadmap</button>
+      </nav>
+      <section class="app-panel map-canvas" aria-live="polite">
+        <header class="map-heading">
+          <div>
+            <p class="eyebrow" data-view-eyebrow></p>
+            <h2 data-view-title></h2>
+            <p class="muted" data-view-description></p>
+          </div>
+          <div class="map-legend" aria-label="Diagram legend">
+            <span><i class="status-dot status-current"></i>Current</span>
+            <span><i class="status-dot status-building"></i>Building</span>
+            <span><i class="status-dot status-planned"></i>Planned</span>
+          </div>
+        </header>
+        <div data-map-content></div>
+      </section>
+      <section class="app-panel map-principle">
+        <p class="eyebrow">The rule underneath every rail</p>
+        <h2>AI reasons. Authorized tools act. PostgreSQL remembers.</h2>
+        <p class="muted">A conversational request never bypasses identity, Community membership, channel routing,
+          capability grants, provider approval, verification, or the audit trail.</p>
+      </section>
+    </main>
+  </div>
+  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
+  <script src="/js/architecture.js?v=system-map-v1" defer></script>
+</body>
+</html>

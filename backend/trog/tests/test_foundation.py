@@ -112,6 +112,20 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b'name: "Pro"', script.data)
         self.assertEqual(missing.status_code, 404)
 
+    def test_system_map_is_available_as_a_static_owner_reference(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        client = app.test_client()
+        page = client.get("/architecture/")
+        script = client.get("/js/architecture.js")
+        stylesheet = client.get("/css/architecture.css")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"Living Owner's Manual", page.data)
+        self.assertIn(b"Data rails", page.data)
+        self.assertEqual(script.status_code, 200)
+        self.assertIn(b"Planned RAG path", script.data)
+        self.assertIn(b"PostgreSQL + pgvector", script.data)
+        self.assertEqual(stylesheet.status_code, 200)
+
     def test_genesis_page_includes_capability_aware_member_view(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
         client = app.test_client()

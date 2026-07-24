@@ -1,5 +1,25 @@
 # Troglodyte Works Architecture
 
+The living, plain-language system map is available at:
+
+```text
+https://troglodyteworks.com/architecture/
+```
+
+Its five views distinguish production truth from active foundations and future
+intent:
+
+- Overview
+- Data rails
+- Action rails
+- Knowledge
+- Roadmap
+
+The map is maintained as repository-native HTML, CSS, and structured JavaScript
+under `site/architecture/`, `site/css/architecture.css`, and
+`site/js/architecture.js`. It must not display secrets, private provider
+identifiers, credentials, or tenant data.
+
 ## Philosophy
 
 Troglodyte Works is built from the outside in.
