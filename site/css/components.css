@@ -532,6 +532,16 @@
 .discord-access-panel {
     grid-template-columns: minmax(0, 1fr);
 }
+.discord-setup-form{max-width:760px;margin-inline:auto}
+.discord-world-context,.discord-step-card{padding:1.1rem 1.2rem;border:1px solid var(--color-border);border-radius:18px;background:var(--color-surface)}
+.discord-world-context>strong{display:block;font-size:1.2rem}
+.discord-world-context [data-world-context-fields]{display:grid;gap:.65rem;margin-top:1rem}
+.option-cards{display:grid;gap:.75rem}
+.option-cards legend{padding:0 .25rem}
+.option-cards label{display:flex;align-items:flex-start;gap:.8rem;padding:1rem;border:1px solid var(--color-border);border-radius:14px;cursor:pointer}
+.option-cards label:has(input:checked){border-color:var(--color-primary);background:var(--color-primary-soft)}
+.option-cards label span,.option-cards label strong,.option-cards label small{display:block}
+.option-cards label small{margin-top:.25rem;color:var(--color-muted)}
 
 .discord-access-panel > * {
     grid-column: 1;

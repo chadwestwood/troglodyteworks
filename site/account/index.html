@@ -21,7 +21,7 @@
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; Account Settings</nav>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/communities/">My Communities</a><span>›</span><span aria-current="page">Account &amp; plan</span></nav>
     <main class="app-panel">
       <p class="eyebrow">Account Settings</p>
       <h1>Connected Accounts for <span data-current-user></span></h1>
@@ -30,6 +30,12 @@
       <p class="muted">Identity links help verify who can access community operations. They do not bypass role-based
         authorization.</p>
       <p class="form-error" data-error hidden></p>
+      <section class="content-stack">
+        <h2>Your plan</h2>
+        <div class="resource-list">
+          <div class="resource-row"><span><strong>Preview plan</strong><small>Core features are free while Troglodyte Works is in preview.</small></span><span>Active</span></div>
+        </div>
+      </section>
       <section class="content-stack">
         <h2>Authentication methods</h2>
         <div class="resource-list" data-identities-list></div>

@@ -395,7 +395,7 @@ function renderIdentities(identities) {
 }
 
 function configureOAuthStartLinks() {
-  const next = pendingInvitePath() || recall("twe.trog_return_to") || routes.communities;
+  const next = requestedReturnPath() || pendingInvitePath() || routes.communities;
   document.querySelectorAll("[data-oauth-start]").forEach((link) => {
     const provider = link.dataset.oauthStart;
     link.href = `/api/v1/auth/${provider}/start?next=${encodeURIComponent(next)}`;
@@ -471,10 +471,17 @@ async function initCommunity() {
   const basePath = communityPath(communityData.community);
   document.querySelector("[data-members-link]").href = `${basePath}invitations/`;
   document.querySelector("[data-community-admin]").href = `${basePath}hosting/`;
+  const trogLink = document.querySelector("[data-community-trog]");
+  if (trogLink) {
+    const first = (instancesData.instances || [])[0];
+    trogLink.href = first
+      ? `${basePath}game-servers/${encodeURIComponent(first.game_server_slug)}/worlds/${encodeURIComponent(first.slug)}/#trog`
+      : `${basePath}hosting/`;
+  }
   const canEdit = ["owner", "admin"].includes(communityData.community.current_user_role);
   document.querySelector("[data-edit-community]").hidden = !canEdit;
   document.querySelector("[data-community-admin]").hidden = !canEdit;
-  renderServerTiles(instancesData.instances || [], basePath);
+  await renderServerTiles(instancesData.instances || [], basePath);
   setupCommunityIdentityForm(communityData.community);
 }
 
@@ -485,18 +492,32 @@ async function communityIdForCurrentPath() {
   remember("twe.community_id", community?.id); return community?.id;
 }
 
-function renderServerTiles(instances, basePath) {
+async function renderServerTiles(instances, basePath) {
   const grid = document.querySelector("[data-server-grid]"); clearNode(grid);
   if (!instances.length) {
-    grid.appendChild(createResourceRow("No game servers yet", "An owner can connect the first server."));
+    grid.appendChild(createResourceRow("No Worlds yet", "An owner can connect the first World."));
     return;
   }
-  instances.forEach((instance) => {
+  const liveInstances = await Promise.all(instances.map(async (instance) => {
+    try {
+      const data = await apiRequest(`/instances/${instance.id}/overview`);
+      const overview = data.overview || {};
+      return {
+        ...instance,
+        live_status: overview.health?.overall_status || overview.health?.status || instance.status,
+        player_count: overview.players?.count ?? null,
+      };
+    } catch (_error) {
+      return {...instance, live_status: instance.status, player_count: null};
+    }
+  }));
+  liveInstances.forEach((instance) => {
     remember("twe.game_server_id", instance.game_server_id);
     const card = document.createElement("a"); card.className = "server-card";
     card.href = `${basePath}game-servers/${encodeURIComponent(instance.game_server_slug)}/worlds/${encodeURIComponent(instance.slug)}/`;
     if (instance.image_url) { const image = document.createElement("img"); image.src = instance.image_url; image.alt = ""; card.appendChild(image); }
-    const status = document.createElement("span"); status.className = `server-card__status ${["online","ready"].includes(instance.status) ? "is-online" : ""}`; status.textContent = humanizeKey(instance.status);
+    const liveStatus = instance.live_status || "unknown";
+    const status = document.createElement("span"); status.className = `server-card__status ${["online","ready"].includes(liveStatus) ? "is-online" : ""}`; status.textContent = humanizeKey(liveStatus);
     const name = document.createElement("strong"); name.className = "server-card__name"; name.textContent = serverIdentity(instance);
     const players = document.createElement("span"); players.className = "server-card__players"; players.textContent = instance.player_count == null ? "Players —" : `${instance.player_count} playing`;
     card.append(status, name, players);
@@ -861,7 +882,7 @@ async function initWorld() {
   });
   const heroImage = document.querySelector("[data-instance-hero-image]");
   if (heroImage) {
-    heroImage.src = instanceData.instance.image_url || "/assets/illustrations/empty-community.svg";
+    heroImage.src = instanceData.instance.image_url || "/assets/illustrations/world-default.svg";
     heroImage.alt = `${instanceData.instance.name} World`;
   }
   renderInstanceOverview(overviewData.overview, instanceData.instance.name);
@@ -919,7 +940,7 @@ function setupInstanceIdentity(instance) {
   panel.hidden = false;
   form.elements.name.value = instance.name;
   const preview = form.querySelector("[data-instance-preview]");
-  preview.src = instance.image_url || "/assets/illustrations/empty-community.svg";
+  preview.src = instance.image_url || "/assets/illustrations/world-default.svg";
   let imageValue = instance.image_url || null;
   form.elements.image.addEventListener("change", async () => { imageValue = await readIdentityImage(form.elements.image.files[0]); preview.src = imageValue; });
   form.addEventListener("submit", async (event) => {
@@ -1199,8 +1220,16 @@ function pendingInvitePath() {
   return token ? `/invite/${token}/` : null;
 }
 
+function requestedReturnPath() {
+  const path = new URLSearchParams(window.location.search).get("next");
+  if (!path || !path.startsWith("/") || path.startsWith("//")) {
+    return null;
+  }
+  return path;
+}
+
 function postAuthReturnPath() {
-  const path = pendingInvitePath() || recall("twe.trog_return_to");
+  const path = requestedReturnPath() || pendingInvitePath();
   if (!path || !path.startsWith("/") || path.startsWith("//")) {
     return null;
   }

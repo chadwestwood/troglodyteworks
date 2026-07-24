@@ -1,56 +1,42 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Explore | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/style.css?v=layout-tightening-v5">
+  <title>Discover Communities | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=discover-v1">
   <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
-
 <body class="app-page" data-page="explore">
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
-      <nav class="header-actions" aria-label="Visitor navigation">
-        <a class="header-link" href="/">Home</a>
-        <a class="header-link" href="/auth/sign-in.html">Sign In</a>
-        <a class="header-link" href="/auth/register.html">Create Account</a>
-      </nav>
+      <nav class="header-actions" aria-label="User navigation"></nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; Explore</nav>
-    <main class="app-grid">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>›</span><span aria-current="page">Discover</span></nav>
+    <main class="identity-shell">
       <section class="app-panel">
-        <p class="eyebrow">What Troglodyte Works Is</p>
-        <h1>One operating environment for your community.</h1>
-        <p class="muted">Troglodyte Works helps gaming communities coordinate people, connected services, and
-          operational decisions without requiring a hosting migration.</p>
-        <img src="/assets/illustrations/connected-services.svg" alt="Connected services diagram"
-          style="width:100%; height:auto; display:block; margin-top:var(--space-16); border-radius:24px; border:1px solid var(--color-border);">
+        <p class="eyebrow">Discover</p>
+        <h1>Find your gaming Community.</h1>
+        <p class="muted">The fastest path is through Discord. Trog can find Communities connected to servers you have already joined.</p>
+        <p class="form-error" data-error hidden></p>
       </section>
-      <section class="app-panel">
-        <h2>How it fits with your stack</h2>
-        <div class="resource-list">
-          <div class="resource-row"><span><strong>Hosting provider</strong><small>Runs game infrastructure and keeps the
-                service online.</small></span><span>External</span></div>
-          <div class="resource-row"><span><strong>Troglodyte Works</strong><small>Coordinates people, activity,
-                permissions, and service operations.</small></span><span>Core</span></div>
-          <div class="resource-row"><span><strong>Community channels</strong><small>Connect Discord and other tools
-                where members already collaborate.</small></span><span>Connected</span></div>
-        </div>
+      <section>
+        <div class="identity-heading"><div><h2>Your Discord matches</h2><p class="muted">Only Communities connected to a Discord server you belong to appear here.</p></div></div>
+        <div class="tile-grid" data-discord-matches><div class="app-tile app-tile--action"><span>…</span><strong>Checking Discord</strong><small>This takes a moment.</small></div></div>
       </section>
-      <section class="app-panel">
-        <h2>Start here</h2>
-        <p class="muted">Create or sign in to your account, then open your community operations workspace.</p>
-        <div class="button-row">
-          <a class="primary-button" href="/auth/register.html">Create Account</a>
-          <a class="primary-button secondary" href="/auth/sign-in.html">Sign In</a>
+      <section style="margin-top:2.5rem">
+        <h2>Other ways to begin</h2>
+        <div class="tile-grid">
+          <a class="app-tile app-tile--action" href="/communities/"><span>🔗</span><strong>Join with an invite</strong><small>Open the private link someone shared with you.</small></a>
+          <a class="app-tile app-tile--action" href="/onboarding/?role=owner"><span>＋</span><strong>Create a Community</strong><small>For Discord owners and game-server operators.</small></a>
+          <a class="app-tile app-tile--action" href="/onboarding/?role=member"><span>↗</span><strong>Tell an admin</strong><small>Share why their Discord should add Trog.</small></a>
         </div>
       </section>
     </main>
   </div>
-  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
+  <script src="/js/navigation.js?v=discover-v1" defer></script>
+  <script src="/js/twe-api.js?v=discover-v1"></script>
+  <script src="/js/explore.js?v=discover-v1"></script>
 </body>
-
 </html>

@@ -11,6 +11,15 @@
   let communityId;
   try {
     communityId = await findCohortsCommunityId();
+    const memberData = await apiRequest(`/communities/${communityId}/members`);
+    renderCommunityMembers(memberData.members || []);
+    const canInvite = ["owner", "admin"].includes(memberData.viewer_role);
+    document.querySelectorAll("[data-invitation-admin]").forEach((section) => {
+      section.hidden = !canInvite;
+    });
+    if (!canInvite) {
+      return;
+    }
     const data = await loadInvitationDashboard(communityId);
     configureRoleOptions(data.grantableRoles);
     renderInvitationDashboard(communityId, data);
@@ -80,6 +89,37 @@
 
   copyButton?.addEventListener("click", copyCreatedLink);
 })();
+
+function renderCommunityMembers(members) {
+  const grid = document.querySelector("[data-community-members]");
+  clearNode(grid);
+  if (!members.length) {
+    grid.appendChild(createResourceRow("No members yet", "Invited members will appear here."));
+    return;
+  }
+  members.forEach((member) => {
+    const card = document.createElement("article");
+    card.className = "member-card";
+    const avatar = document.createElement("span");
+    avatar.className = "member-card__avatar";
+    if (member.profile_image_url) {
+      const image = document.createElement("img");
+      image.src = member.profile_image_url;
+      image.alt = "";
+      avatar.appendChild(image);
+    } else {
+      avatar.textContent = (member.display_name || "?").slice(0, 1).toUpperCase();
+    }
+    const text = document.createElement("span");
+    const name = document.createElement("strong");
+    name.textContent = member.display_name;
+    const role = document.createElement("small");
+    role.textContent = roleLabel(member.role);
+    text.append(name, role);
+    card.append(avatar, text);
+    grid.appendChild(card);
+  });
+}
 
 async function loadInvitationDashboard(communityId) {
   const [invitationData, approvalData] = await Promise.all([

@@ -188,6 +188,34 @@ def update_community_identity(community_id):
     return jsonify({"community": community})
 
 
+@communities_bp.get("/communities/<community_id>/members")
+@require_user
+def list_community_members(community_id):
+    """Return the member-facing directory without exposing account email addresses."""
+    with current_app.config["TWE_DB"].connect() as conn:
+        membership = membership_for_community(conn, g.current_user["id"], community_id)
+        if not membership:
+            return api_error("FORBIDDEN", "You do not have access to this Community.", 403)
+        members = fetch_all(
+            conn,
+            """
+            SELECT u.id::text,
+                   u.display_name,
+                   u.profile_image_url,
+                   cm.role,
+                   cm.joined_at
+            FROM community_memberships cm
+            JOIN users u ON u.id = cm.user_id
+            WHERE cm.community_id = %s
+            ORDER BY
+              CASE cm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'moderator' THEN 2 ELSE 3 END,
+              lower(u.display_name)
+            """,
+            (community_id,),
+        )
+    return jsonify({"members": members, "viewer_role": membership["role"]})
+
+
 @communities_bp.get("/communities/<community_id>/game-servers")
 @require_user
 def list_game_servers(community_id):

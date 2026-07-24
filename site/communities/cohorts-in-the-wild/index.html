@@ -1,16 +1,17 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Community | Troglodyte Works</title><link rel="stylesheet" href="/css/style.css?v=identity-v1"></head>
+<title>Community | Troglodyte Works</title><link rel="stylesheet" href="/css/style.css?v=p0-p2-v1"></head>
 <body class="app-page" data-page="community"><div class="app-shell">
 <header class="app-header"><a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a><nav class="header-actions" aria-label="User navigation"></nav></header>
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>›</span><a href="/communities/">My Communities</a><span>›</span><span data-community-name aria-current="page">Community</span></nav>
 <main class="identity-shell">
 <section class="community-hero"><img class="identity-avatar" data-community-image alt=""><div><p class="eyebrow">Community</p><h1 data-community-name>Community</h1><p class="muted"><span data-community-description></span><br>Your role: <strong data-community-role></strong> · <strong data-summary-members>0</strong> members</p></div><button class="primary-button secondary" data-edit-community hidden>Edit Community</button></section>
 <p class="form-error" data-error hidden></p>
-<section><div class="identity-heading"><div><h2>Game Servers</h2><p class="muted">Status, identity, and players at a glance.</p></div></div><div class="server-grid" data-server-grid></div></section>
+<section><div class="identity-heading"><div><h2>Worlds</h2><p class="muted">See each World’s live status and player count before opening it.</p></div></div><div class="server-grid" data-server-grid></div></section>
 <section style="margin-top:2.5rem"><h2>Community tools</h2><div class="tile-grid">
-<a class="app-tile app-tile--action" data-members-link href="#"><span>👥</span><strong>Members</strong><small>People and invitations</small></a>
-<a class="app-tile app-tile--action" data-community-admin hidden href="#"><span>⚙️</span><strong>Admin</strong><small>Community setup</small></a>
+<a class="app-tile app-tile--action" data-members-link href="#"><span>👥</span><strong>Members</strong><small>See who belongs here</small></a>
+<a class="app-tile app-tile--action" data-community-trog href="#"><span>T</span><strong>Trog</strong><small>Choose a World for Discord help</small></a>
+<a class="app-tile app-tile--action" data-community-admin hidden href="#"><span>⚙️</span><strong>Admin</strong><small>Worlds, hosting, and invitations</small></a>
 <span class="sr-only">Connect a new game service</span>
 </div></section>
-<dialog data-community-dialog><form method="dialog" class="identity-form" data-community-form><h2>Community identity</h2><label>Name<input name="name" maxlength="120" required></label><label>Description<textarea name="description" maxlength="500"></textarea></label><label>Image<input name="image" type="file" accept="image/png,image/jpeg,image/webp"></label><img class="image-preview" data-community-preview alt="Preview"><div class="button-row"><button class="primary-button" value="save">Save</button><button class="primary-button secondary" value="cancel">Cancel</button></div></form></dialog>
-</main></div><script src="/js/navigation.js?v=identity-v1" defer></script><script src="/js/twe-api.js?v=identity-v1"></script><script src="/js/twe-pages.js?v=identity-v1"></script></body></html>
+<dialog data-community-dialog><form method="dialog" class="identity-form" data-community-form><h2>Community appearance</h2><p class="muted">Give members a clear name and image they will recognize.</p><label>Community name<input name="name" maxlength="120" required></label><label>Short description<textarea name="description" maxlength="500"></textarea></label><label>Community image<input name="image" type="file" accept="image/png,image/jpeg,image/webp"></label><img class="image-preview" data-community-preview alt="Community image preview"><div class="button-row"><button class="primary-button" value="save">Save changes</button><button class="primary-button secondary" value="cancel">Cancel</button></div></form></dialog>
+</main></div><script src="/js/navigation.js?v=p0-p2-v1" defer></script><script src="/js/twe-api.js?v=p0-p2-v1"></script><script src="/js/twe-pages.js?v=p0-p2-v1"></script></body></html>

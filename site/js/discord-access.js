@@ -17,6 +17,12 @@
   const activeRouteTitle = document.querySelector("[data-active-route-title]");
   const activeRouteSummary = document.querySelector("[data-active-route-summary]");
   const activeRouteChannels = document.querySelector("[data-active-route-channels]");
+  const flowTitle = document.querySelector("[data-discord-flow-title]");
+  const flowLabel = document.querySelector("[data-discord-flow-label]");
+  const flowCopy = document.querySelector("[data-discord-flow-copy]");
+  const worldContextFields = document.querySelector("[data-world-context-fields]");
+  const worldContextName = document.querySelector("[data-world-context-name]");
+  const refreshDiscordRow = document.querySelector("[data-refresh-discord-row]");
   if (!form) {
     return;
   }
@@ -65,6 +71,7 @@
     linkedDiscordSummary.textContent = `Discord connected: ${identities.identities.discord.provider_username || "linked account"}.`;
   }
   await populateManagedGuildChoices(discordGuildSelect, discordGuildHelp);
+  if (refreshDiscordRow) refreshDiscordRow.hidden = !discordGuildSelect.disabled;
   refreshDiscordGuilds?.addEventListener("click", () => refreshManagedDiscordGuilds(refreshDiscordGuilds, setupReturnTo));
   if (existingRequestId) {
     const installationData = await apiRequest("/discord/installations");
@@ -90,6 +97,9 @@
       true,
       true,
     ));
+    if (flowLabel) flowLabel.textContent = "Trog access invitation";
+    if (flowTitle) flowTitle.textContent = `Add ${existingRequest.instance_name} Trog to your Discord`;
+    if (flowCopy) flowCopy.textContent = `${existingRequest.provider_community_name} controls this World. You are requesting its approved read-only Trog for a Discord server you manage.`;
   } else {
     await populateProviderChoices(
       communitySelect,
@@ -102,6 +112,14 @@
     communitySelect.disabled = true;
     instanceSelect.disabled = true;
     status.textContent = "This setup is locked to the map or world you opened. Choose only the Discord server and channels where its Trog should answer.";
+    if (worldContextFields) worldContextFields.hidden = true;
+    if (worldContextName) worldContextName.textContent = `${communitySelect.selectedOptions[0]?.textContent || "Community"} · ${instanceSelect.selectedOptions[0]?.textContent || "World"}`;
+    if (!existingRequest) {
+      if (flowTitle) flowTitle.textContent = `Add ${instanceSelect.selectedOptions[0]?.textContent || "this World"} Trog to Discord`;
+      if (flowCopy) flowCopy.textContent = "This setup is locked to the World you opened. Choose only the Discord server and channels where Trog should answer.";
+    }
+  } else if (worldContextName) {
+    worldContextName.hidden = true;
   }
   communitySelect?.addEventListener("change", () => populateInstanceChoices(communitySelect.value, instanceSelect));
   const shouldShowInstalledChannels = Boolean(
@@ -271,7 +289,7 @@ async function populateManagedGuildChoices(select, help) {
     select.appendChild(new Option(`${guild.name} (${authority})`, guild.id));
   });
   if (help) {
-    help.textContent = "Only servers Discord confirms you can manage are shown. TWE will verify the selected server again before installation.";
+    help.textContent = "Ready. Only servers Discord confirms you can manage are shown.";
   }
 }
 

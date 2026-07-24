@@ -131,7 +131,7 @@
 })();
 
 function friendlyBreadcrumb(label) {
-  return ({ Operations: "My Communities", "Community workspace": "Community", "Connected Services": "Game Servers", "Service World": "Game Server" })[label] || label;
+  return ({ Operations: "My Communities", "Community workspace": "Community", "Connected Services": "Worlds", "Game Servers": "Worlds", "Service World": "World" })[label] || label;
 }
 
 function breadcrumbHref(label) {
@@ -139,6 +139,6 @@ function breadcrumbHref(label) {
   if (["Operations", "My Communities"].includes(label)) return "/communities/";
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (label === "Community workspace" || label === "Community") return parts[1] ? `/communities/${encodeURIComponent(parts[1])}/` : "/communities/";
-  if (label === "Connected Services" || label === "Game Servers") return parts[1] && parts[3] ? `/communities/${encodeURIComponent(parts[1])}/game-servers/${encodeURIComponent(parts[3])}/` : "/communities/";
+  if (["Connected Services", "Game Servers", "Worlds"].includes(label)) return parts[1] ? `/communities/${encodeURIComponent(parts[1])}/` : "/communities/";
   return "/";
 }

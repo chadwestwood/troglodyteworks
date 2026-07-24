@@ -24,15 +24,13 @@
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; Operations &gt; Connected Services &gt; Service World &gt; Settings</nav>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/communities/">My Communities</a><span>›</span><a href="/communities/cohorts-in-the-wild/">Cohorts in the Wild</a><span>›</span><a href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/worlds/genesis/">Genesis</a><span>›</span><span aria-current="page">Gameplay</span></nav>
 
     <main class="app-grid">
       <section class="app-panel">
-        <p class="eyebrow">Genesis Settings</p>
-        <h1>Understand how Genesis feels to play.</h1>
-        <p class="muted">This page reads live settings and translates them into gameplay meaning.</p>
-        <p class="muted">Use this view to discuss world tuning with staff and members before changing gameplay behavior.
-        </p>
+        <p class="eyebrow">Genesis gameplay</p>
+        <h1>How this World plays</h1>
+        <p class="muted">Plain-language descriptions of the live settings Trog can currently read.</p>
         <p class="form-error" data-error hidden></p>
       </section>
 
@@ -47,7 +45,7 @@
         <p class="status-line" data-setting="harvest-stars">☆☆☆☆☆</p>
         <p><strong data-setting="harvest-label">Loading...</strong></p>
         <p class="muted" data-setting="harvest-description">Loading...</p>
-        <p class="muted">Raw value: <strong data-setting="harvest">Loading...</strong></p>
+        <details><summary>Technical value</summary><p class="muted" data-setting="harvest">Loading...</p></details>
       </section>
 
       <section class="app-panel">
@@ -55,7 +53,7 @@
         <p class="status-line" data-setting="taming-stars">☆☆☆☆☆</p>
         <p><strong data-setting="taming-label">Loading...</strong></p>
         <p class="muted" data-setting="taming-description">Loading...</p>
-        <p class="muted">Raw value: <strong data-setting="taming">Loading...</strong></p>
+        <details><summary>Technical value</summary><p class="muted" data-setting="taming">Loading...</p></details>
       </section>
 
       <section class="app-panel">
@@ -63,7 +61,7 @@
         <p class="status-line" data-setting="mature-stars">☆☆☆☆☆</p>
         <p><strong data-setting="mature-label">Loading...</strong></p>
         <p class="muted" data-setting="mature-description">Loading...</p>
-        <p class="muted">Raw value: <strong data-setting="mature">Loading...</strong></p>
+        <details><summary>Technical value</summary><p class="muted" data-setting="mature">Loading...</p></details>
       </section>
 
       <section class="app-panel">
@@ -71,7 +69,7 @@
         <p class="status-line" data-setting="hatch-stars">☆☆☆☆☆</p>
         <p><strong data-setting="hatch-label">Loading...</strong></p>
         <p class="muted" data-setting="hatch-description">Loading...</p>
-        <p class="muted">Raw value: <strong data-setting="hatch">Loading...</strong></p>
+        <details><summary>Technical value</summary><p class="muted" data-setting="hatch">Loading...</p></details>
       </section>
 
       <section class="app-panel">
@@ -79,7 +77,7 @@
         <p class="status-line" data-setting="difficulty-stars">☆☆☆☆☆</p>
         <p><strong data-setting="difficulty-label">Loading...</strong></p>
         <p class="muted" data-setting="difficulty-description">Loading...</p>
-        <p class="muted">Raw value: <strong data-setting="difficulty">Loading...</strong></p>
+        <details><summary>Technical value</summary><p class="muted" data-setting="difficulty">Loading...</p></details>
       </section>
 
       <section class="app-panel">
@@ -89,18 +87,10 @@
       </section>
 
       <section class="app-panel">
-        <h2>Server Actions</h2>
-        <p class="muted">Action availability follows current capability approvals and provider support.</p>
+        <h2>Refresh live settings</h2>
+        <p class="muted">Ask the connected host for the latest values.</p>
         <div class="button-row">
-          <button class="primary-button" id="refresh-settings" type="button">Refresh Settings</button>
-        </div>
-        <div class="resource-list">
-          <div class="resource-row"><span><strong>Restart Server</strong><small>Safely disabled until restart execution
-                is approved.</small></span><span>Unavailable</span></div>
-          <div class="resource-row"><span><strong>Save World</strong><small>Planned as a future Server Operation
-                capability.</small></span><span>Planned</span></div>
-          <div class="resource-row"><span><strong>Manage Mods</strong><small>Requires a separate mod-management
-                design.</small></span><span>Planned</span></div>
+          <button class="primary-button" id="refresh-settings" type="button">Refresh</button>
         </div>
       </section>
     </main>

@@ -87,7 +87,7 @@ class FoundationTests(unittest.TestCase):
         independent_hosting = client.get("/communities/lizzlive/hosting/")
         self.assertEqual(independent.status_code, 200)
         self.assertEqual(independent_hosting.status_code, 200)
-        self.assertIn(b"Connect your hosted game", independent_hosting.data)
+        self.assertIn(b"Where does this World run?", independent_hosting.data)
 
     def test_guided_minecraft_hosting_page_is_served(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
@@ -176,7 +176,7 @@ class FoundationTests(unittest.TestCase):
         page = client.get("/communities/cohorts-in-the-wild/hosting/")
         script = client.get("/js/nitrado-hosting.js")
         self.assertEqual(page.status_code, 200)
-        self.assertIn(b"Connect your hosted game", page.data)
+        self.assertIn(b"Where does this World run?", page.data)
         self.assertIn(b"server.nitrado.net/eng/developer/tokens", page.data)
         self.assertIn(b"green text at the top", page.data)
         self.assertIn(b'type="password"', page.data)

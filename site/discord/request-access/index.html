@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Trog Discord Access | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/style.css?v=focused-channel-setup-v5">
+  <link rel="stylesheet" href="/css/style.css?v=p0-p2-v1">
   <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
 
@@ -23,12 +23,12 @@
         <button class="text-button" type="button" data-sign-out>Sign out</button>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; Operations &gt; Connected Services &gt; Discord Access</nav>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/communities/">My Communities</a><span>›</span><span aria-current="page">Trog for Discord</span></nav>
 
     <section class="app-panel discord-access-panel">
-      <p class="eyebrow">Map-specific Discord setup · Step 3 of 3</p>
-      <h1>Add this map's Trog to Discord</h1>
-      <p class="muted">Choose where Trog may answer game-server questions, confirm your Discord permissions, and approve the installation.</p>
+      <p class="eyebrow" data-discord-flow-label>World-specific Trog</p>
+      <h1 data-discord-flow-title>Add this World’s Trog to Discord</h1>
+      <p class="muted" data-discord-flow-copy>Choose the Discord server and channels where Trog should answer questions about this World.</p>
       <p class="form-error" data-error hidden></p>
       <div class="guidance-note" data-status>Choose specific channels when one Discord server discusses more than one hosted game. Each channel will use the Community and hosted game selected below.
       </div>
@@ -45,45 +45,51 @@
         <div data-active-route-channels></div>
       </section>
 
-      <form class="stack-form" data-discord-access-form>
-        <label for="provider_community_id">Community</label>
-        <select id="provider_community_id" name="provider_community_id" required data-provider-community-select>
-          <option value="">Loading your Communities...</option>
-        </select>
-
-        <label for="game_instance_id">Map or world Trog will represent</label>
-        <select id="game_instance_id" name="game_instance_id" required data-game-instance-select>
-          <option value="">Choose a Community first</option>
-        </select>
+      <form class="stack-form discord-setup-form" data-discord-access-form>
+        <section class="discord-world-context" data-world-context>
+          <p class="eyebrow">Trog will represent</p>
+          <strong data-world-context-name>Loading World…</strong>
+          <div data-world-context-fields>
+            <label for="provider_community_id">Community</label>
+            <select id="provider_community_id" name="provider_community_id" required data-provider-community-select>
+              <option value="">Loading your Communities...</option>
+            </select>
+            <label for="game_instance_id">World</label>
+            <select id="game_instance_id" name="game_instance_id" required data-game-instance-select>
+              <option value="">Choose a Community first</option>
+            </select>
+          </div>
+        </section>
 
         <p class="muted" data-linked-discord-summary>Checking your connected Discord account...</p>
 
-        <label for="discord_guild_id">Discord server</label>
-        <select id="discord_guild_id" name="discord_guild_id" required data-discord-guild-select>
-          <option value="">Loading servers managed by your Discord account...</option>
-        </select>
-        <small class="muted" data-discord-guild-help>Discord will provide servers where you are the owner or have
-          Administrator or Manage Server permission.</small>
-        <div class="button-row">
-          <button class="primary-button secondary" type="button" data-refresh-discord-guilds>Refresh Discord
-            servers</button>
-        </div>
+        <section class="discord-step-card">
+          <p class="eyebrow">1 · Choose a Discord server</p>
+          <label class="sr-only" for="discord_guild_id">Discord server</label>
+          <select id="discord_guild_id" name="discord_guild_id" required data-discord-guild-select>
+            <option value="">Loading servers managed by your Discord account...</option>
+          </select>
+          <small class="muted" data-discord-guild-help>Only Discord servers you can manage will appear.</small>
+          <div class="button-row" data-refresh-discord-row>
+            <button class="primary-button secondary" type="button" data-refresh-discord-guilds>Reconnect Discord to refresh</button>
+          </div>
+        </section>
 
-        <fieldset>
-          <legend>Which channels should use this hosted game?</legend>
-          <label><input type="radio" name="channel_scope" value="all" checked> All channels Trog can see (best for one game)</label>
-          <label><input type="radio" name="channel_scope" value="allowlist"> Choose specific channels after Trog is installed (best for multiple games)</label>
+        <fieldset class="discord-step-card option-cards">
+          <legend><span class="eyebrow">2 · Choose where Trog answers</span></legend>
+          <label><input type="radio" name="channel_scope" value="all" checked><span><strong>Every visible channel</strong><small>Best when this Discord server discusses one World.</small></span></label>
+          <label><input type="radio" name="channel_scope" value="allowlist"><span><strong>Specific channels</strong><small>Best when different channels discuss different Worlds.</small></span></label>
         </fieldset>
         <div data-channel-allowlist hidden>
           <p class="guidance-note">Install Trog first. This page will then load the channel names that Trog can see so you can select them with checkboxes. Until channels are chosen, this connection will not answer in any channel.</p>
         </div>
 
-        <button class="primary-button" type="submit">Verify and install Trog</button>
+        <button class="primary-button" type="submit" data-discord-submit>Continue with Discord</button>
       </form>
 
       <div data-discord-share-section>
         <hr>
-        <h2>Share this Trog with another Discord owner</h2>
+        <h2>Invite another Discord owner</h2>
         <p class="muted">Community owners and admins can create a private, expiring link. It shares read-only game information without adding the recipient to your Community.</p>
         <div class="button-row">
           <button class="primary-button secondary" type="button" data-create-trog-share>Create private invitation link</button>
@@ -92,10 +98,10 @@
       </div>
     </section>
 
-    <details class="disclosure-panel">
+    <details class="disclosure-panel" data-access-history>
       <summary>
-        <span>Advanced options and history</span>
-        <span>Permissions, revocation, and earlier requests</span>
+        <span>Requests and permissions</span>
+        <span>Approvals, status, and access history</span>
       </summary>
       <div class="disclosure-panel__body">
         <p class="muted">Requesters can finish Discord installation here. Community owners and admins can approve or
@@ -106,9 +112,9 @@
     </details>
   </main>
 
-  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
+  <script src="/js/navigation.js?v=p0-p2-v1" defer></script>
   <script src="/js/twe-api.js?v=trog-oauth-v1"></script>
-  <script src="/js/discord-access.js?v=focused-channel-setup-v4"></script>
+  <script src="/js/discord-access.js?v=p0-p2-v1"></script>
 </body>
 
 </html>
