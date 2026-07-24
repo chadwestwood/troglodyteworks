@@ -13,5 +13,11 @@
 
   choices.forEach((button) => button.addEventListener("click", () => showChoice(button.dataset.hostingChoice)));
   const requested = new URLSearchParams(window.location.search).get("path");
-  if (["nitrado", "self"].includes(requested)) showChoice(requested);
+  if (["nitrado", "self"].includes(requested)) {
+    showChoice(requested);
+  } else {
+    nitrado.hidden = true;
+    selfHosted.hidden = true;
+    choices.forEach((button) => button.classList.remove("is-selected"));
+  }
 })();

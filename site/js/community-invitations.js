@@ -11,7 +11,13 @@
   let communityId;
   try {
     communityId = await findCohortsCommunityId();
-    const memberData = await apiRequest(`/communities/${communityId}/members`);
+    const [memberData, communityData] = await Promise.all([
+      apiRequest(`/communities/${communityId}/members`),
+      apiRequest(`/communities/${communityId}`),
+    ]);
+    document.querySelectorAll("[data-community-label]").forEach((node) => {
+      node.textContent = communityData.community.name;
+    });
     renderCommunityMembers(memberData.members || []);
     const canInvite = ["owner", "admin"].includes(memberData.viewer_role);
     document.querySelectorAll("[data-invitation-admin]").forEach((section) => {

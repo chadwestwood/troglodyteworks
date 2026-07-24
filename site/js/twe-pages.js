@@ -459,7 +459,9 @@ async function initCommunity() {
   const operationsHome = await apiRequest(`/communities/${communityId}/operations-home`);
   const communityData = await apiRequest(`/communities/${communityId}`);
   const instancesData = await apiRequest(`/communities/${communityId}/game-instances`);
-  setText("[data-community-name]", operationsHome.community.name);
+  document.querySelectorAll("[data-community-name]").forEach((node) => {
+    node.textContent = operationsHome.community.name;
+  });
   setText("[data-community-description]", communityData.community.description || "A place to play, organize, and grow together.");
   setText("[data-community-role]", communityRoleLabel(operationsHome.community.viewer_role));
   setText("[data-summary-connected-services]", operationsHome.summary.connected_services || 0);
