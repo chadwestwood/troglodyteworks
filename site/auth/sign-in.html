@@ -4,44 +4,83 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign In | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/style.css?v=layout-tightening-v5">
+  <meta name="description" content="Sign in to Troglodyte Works and return to your gaming Communities and Worlds.">
+  <title>Welcome back | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=auth-refresh-v1">
+  <link rel="stylesheet" href="/css/auth.css?v=auth-refresh-v1">
   <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
 </head>
 
-<body class="app-page" data-page="signIn">
-  <main class="app-shell narrow">
-    <a class="brand" href="/" aria-label="Troglodyte Works home">
-      <span class="brand-mark" aria-hidden="true">TW</span>
-      <span>Troglodyte Works</span>
-    </a>
-    <nav class="auth-nav" aria-label="Visitor navigation">
-      <a class="header-link" href="/explore/">Explore</a>
-      <a class="header-link" href="/auth/register.html">Create Account</a>
-    </nav>
-    <section class="app-panel">
-      <p class="eyebrow">Sign in</p>
-      <h1>Continue with your community.</h1>
-      <p class="muted">Sign in to see what needs attention, what is coming next, and where you can act.</p>
-      <p class="form-error" data-error hidden></p>
-      <div class="button-row">
-        <a class="primary-button" href="/api/v1/auth/google/start" data-oauth-start="google">Continue with Google</a>
-        <a class="primary-button secondary" href="/api/v1/auth/discord/start" data-oauth-start="discord">Continue with
-          Discord</a>
-      </div>
-      <form class="stack-form" data-sign-in-form>
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="email" required>
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
-        <button class="primary-button" type="submit">Sign in</button>
-      </form>
-      <p class="muted">No account yet? <a class="header-link" href="/auth/register.html">Create Account</a> to set up
-        your identity before joining a community.</p>
-    </section>
-  </main>
+<body class="auth-page" data-page="signIn">
+  <div class="auth-shell">
+    <header class="site-header auth-header" aria-label="Primary navigation">
+      <a class="brand" href="/" aria-label="Troglodyte Works home">
+        <img src="/assets/brand/trog-mark.svg" alt="" width="42" height="42">
+        <span>Troglodyte Works</span>
+      </a>
+      <nav class="header-actions" aria-label="Visitor navigation">
+        <a class="header-link" href="/explore/">Discover / Join</a>
+        <a class="header-link" href="/onboarding/">Create</a>
+        <a class="header-link is-current" href="/auth/sign-in.html" aria-current="page">Log in</a>
+      </nav>
+    </header>
+
+    <main class="auth-main">
+      <section class="auth-welcome" aria-labelledby="welcome-title">
+        <img src="/assets/hero/cavern-clubhouse-v1.png"
+          alt="A welcoming underground gaming clubhouse where players gather around their games">
+        <div class="auth-welcome__shade"></div>
+        <div class="auth-welcome__copy">
+          <p class="auth-kicker"><span aria-hidden="true"></span>The clubhouse is open</p>
+          <h1 id="welcome-title">Welcome back.</h1>
+          <p>Your Communities, Worlds, and Trog are waiting right where you left them.</p>
+        </div>
+      </section>
+
+      <section class="auth-card" aria-labelledby="sign-in-title">
+        <div class="auth-card__heading">
+          <p class="eyebrow">Log in</p>
+          <h2 id="sign-in-title">Choose the easiest way in.</h2>
+          <p>Use Discord for the smoothest Trog setup, or continue with your existing sign-in method.</p>
+        </div>
+
+        <p class="form-error" data-error hidden></p>
+
+        <div class="auth-providers" aria-label="Social sign-in options">
+          <a class="auth-provider auth-provider--discord" href="/api/v1/auth/discord/start"
+            data-oauth-start="discord">
+            <span class="auth-provider__mark" aria-hidden="true">D</span>
+            <span><strong>Continue with Discord</strong><small>Recommended for Trog</small></span>
+            <span class="auth-provider__arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="auth-provider" href="/api/v1/auth/google/start" data-oauth-start="google">
+            <span class="auth-provider__mark auth-provider__mark--google" aria-hidden="true">G</span>
+            <span><strong>Continue with Google</strong><small>Use your Google identity</small></span>
+            <span class="auth-provider__arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+
+        <div class="auth-divider"><span>or use email</span></div>
+
+        <form class="stack-form auth-form" data-sign-in-form>
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password"
+            placeholder="Your password" required>
+          <button class="primary-button auth-submit" type="submit">Log in</button>
+        </form>
+
+        <p class="auth-create">New to Troglodyte Works?
+          <a href="/auth/register.html">Create a free account</a>
+        </p>
+        <p class="auth-assurance">Signing in never gives Trog permission to change a World. Those permissions are
+          always granted separately.</p>
+      </section>
+    </main>
+  </div>
   <script src="/js/twe-api.js?v=site-admin-v2"></script>
-  <script src="/js/twe-pages.js?v=site-admin-v2"></script>
+  <script src="/js/twe-pages.js?v=p0-p2-v2"></script>
 </body>
 
 </html>
