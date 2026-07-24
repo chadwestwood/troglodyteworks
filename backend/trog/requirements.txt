@@ -5,3 +5,5 @@ pytest
 discord.py
 google-auth[requests]
 cryptography
+mcp[cli]==1.23.2
+uvicorn

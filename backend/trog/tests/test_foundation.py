@@ -126,6 +126,23 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"PostgreSQL + pgvector", script.data)
         self.assertEqual(stylesheet.status_code, 200)
 
+    def test_read_only_mcp_foundation_is_present(self):
+        migration = (ROOT / "migrations" / "0024_mcp_read_only_access.sql").read_text()
+        server = (ROOT / "twe" / "mcp_server.py").read_text()
+        tools = (ROOT / "twe" / "services" / "mcp_tools.py").read_text()
+        railway = (ROOT.parents[1] / "railway.mcp.json").read_text()
+        self.assertIn("CREATE TABLE IF NOT EXISTS mcp_access_tokens", migration)
+        self.assertIn("stateless_http=True", server)
+        self.assertIn("twe_list_instances", server)
+        self.assertIn("twe_get_server_status", server)
+        self.assertIn("twe_get_active_players", server)
+        self.assertIn("twe_get_installed_mods", server)
+        self.assertIn("twe_get_operation_history", server)
+        self.assertNotIn("@server.tool()\\n    def twe_restart", server)
+        self.assertIn("can_request_capability", tools)
+        self.assertIn("mcp.tool.called", tools)
+        self.assertIn("mcp_entrypoint:app", railway)
+
     def test_genesis_page_includes_capability_aware_member_view(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
         client = app.test_client()

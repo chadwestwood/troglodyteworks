@@ -1,23 +1,49 @@
 # Troglodyte Works MCP Tools
 
-**Status:** Future tool catalog. A listed tool is not a production capability
-unless an applicable provider adapter, authorization contract, audit lifecycle,
-and test suite are implemented. Current Nitrado production access is read-only
-status and player information; disruptive tools are disabled.
+**Status:** The first read-only MCP server is implemented. A listed action tool
+is not a production capability unless an applicable provider adapter,
+authorization contract, confirmation flow, audit lifecycle, and test suite are
+implemented.
 
 MCP tools are safe actions the AI can request.
 
-## Read-Only Tools
+## Implemented Read-Only Tools
 
-- list_customers
-- get_customer
-- list_services
-- list_servers
-- get_server_status
-- get_server_settings
-- read_latest_log
-- list_backups
-- list_mods
+- `twe_list_instances`
+- `twe_get_server_status`
+- `twe_get_active_players`
+- `twe_get_installed_mods`
+- `twe_get_operation_history`
+
+The server uses Streamable HTTP at `/mcp`. Clients authenticate with a
+revocable TWE MCP bearer token. Tokens resolve to a normal TWE User; every tool
+then reuses Community membership, instance access, and capability grants.
+Supplying an Instance ID from another tenant returns `NOT_FOUND`.
+
+Player names require `instance.players.names.read` independently of player
+count access. Every completed, failed, or denied tool call writes
+`mcp.tool.called` to the existing audit log without provider credentials or
+bearer-token material.
+
+### Personal token API
+
+Authenticated users manage their MCP tokens through:
+
+- `GET /api/v1/account/mcp-tokens`
+- `POST /api/v1/account/mcp-tokens`
+- `DELETE /api/v1/account/mcp-tokens/{token_id}`
+
+The raw token is returned only by the create response. Tokens are SHA-256
+hashed at rest, expire, and can be revoked.
+
+### Railway service
+
+Deploy a second service from the same repository root with config file
+`/railway.mcp.json`. It shares
+`TWE_DATABASE_URL` and the provider-secret variables with the web service.
+Railway's generated public domain is admitted automatically through
+`RAILWAY_PUBLIC_DOMAIN`. Additional exact hosts can be supplied as a
+comma-separated `TWE_MCP_ALLOWED_HOSTS` value.
 
 ## Planning Tools
 
@@ -29,7 +55,7 @@ MCP tools are safe actions the AI can request.
 
 ## Action Tools
 
-Action tools require approval.
+Action tools remain planned and require approval.
 
 - start_server
 - stop_server

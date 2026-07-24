@@ -61,6 +61,7 @@ class Config:
     railway_project_id: str | None = None
     railway_environment_id: str | None = None
     railway_minecraft_image: str = "itzg/minecraft-server:latest"
+    mcp_allowed_hosts: tuple[str, ...] = ("127.0.0.1:*", "localhost:*")
 
     @property
     def session_lifetime(self) -> timedelta:
@@ -152,6 +153,10 @@ def load_config() -> Config:
             "TWE_RAILWAY_MINECRAFT_IMAGE",
             "itzg/minecraft-server:latest",
         ),
+        mcp_allowed_hosts=parse_mcp_allowed_hosts(
+            os.environ.get("TWE_MCP_ALLOWED_HOSTS"),
+            os.environ.get("RAILWAY_PUBLIC_DOMAIN"),
+        ),
     )
 
 
@@ -177,6 +182,13 @@ def parse_csv(value: str | None) -> tuple[str, ...]:
     if not value:
         return ()
     return tuple(item.strip().lower() for item in value.split(",") if item.strip())
+
+
+def parse_mcp_allowed_hosts(value: str | None, railway_public_domain: str | None) -> tuple[str, ...]:
+    hosts = list(parse_csv(value)) or ["127.0.0.1:*", "localhost:*"]
+    if railway_public_domain and railway_public_domain.lower() not in hosts:
+        hosts.append(railway_public_domain.lower())
+    return tuple(hosts)
 
 
 def parse_provider_secret_keys(value: str | None) -> dict[str, bytes]:

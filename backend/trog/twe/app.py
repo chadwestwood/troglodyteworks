@@ -27,6 +27,7 @@ from .routes.host_agents import host_agents_bp
 from .routes.instances import instances_bp
 from .routes.operations import operations_bp
 from .routes.managed_hosting import managed_hosting_bp
+from .routes.mcp_access import mcp_access_bp
 from .services.provider_registry import build_provider_registry
 from .services.runtime_heartbeat import runtime_heartbeat_response
 
@@ -55,6 +56,7 @@ def create_app(config=None, database=None, provider_registry=None):
     app.register_blueprint(instances_bp, url_prefix="/api/v1")
     app.register_blueprint(operations_bp, url_prefix="/api/v1")
     app.register_blueprint(managed_hosting_bp, url_prefix="/api/v1")
+    app.register_blueprint(mcp_access_bp, url_prefix="/api/v1")
 
     site_root = Path(__file__).resolve().parents[3] / "site"
 

@@ -126,7 +126,22 @@ AI never directly changes the operating system.
 
 # Layer 6 — MCP Tools
 
-MCP Tools provide approved actions.
+The first MCP service provides audited, tenant-safe read tools over Streamable
+HTTP. Its bearer tokens map to real TWE Users, and tool execution reuses the
+same Community membership and instance capability checks as the web and
+Discord surfaces.
+
+Implemented reads:
+
+- Resolve the caller's Communities and Instances
+- Read server status
+- Read active-player count and separately authorized names
+- Read installed mods
+- Read operation history
+
+MCP action tools are still gated. They will provide approved actions only after
+the shared operation service, explicit confirmation rules, and end-to-end
+authorization tests are proven.
 
 Examples:
 
