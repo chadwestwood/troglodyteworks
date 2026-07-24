@@ -11,7 +11,12 @@ from ..serializers import operation_summary, operation_with_requester
 from ..services.adapters import adapter_for
 from ..services.instance_provisioning import reconcile_instance
 from ..services.nitrado_provider import NitradoProviderError
-from ..services.provider_resolution import read_game_server_health, resolve_game_server_provider
+from ..services.provider_resolution import (
+    read_game_server_health,
+    read_game_server_mods,
+    read_game_server_players,
+    resolve_game_server_provider,
+)
 
 instances_bp = Blueprint("twe_instances", __name__)
 
@@ -119,6 +124,45 @@ def get_health(instance_id):
             }
         )
     return jsonify({"health": health})
+
+
+@instances_bp.get("/instances/<instance_id>/overview")
+@require_user
+def get_instance_overview(instance_id):
+    """Return the small, member-facing snapshot used by an Instance home."""
+    with current_app.config["TWE_DB"].connect() as conn:
+        access = instance_access(conn, g.current_user["id"], instance_id)
+        if not access:
+            return api_error("NOT_FOUND", "Game Instance was not found.", 404)
+        resolution = resolve_game_server_provider(conn, access["game_server_id"])
+
+    health = None
+    players = None
+    mods = None
+    try:
+        health = read_game_server_health(resolution, current_app.config["TWE_CONFIG"])
+    except Exception:
+        # An unavailable provider should not make the whole member home fail.
+        pass
+    try:
+        player_result = read_game_server_players(resolution, current_app.config["TWE_CONFIG"])
+        players = {"count": int(player_result.get("count", len(player_result.get("players") or [])))}
+    except Exception:
+        pass
+    try:
+        mods = read_game_server_mods(resolution, current_app.config["TWE_CONFIG"])
+    except Exception:
+        pass
+
+    return jsonify(
+        {
+            "overview": {
+                "health": health,
+                "players": players,
+                "mods": mods,
+            }
+        }
+    )
 
 
 @instances_bp.get("/instances/<instance_id>/capabilities")

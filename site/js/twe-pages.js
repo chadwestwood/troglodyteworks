@@ -828,34 +828,72 @@ async function initGenesis() {
   if (location.get("game_server_id")) remember("twe.game_server_id", location.get("game_server_id"));
   remember("twe.instance_id", instanceId);
   remember("twe.community_id", communityId);
-  const [instanceData, healthData, capabilitiesData, communityData] = await Promise.all([
+  const [instanceData, overviewData, capabilitiesData] = await Promise.all([
     apiRequest(`/instances/${instanceId}`),
-    apiRequest(`/instances/${instanceId}/health`),
+    apiRequest(`/instances/${instanceId}/overview`),
     apiRequest(`/instances/${instanceId}/capabilities`),
-    apiRequest(`/communities/${communityId}`),
   ]);
   const visibleCapabilities = capabilitiesData.capabilities.filter(
-    (capability) => capability.available || capability.unavailable_reason !== "Your Community role cannot request this Capability."
+    (capability) => capability.available
   );
   const hasOperatorAccess = visibleCapabilities.length > 0;
   setText("[data-instance-name]", instanceData.instance.name);
   document.title = `${instanceData.instance.name} | Troglodyte Works`;
-  setText("[data-trog-instance-name]", instanceData.instance.name);
-  setText("[data-instance-summary]", "Connected service world and operations status");
-  const trogLink = document.querySelector("[data-trog-instance-link]");
-  if (trogLink) {
+  document.querySelectorAll("[data-trog-instance-link]").forEach((trogLink) => {
     const query = new URLSearchParams({ community_id: communityId, instance_id: instanceId });
     trogLink.href = `/discord/request-access/?${query.toString()}`;
+  });
+  const heroImage = document.querySelector("[data-instance-hero-image]");
+  if (heroImage) {
+    heroImage.src = instanceData.instance.image_url || "/assets/illustrations/empty-community.svg";
+    heroImage.alt = `${instanceData.instance.name} map`;
   }
-  renderGenesisHealth(healthData.health, hasOperatorAccess);
-  configureGenesisAccessView(hasOperatorAccess);
+  renderInstanceOverview(overviewData.overview);
+  configureInstanceManager(instanceData.instance, hasOperatorAccess);
   setupInstanceIdentity(instanceData.instance);
   if (hasOperatorAccess) {
-    const operationsData = await apiRequest(`/instances/${instanceId}/server-operations?limit=10`);
     renderCapabilities(instanceId, visibleCapabilities);
-    renderOperations(operationsData.server_operations);
   }
-  await initMembershipApprovals(communityId, communityData.community.current_user_role);
+}
+
+function renderInstanceOverview(overview) {
+  const health = overview.health || { overall_status: "unknown", checks: [] };
+  const status = genesisStatusPresentation(health.overall_status);
+  setText("[data-health-status]", status.label);
+  setText("[data-health-status-copy]", status.label.toLowerCase());
+  setText("[data-health-summary]", status.summary);
+  const healthDot = document.querySelector("[data-health-dot]");
+  if (healthDot) {
+    healthDot.dataset.state = health.overall_status === "ready" ? "online" : health.overall_status === "offline" ? "offline" : "unknown";
+  }
+
+  const playerCount = overview.players?.count;
+  const playerValue = Number.isInteger(playerCount) ? playerCount : "—";
+  setText("[data-player-count]", playerValue);
+  setText("[data-player-count-large]", playerValue);
+  setText(
+    "[data-player-note]",
+    Number.isInteger(playerCount) ? "Live count from the connected host." : "Live player count is temporarily unavailable."
+  );
+
+  const mods = Array.isArray(overview.mods) ? overview.mods : [];
+  setText("[data-mod-count]", mods.length || "—");
+  const modList = document.querySelector("[data-mod-list]");
+  clearNode(modList);
+  if (!Array.isArray(overview.mods)) {
+    modList?.appendChild(createResourceRow("Mod list unavailable", "Trog could not reach the connected host right now."));
+    return;
+  }
+  if (!mods.length) {
+    modList?.appendChild(createResourceRow("No active mods", "Genesis is currently using its base game setup."));
+    return;
+  }
+  mods.forEach((mod) => {
+    const item = document.createElement("div");
+    item.className = "mod-chip";
+    item.textContent = mod.name || `Mod ${mod.id}`;
+    modList?.appendChild(item);
+  });
 }
 
 function setupInstanceIdentity(instance) {
@@ -877,18 +915,16 @@ function setupInstanceIdentity(instance) {
   });
 }
 
-function configureGenesisAccessView(hasOperatorAccess) {
-  const readOnlyPanel = document.querySelector("[data-read-only-panel]");
+function configureInstanceManager(instance, hasOperatorAccess) {
+  const manager = document.querySelector("[data-manager-panel]");
+  const shortcut = document.querySelector("[data-manage-shortcut]");
   const capabilitiesPanel = document.querySelector("[data-capabilities-panel]");
-  const operationsPanel = document.querySelector("[data-operations-panel]");
-  if (readOnlyPanel) {
-    readOnlyPanel.hidden = hasOperatorAccess;
-  }
+  const canEditIdentity = ["owner", "admin"].includes(instance.viewer_role);
+  const canManage = canEditIdentity || hasOperatorAccess;
+  if (manager) manager.hidden = !canManage;
+  if (shortcut) shortcut.hidden = !canManage;
   if (capabilitiesPanel) {
     capabilitiesPanel.hidden = !hasOperatorAccess;
-  }
-  if (operationsPanel) {
-    operationsPanel.hidden = !hasOperatorAccess;
   }
 }
 

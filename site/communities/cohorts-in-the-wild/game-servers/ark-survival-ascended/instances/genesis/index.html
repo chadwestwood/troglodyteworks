@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Genesis | Troglodyte Works</title>
-  <link rel="stylesheet" href="/css/style.css?v=layout-tightening-v5">
+  <link rel="stylesheet" href="/css/style.css?v=instance-home-v1">
 </head>
 
 <body class="app-page" data-page="genesis">
@@ -13,81 +13,107 @@
     <header class="app-header">
       <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
       <nav class="header-actions" aria-label="User navigation">
-        <a class="header-link" href="/communities/">Operations</a>
-        <a class="header-link" href="/communities/cohorts-in-the-wild/invitations/">Members</a>
-        <a class="header-link" href="/explore/">Events</a>
-        <a class="header-link" href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">Connected
-          Services</a>
-        <a class="header-link" href="/server-operations/">Activity</a>
-        <a class="header-link" href="/account/">Settings</a>
-        <a class="header-link" href="/admin/" data-admin-link hidden>Admin</a>
-        <button class="text-button" type="button" data-sign-out>Sign out</button>
+        <a class="header-link" href="/communities/">My Communities</a>
+        <a class="header-link" href="/account/">Profile</a>
       </nav>
     </header>
-    <nav class="breadcrumbs">Home &gt; Operations &gt; Connected Services &gt; Service World</nav>
-    <main class="app-grid">
-      <section class="app-panel">
-        <p class="eyebrow">Service World</p>
-        <h1 data-instance-name>Genesis</h1>
-        <p class="muted" data-instance-summary>Connected service world and operations status</p>
-        <p class="muted">Use this page to track world health, see recent operational activity, and run permitted
-          actions.</p>
-        <p class="form-error" data-error hidden></p>
-      </section>
-      <section class="app-panel">
-        <h2>World status</h2>
-        <p class="status-line" data-health-status>Loading</p>
-        <p class="muted" data-health-summary>Checking whether Genesis is available.</p>
-        <div class="resource-list" data-health-checks></div>
-      </section>
-      <section class="app-panel" data-read-only-panel hidden>
-        <div>
-          <p class="eyebrow">Your access</p>
-          <h2>Read-only community view</h2>
-          <p class="muted">You can see service health and community context. Operational controls appear only for
-            authorized staff.</p>
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="/communities/">My Communities</a><span>›</span>
+      <a href="/communities/cohorts-in-the-wild/">Cohorts in the Wild</a><span>›</span>
+      <a href="/communities/cohorts-in-the-wild/game-servers/ark-survival-ascended/">ARK: Survival Ascended</a><span>›</span>
+      <span aria-current="page">Genesis</span>
+    </nav>
+    <main class="instance-home">
+      <section class="instance-hero" data-instance-hero>
+        <img class="instance-hero__image" data-instance-hero-image alt="">
+        <div class="instance-hero__shade"></div>
+        <div class="instance-hero__content">
+          <p class="eyebrow">Cohorts in the Wild · ARK: Survival Ascended</p>
+          <h1 data-instance-name>Genesis</h1>
+          <div class="instance-facts" aria-label="Live server summary">
+            <span class="instance-fact"><i data-health-dot></i><strong data-health-status>Checking</strong></span>
+            <span class="instance-fact"><strong data-player-count>—</strong> players</span>
+            <span class="instance-fact"><strong data-mod-count>—</strong> mods</span>
+          </div>
         </div>
       </section>
-      <section class="app-panel" data-trog-instance-panel>
+      <p class="form-error" data-error hidden></p>
+
+      <section class="instance-actions" aria-label="Genesis options">
+        <a class="instance-action-card" href="#" data-trog-instance-link>
+          <span class="instance-action-card__icon" aria-hidden="true">T</span>
+          <span><strong>Use Trog</strong><small>Ask questions and get help in Discord</small></span>
+          <span aria-hidden="true">→</span>
+        </a>
+        <a class="instance-action-card" href="#mods">
+          <span class="instance-action-card__icon" aria-hidden="true">◆</span>
+          <span><strong>Installed mods</strong><small>See what changes this map</small></span>
+          <span aria-hidden="true">→</span>
+        </a>
+        <a class="instance-action-card" href="/communities/cohorts-in-the-wild/invitations/">
+          <span class="instance-action-card__icon" aria-hidden="true">+</span>
+          <span><strong>Community members</strong><small>See who belongs to Cohorts in the Wild</small></span>
+          <span aria-hidden="true">→</span>
+        </a>
+        <a class="instance-action-card" href="#manage" data-manage-shortcut hidden>
+          <span class="instance-action-card__icon" aria-hidden="true">⚙</span>
+          <span><strong>Manage Genesis</strong><small>Owner and administrator controls</small></span>
+          <span aria-hidden="true">→</span>
+        </a>
+      </section>
+
+      <section class="instance-section" aria-labelledby="status-title">
         <div>
-          <p class="eyebrow">This world in Discord</p>
-          <h2>Use Trog for <span data-trog-instance-name>this map</span></h2>
-          <p class="muted">Connect this exact world to one Discord server or to selected channels. Questions and
-            commands in those channels will always resolve to this world.</p>
+          <p class="eyebrow">Right now</p>
+          <h2 id="status-title">Genesis is <span data-health-status-copy>being checked</span></h2>
+          <p class="muted" data-health-summary>Checking whether the map is available.</p>
         </div>
-        <a class="primary-button" href="#" data-trog-instance-link>Set up Trog for this world</a>
+        <div class="instance-status-card">
+          <span class="instance-status-card__number" data-player-count-large>—</span>
+          <span>players online</span>
+          <small data-player-note>Checking the live player count.</small>
+        </div>
       </section>
-      <section class="app-panel" data-instance-identity-panel hidden>
-        <p class="eyebrow">Appearance</p>
-        <h2>Server identity</h2>
-        <p class="muted">Change how this server appears throughout your Community. Provider details stay unchanged.</p>
-        <form class="identity-form" data-instance-identity-form>
-          <img class="image-preview" data-instance-preview alt="Server preview">
-          <label>Server name<input name="name" maxlength="120" required></label>
-          <label>Server image<input name="image" type="file" accept="image/png,image/jpeg,image/webp"></label>
-          <button class="primary-button" type="submit">Save server identity</button>
-        </form>
-      </section>
-      <section class="app-panel" data-membership-approvals-panel hidden>
+
+      <section class="instance-section instance-section--stacked" id="mods" aria-labelledby="mods-title">
         <div>
-          <p class="eyebrow">Cohorts in the Wild · Needs attention</p>
-          <h2>Membership requests <span data-membership-approval-count></span></h2>
-          <p class="muted">Approve or deny people who used an approval-required invitation link.</p>
+          <p class="eyebrow">How this map plays</p>
+          <h2 id="mods-title">Installed mods</h2>
+          <p class="muted">The active additions currently configured for Genesis.</p>
         </div>
-        <p class="status-line" data-membership-approval-status role="status" hidden></p>
-        <div class="resource-list" data-membership-approval-list></div>
-        <a class="primary-button secondary" href="/communities/cohorts-in-the-wild/invitations/">Manage all
-          invitations</a>
+        <div class="mod-grid" data-mod-list>
+          <p class="muted">Loading installed mods…</p>
+        </div>
       </section>
-      <section class="app-panel" data-capabilities-panel>
-        <h2>Operations actions</h2>
-        <p class="muted">Only actions currently supported by this service connection are shown.</p>
-        <div class="resource-list" data-capabilities></div>
-      </section>
-      <section class="app-panel" data-operations-panel>
-        <h2>Recent operations activity</h2>
-        <p class="muted">Completed, in-progress, and failed operations for this world.</p>
-        <div class="resource-list" data-operations></div>
+
+      <details class="instance-manager" id="manage" data-manager-panel hidden>
+        <summary>
+          <span><strong>Manage Genesis</strong><small>Appearance and approved server controls</small></span>
+          <span aria-hidden="true">+</span>
+        </summary>
+        <div class="instance-manager__body">
+          <section data-instance-identity-panel hidden>
+            <h2>Map appearance</h2>
+            <p class="muted">Change the name and image your Community sees.</p>
+            <form class="identity-form" data-instance-identity-form>
+              <img class="image-preview" data-instance-preview alt="Map preview">
+              <label>Map name<input name="name" maxlength="120" required></label>
+              <label>Map image<input name="image" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <button class="primary-button" type="submit">Save appearance</button>
+            </form>
+          </section>
+          <section data-capabilities-panel hidden>
+            <h2>Server controls</h2>
+            <p class="muted">Only controls that are ready and permitted for you appear here.</p>
+            <div class="resource-list" data-capabilities></div>
+          </section>
+        </div>
+      </details>
+
+      <section class="instance-help">
+        <p><strong>Looking for something else?</strong> Ask Trog in the connected Discord channel. Trog already knows
+          you mean Genesis.</p>
+        <a class="text-link" href="#" data-trog-instance-link>Open Trog setup →</a>
       </section>
     </main>
   </div>
