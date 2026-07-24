@@ -529,6 +529,18 @@
     box-shadow: var(--shadow-card);
 }
 
+.discord-access-panel {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.discord-access-panel > * {
+    grid-column: 1;
+}
+
+.discord-access-panel > h1 {
+    max-width: none;
+}
+
 .discord-route-card__header,
 .discord-channel-picker__action {
     display: flex;
