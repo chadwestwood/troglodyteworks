@@ -355,25 +355,67 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertEqual(transport.calls[1][2], {})
 
     @patch("twe.services.nitrado_provider.time.sleep", return_value=None)
-    def test_add_mod_fails_when_nitrado_does_not_confirm_the_setting(self, _sleep):
+    def test_add_mod_reapplies_once_when_first_write_is_not_persisted(self, _sleep):
+        unchanged = _gameserver_mods_response("927090")
+        confirmed = _gameserver_mods_response("927090,999123")
+        transport = _Transport([
+            unchanged,
+            NitradoHttpResponse(200, b'{"status":"success","data":{}}'),
+            *[unchanged for _ in range(6)],
+            NitradoHttpResponse(200, b'{"status":"success","data":{}}'),
+            confirmed,
+        ])
+
+        added, mods = NitradoProvider(self.config, transport).add_mod(
+            self._context(), "999123",
+        )
+
+        self.assertTrue(added)
+        self.assertEqual([mod["id"] for mod in mods], ["927090", "999123"])
+        settings_calls = [
+            call for call in transport.calls
+            if "/gameservers/settings?" in call[0]
+        ]
+        self.assertEqual(len(settings_calls), 2)
+        self.assertEqual(settings_calls[0][0], settings_calls[1][0])
+
+    @patch("twe.services.nitrado_provider.time.sleep", return_value=None)
+    def test_add_mod_tolerates_temporary_verification_read_failures(self, _sleep):
         transport = _Transport([
             _gameserver_mods_response("927090"),
             NitradoHttpResponse(200, b'{"status":"success","data":{}}'),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
-            _gameserver_mods_response("927090"),
+            NitradoHttpResponse(503, b""),
+            NitradoHttpResponse(429, b""),
+            _gameserver_mods_response("927090,999123"),
         ])
 
-        with self.assertRaises(NitradoSettingsVerificationError):
+        added, mods = NitradoProvider(self.config, transport).add_mod(
+            self._context(), "999123",
+        )
+
+        self.assertTrue(added)
+        self.assertEqual([mod["id"] for mod in mods], ["927090", "999123"])
+        settings_calls = [
+            call for call in transport.calls
+            if "/gameservers/settings?" in call[0]
+        ]
+        self.assertEqual(len(settings_calls), 1)
+
+    @patch("twe.services.nitrado_provider.time.sleep", return_value=None)
+    def test_add_mod_fails_when_nitrado_does_not_confirm_the_setting(self, _sleep):
+        unchanged = _gameserver_mods_response("927090")
+        transport = _Transport([
+            unchanged,
+            NitradoHttpResponse(200, b'{"status":"success","data":{}}'),
+            *[unchanged for _ in range(6)],
+            NitradoHttpResponse(200, b'{"status":"success","data":{}}'),
+            *[unchanged for _ in range(6)],
+        ])
+
+        with self.assertRaises(NitradoSettingsVerificationError) as raised:
             NitradoProvider(self.config, transport).add_mod(self._context(), "999123")
+        self.assertIn("retried it safely", str(raised.exception))
+        self.assertIn("server was not restarted", str(raised.exception))
 
     def test_add_existing_mod_is_idempotent_and_does_not_write(self):
         transport = _Transport(_gameserver_mods_response("927090,928708"))

@@ -24,6 +24,8 @@ from .mod_catalog import AsaModCatalog, CurseForgeModLookup
 
 
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+MOD_VERIFICATION_ATTEMPTS_PER_PHASE = 6
+MOD_VERIFICATION_DELAY_SECONDS = 3
 
 
 class NitradoProviderError(RuntimeError):
@@ -77,7 +79,9 @@ class NitradoSettingsVerificationError(NitradoProviderError):
 
     def __init__(self):
         super().__init__(
-            "Nitrado accepted the setting request but did not confirm the mod was saved."
+            "Nitrado accepted the mod setting and Trog retried it safely, but the change "
+            "is not visible yet. The server was not restarted. Wait a minute, then ask "
+            "`@Trog what mods are installed?` before sending another add request."
         )
 
 
@@ -539,29 +543,69 @@ class NitradoProvider:
                 "Nitrado did not expose a writable active-mod setting for this server."
             )
         category, setting_key = writable_setting
-        self._client.set_gameserver_mods(
-            context.resource.external_resource_id,
-            credential,
-            [*existing_ids, mod_id],
-            category=category,
-            key=setting_key,
+        desired_ids = [*existing_ids, mod_id]
+        self._write_mod_configuration(
+            context, credential, desired_ids, category, setting_key,
         )
+
         # A successful settings response only means Nitrado accepted the
-        # request. Read the setting back before telling Discord it was saved.
-        updated = None
-        for attempt in range(11):
-            if attempt:
-                time.sleep(3)
-            confirmed = self._client.get_gameserver_mods(
-                context.resource.external_resource_id,
-                credential,
-            )
-            if mod_id in {mod["id"] for mod in confirmed}:
-                updated = confirmed
-                break
+        # request. Verify it, then safely reapply the exact desired list once
+        # if Nitrado did not persist the first request. Replacing the complete
+        # list with the same value is idempotent and cannot duplicate a mod.
+        updated = self._verify_mod_configuration(context, credential, mod_id)
+        if updated is None:
+            try:
+                self._write_mod_configuration(
+                    context, credential, desired_ids, category, setting_key,
+                )
+            except (NitradoUnavailableError, NitradoRateLimitedError, NitradoMalformedResponseError):
+                # The recovery write may have reached Nitrado even when its
+                # response was unavailable. Perform the final read-back phase
+                # before deciding that the outcome is still unconfirmed.
+                pass
+            updated = self._verify_mod_configuration(context, credential, mod_id)
         if updated is None:
             raise NitradoSettingsVerificationError()
         return True, self._mod_catalog.enrich(updated) if self._mod_catalog else updated
+
+    def _write_mod_configuration(
+        self,
+        context: ProviderContext,
+        credential: bytes,
+        desired_ids: list[str],
+        category: str,
+        setting_key: str,
+    ) -> None:
+        self._client.set_gameserver_mods(
+            context.resource.external_resource_id,
+            credential,
+            desired_ids,
+            category=category,
+            key=setting_key,
+        )
+
+    def _verify_mod_configuration(
+        self,
+        context: ProviderContext,
+        credential: bytes,
+        mod_id: str,
+    ) -> list[dict[str, str]] | None:
+        for attempt in range(MOD_VERIFICATION_ATTEMPTS_PER_PHASE):
+            if attempt:
+                time.sleep(MOD_VERIFICATION_DELAY_SECONDS)
+            try:
+                confirmed = self._client.get_gameserver_mods(
+                    context.resource.external_resource_id,
+                    credential,
+                )
+            except (NitradoUnavailableError, NitradoRateLimitedError, NitradoMalformedResponseError):
+                # Reads during a provider update can be temporarily unavailable
+                # or incomplete. Authentication and scope errors intentionally
+                # remain fatal and are not swallowed here.
+                continue
+            if mod_id in {mod["id"] for mod in confirmed}:
+                return confirmed
+        return None
 
     def restart(self, context: ProviderContext) -> None:
         if context.connection.provider_key != "nitrado":
