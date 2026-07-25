@@ -887,6 +887,9 @@ async function initWorld() {
     const query = new URLSearchParams({ community_id: communityId, instance_id: instanceId });
     trogLink.href = `/discord/request-access/?${query.toString()}`;
   });
+  document.querySelectorAll("[data-world-activity-link]").forEach((activityLink) => {
+    activityLink.href = `${window.location.pathname.replace(/\/?$/, "/")}activity/`;
+  });
   const heroImage = document.querySelector("[data-instance-hero-image]");
   if (heroImage) {
     heroImage.src = instanceData.instance.image_url || "/assets/illustrations/world-default.svg";
@@ -898,6 +901,107 @@ async function initWorld() {
   if (hasOperatorAccess) {
     renderCapabilities(instanceId, visibleCapabilities);
   }
+}
+
+async function initWorldActivity() {
+  await requireCurrentUser();
+  const location = new URLSearchParams(window.location.search);
+  const instanceId = location.get("instance_id") || await findInstanceId();
+  const [instanceData, activityData] = await Promise.all([
+    apiRequest(`/instances/${instanceId}`),
+    apiRequest(`/instances/${instanceId}/activity`),
+  ]);
+  const instance = instanceData.instance;
+  document.title = `Recent activity · ${instance.name} | Troglodyte Works`;
+  document.querySelectorAll("[data-instance-name]").forEach((node) => {
+    node.textContent = instance.name;
+  });
+  document.querySelectorAll("[data-community-name]").forEach((node) => {
+    node.textContent = instance.community_name;
+  });
+  const worldPath = window.location.pathname.replace(/activity\/?$/, "");
+  const pathParts = worldPath.split("/").filter(Boolean);
+  const communitySlug = pathParts[0] === "communities" ? pathParts[1] : "";
+  document.querySelectorAll("[data-community-link]").forEach((link) => {
+    link.href = `/communities/${encodeURIComponent(communitySlug)}/`;
+  });
+  document.querySelectorAll("[data-world-link]").forEach((link) => {
+    link.href = worldPath;
+  });
+  const operatorNote = document.querySelector("[data-operator-activity-note]");
+  if (operatorNote) operatorNote.hidden = !activityData.viewer.can_see_operator_details;
+  setupWorldActivityFilters(activityData.activity || []);
+}
+
+function setupWorldActivityFilters(items) {
+  const buttons = [...document.querySelectorAll("[data-activity-filter]")];
+  const render = (filter) => {
+    buttons.forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.activityFilter === filter);
+    });
+    const visible = items.filter((item) => {
+      if (filter === "all") return true;
+      if (filter === "problems") return item.status === "failed";
+      return item.category === filter;
+    });
+    renderWorldActivity(visible);
+  };
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => render(button.dataset.activityFilter));
+  });
+  render("all");
+}
+
+function renderWorldActivity(items) {
+  const list = document.querySelector("[data-world-activity]");
+  clearNode(list);
+  if (!items.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    const title = document.createElement("h2");
+    title.textContent = "Nothing here yet";
+    const copy = document.createElement("p");
+    copy.className = "muted";
+    copy.textContent = "World changes and Trog actions will appear here.";
+    empty.append(title, copy);
+    list?.appendChild(empty);
+    return;
+  }
+  items.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "activity-card";
+    card.dataset.tone = item.tone || "neutral";
+    const mark = document.createElement("span");
+    mark.className = "activity-card__mark";
+    mark.setAttribute("aria-hidden", "true");
+    const body = document.createElement("div");
+    const title = document.createElement("h2");
+    title.textContent = item.title;
+    const summary = document.createElement("p");
+    summary.textContent = item.summary;
+    const meta = document.createElement("div");
+    meta.className = "activity-card__meta";
+    const time = document.createElement("span");
+    time.textContent = formatDashboardDate(item.recorded_at);
+    meta.appendChild(time);
+    if (item.requested_by) {
+      const actor = document.createElement("span");
+      actor.textContent = `Requested by ${item.requested_by}`;
+      meta.appendChild(actor);
+    }
+    body.append(title, summary, meta);
+    if (item.operator_detail) {
+      const detail = document.createElement("p");
+      detail.className = "activity-card__detail";
+      detail.textContent = item.operator_detail;
+      body.appendChild(detail);
+    }
+    const status = document.createElement("span");
+    status.className = "activity-card__status";
+    status.textContent = item.status_label;
+    card.append(mark, body, status);
+    list?.appendChild(card);
+  });
 }
 
 function renderInstanceOverview(overview, worldName = "World") {
@@ -1216,6 +1320,7 @@ const initializers = {
   community: initCommunity,
   gameServer: initGameServer,
   world: initWorld,
+  worldActivity: initWorldActivity,
   genesis: initWorld,
   operation: initOperation,
 };

@@ -1,0 +1,21 @@
+.activity-home{display:grid;gap:1.25rem;padding-bottom:3rem}
+.activity-hero{display:flex;align-items:end;justify-content:space-between;gap:1.5rem;padding:2rem;border:1px solid var(--color-border);border-radius:26px;background:var(--color-surface);box-shadow:0 12px 35px rgba(28,53,47,.07)}
+.activity-hero h1{margin:.15rem 0 .5rem}
+.activity-filters{display:flex;flex-wrap:wrap;gap:.65rem}
+.activity-filter{padding:.7rem 1rem;border:1px solid var(--color-border);border-radius:999px;background:var(--color-surface);color:var(--color-text);font:inherit;font-weight:700;cursor:pointer}
+.activity-filter:hover,.activity-filter:focus-visible,.activity-filter.is-active{border-color:var(--color-primary);background:#dcebe6;color:var(--color-primary)}
+.activity-list{display:grid;gap:.85rem}
+.activity-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:1rem;align-items:start;padding:1.2rem 1.35rem;border:1px solid var(--color-border);border-radius:20px;background:var(--color-surface)}
+.activity-card__mark{width:.75rem;height:.75rem;margin-top:.42rem;border-radius:999px;background:#78948c}
+.activity-card[data-tone="success"] .activity-card__mark{background:#2e8b63}
+.activity-card[data-tone="warning"] .activity-card__mark{background:#c77a2b}
+.activity-card[data-tone="progress"] .activity-card__mark{background:#397d96}
+.activity-card h2{margin:0 0 .25rem;font-size:1.06rem}
+.activity-card p{margin:0;color:var(--color-text-muted)}
+.activity-card__meta{display:flex;flex-wrap:wrap;gap:.4rem .85rem;margin-top:.55rem;font-size:.86rem;color:var(--color-text-muted)}
+.activity-card__detail{margin-top:.75rem!important;padding:.75rem .85rem;border-radius:12px;background:#f2f6f4;color:var(--color-text)!important}
+.activity-card__status{white-space:nowrap;font-size:.86rem;font-weight:800;color:var(--color-primary)}
+.activity-card[data-tone="warning"] .activity-card__status{color:#9a4e1a}
+.activity-note{display:flex;gap:.65rem;padding:1rem 1.15rem;border-radius:16px;background:#eef5f2;color:var(--color-text-muted)}
+.activity-note strong{color:var(--color-text)}
+@media(max-width:680px){.activity-hero{align-items:flex-start;flex-direction:column}.activity-card{grid-template-columns:auto minmax(0,1fr)}.activity-card__status{grid-column:2}.activity-note{flex-direction:column}}

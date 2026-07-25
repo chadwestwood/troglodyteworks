@@ -313,6 +313,112 @@ def list_operations(instance_id):
     return jsonify({"server_operations": [operation_with_requester(row) for row in rows]})
 
 
+@instances_bp.get("/instances/<instance_id>/activity")
+@require_user
+def list_world_activity(instance_id):
+    try:
+        limit = min(max(int(request.args.get("limit", "30")), 1), 50)
+    except ValueError:
+        return api_error("VALIDATION_ERROR", "Limit must be a number.", 400)
+
+    with current_app.config["TWE_DB"].connect() as conn:
+        access = instance_access(conn, g.current_user["id"], instance_id)
+        if not access:
+            return api_error("NOT_FOUND", "World was not found.", 404)
+        delegated = fetch_one(
+            conn,
+            """
+            SELECT id::text
+            FROM server_operation_capability_grants
+            WHERE community_membership_id = %s
+              AND revoked_at IS NULL
+              AND (
+                game_instance_id = %s
+                OR (game_instance_id IS NULL AND game_server_id = %s)
+                OR (game_instance_id IS NULL AND game_server_id IS NULL)
+              )
+            LIMIT 1
+            """,
+            (access["membership_id"], instance_id, access["game_server_id"]),
+        )
+        include_operator_details = access["role"] == "owner" or bool(delegated)
+        rows = fetch_all(
+            conn,
+            """
+            SELECT so.id::text, so.capability, so.status, so.requested_at,
+                   so.completed_at, so.result_message,
+                   users.display_name AS requested_by_display_name
+            FROM server_operations so
+            JOIN users ON users.id = so.requested_by
+            WHERE so.game_instance_id = %s
+            ORDER BY so.requested_at DESC
+            LIMIT %s
+            """,
+            (instance_id, limit),
+        )
+    return jsonify(
+        {
+            "activity": [
+                _world_activity_item(row, include_operator_details)
+                for row in rows
+            ],
+            "viewer": {"can_see_operator_details": include_operator_details},
+        }
+    )
+
+
+def _world_activity_item(row, include_operator_details=False):
+    capability = str(row.get("capability") or "")
+    status = str(row.get("status") or "requested")
+    if "mods" in capability or "mod" in capability:
+        category = "mods"
+        subject = "Mod update"
+        completed_summary = "The World’s mod configuration was updated."
+    elif "restart" in capability:
+        category = "restarts"
+        subject = "World restart"
+        completed_summary = "A restart was requested for this World."
+    elif "status" in capability or "players" in capability:
+        category = "status"
+        subject = "World status check"
+        completed_summary = "The latest World information was checked."
+    elif "provision" in capability or "install" in capability:
+        category = "setup"
+        subject = "World setup"
+        completed_summary = "The World setup was updated."
+    else:
+        category = "other"
+        subject = "World change"
+        completed_summary = "A World operation was completed."
+
+    if status == "completed":
+        title, summary, label, tone = subject, completed_summary, "Completed", "success"
+    elif status == "failed":
+        title, summary, label, tone = f"{subject} needs attention", "A World action could not be completed.", "Needs attention", "warning"
+    elif status == "cancelled":
+        title, summary, label, tone = f"{subject} cancelled", "The requested World action was cancelled.", "Cancelled", "neutral"
+    else:
+        title, summary, label, tone = f"{subject} in progress", "Trog is working on this World action.", "In progress", "progress"
+
+    recorded_at = row.get("completed_at") or row.get("requested_at")
+    item = {
+        "id": row.get("id"),
+        "category": category,
+        "title": title,
+        "summary": summary,
+        "status": status,
+        "status_label": label,
+        "tone": tone,
+        "recorded_at": recorded_at.isoformat().replace("+00:00", "Z") if hasattr(recorded_at, "isoformat") else recorded_at,
+    }
+    if include_operator_details:
+        item["requested_by"] = row.get("requested_by_display_name") or "Community operator"
+        item["operator_detail"] = row.get("result_message") or (
+            "Review the connected host and try the action again." if status == "failed" else None
+        )
+    return item
+
+
 def _complete_status_operation(conn, operation_id: str, health: dict):
     started = datetime.now(timezone.utc)
     execute(

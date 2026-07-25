@@ -2,6 +2,7 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +16,7 @@ from twe.authorization import can_request_capability
 from twe.config import Config
 from twe.responses import api_error
 from twe.routes.auth import normalize_email, validate_registration_payload
+from twe.routes.instances import _world_activity_item
 from twe.security import hash_password, verify_password
 from twe.services import local_asa
 
@@ -47,6 +49,33 @@ class FoundationTests(unittest.TestCase):
         response = client.get("/auth/sign-in.html")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Sign In", response.data)
+
+    def test_world_activity_page_is_served(self):
+        app = create_app(Config(database_url="postgresql://unused"), database=object())
+        response = app.test_client().get(
+            "/communities/example/game-servers/ark/instances/genesis/activity/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Recent activity", response.data)
+
+    def test_world_activity_hides_operator_details_from_members(self):
+        row = {
+            "id": "operation-1",
+            "capability": "instance.mods.write",
+            "status": "failed",
+            "requested_at": datetime(2026, 7, 25, tzinfo=timezone.utc),
+            "completed_at": None,
+            "result_message": "Provider diagnostic details",
+            "requested_by_display_name": "Owner",
+        }
+        member_item = _world_activity_item(row, False)
+        self.assertEqual(member_item["title"], "Mod update needs attention")
+        self.assertNotIn("operator_detail", member_item)
+        self.assertNotIn("requested_by", member_item)
+
+        operator_item = _world_activity_item(row, True)
+        self.assertEqual(operator_item["operator_detail"], "Provider diagnostic details")
+        self.assertEqual(operator_item["requested_by"], "Owner")
 
     def test_root_shows_landing_page_to_visitors_and_communities_to_signed_in_users(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())

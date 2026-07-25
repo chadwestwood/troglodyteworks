@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recent activity | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=world-activity-v1">
+</head>
+<body class="app-page" data-page="worldActivity">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <nav class="header-actions" aria-label="User navigation">
+        <a class="header-link" href="/communities/">My Communities</a>
+        <a class="header-link" href="/account/">Profile</a>
+      </nav>
+    </header>
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="/communities/">My Communities</a><span>›</span>
+      <a href="#" data-community-link><span data-community-name>Community</span></a><span>›</span>
+      <a href="#" data-world-link><span data-instance-name>World</span></a><span>›</span>
+      <span aria-current="page">Recent activity</span>
+    </nav>
+    <main class="activity-home">
+      <section class="activity-hero">
+        <div>
+          <p class="eyebrow">World history</p>
+          <h1>Recent activity</h1>
+          <p class="muted">Changes, restarts, and Trog actions for <strong data-instance-name>this World</strong>.</p>
+        </div>
+        <a class="secondary-action" href="#" data-world-link>Back to World</a>
+      </section>
+      <p class="form-error" data-error hidden></p>
+      <div class="activity-filters" role="group" aria-label="Filter recent activity">
+        <button class="activity-filter is-active" type="button" data-activity-filter="all">All activity</button>
+        <button class="activity-filter" type="button" data-activity-filter="mods">Mods</button>
+        <button class="activity-filter" type="button" data-activity-filter="restarts">Restarts</button>
+        <button class="activity-filter" type="button" data-activity-filter="problems">Needs attention</button>
+      </div>
+      <section class="activity-list" data-world-activity aria-live="polite">
+        <div class="empty-state"><h2>Loading activity…</h2><p class="muted">Checking this World’s recent changes.</p></div>
+      </section>
+      <aside class="activity-note" data-operator-activity-note hidden>
+        <strong>Operator view</strong>
+        <span>You can see who requested actions and the recovery details available to your role.</span>
+      </aside>
+    </main>
+  </div>
+  <script src="/js/navigation.js?v=p0-p2-v1" defer></script>
+  <script src="/js/twe-api.js?v=p0-p2-v1"></script>
+  <script src="/js/twe-pages.js?v=world-activity-v1"></script>
+</body>
+</html>
