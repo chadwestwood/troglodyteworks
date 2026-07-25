@@ -47,6 +47,7 @@ Examples:
 @Trog map settings
 @Trog restart
 @Trog add 930381 to the map
+@Trog add Silent Structures to the world
 ```
 
 For external provider-owned access, replies identify the provider-owned instance:
@@ -57,11 +58,16 @@ Cohorts in the Wild - Genesis is up and ready for players.
 
 Installed-mod questions require `instance.mods.names.read`. Production Genesis resolves
 that capability through its bound Nitrado resource and reads the ordered ASA mod list
-from the provider's game-server details. Trog uses provider-supplied display names when
-available and otherwise labels entries by their CurseForge project ID. Other
-providers remain provider-dependent. Reading the catalog does not itself grant
-mod management; mod addition requires its separate delegated capability and
-operation lifecycle.
+from the provider's game-server details. Trog uses provider-supplied display names
+and the shared ASA catalog. An authorized mod-add request accepts a project ID or
+an exact mod name. For an unknown ID, Trog asks CurseForge for its canonical name;
+for an unknown name, Trog searches the ASA CurseForge catalog for an exact
+name/slug match and obtains the numeric project ID. The verified pair is written
+to the shared JSON catalog before the numeric ID is sent to Nitrado. No LLM or
+MCP investigator is involved in this path yet. Approximate and ambiguous results
+fail safely rather than guessing. Other providers remain provider-dependent.
+Reading the catalog does not itself grant mod management; mod addition requires
+its separate delegated capability and operation lifecycle.
 
 The `map settings` summary combines server status, online player names, and
 the active mod list. Each section retains its corresponding read capability

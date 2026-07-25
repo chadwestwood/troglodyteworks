@@ -39,7 +39,7 @@ HELP_REPLY = BotReply(
     "- `/server players` — list active players\n"
     "- `/server count` — count active players\n"
     "- `/server mods` — list active mods by name\n"
-    "- `/server add-mod <mod ID>` — add an ASA mod (owner/admin)\n"
+    "- `/server add-mod <name or ID>` — add an ASA mod from CurseForge (owner/admin)\n"
     "- `/server restart` — restart the routed server (owner/admin)\n"
     "- `/server settings` — show the combined server overview\n"
     "You can also mention me and ask the same questions naturally. Read access follows your Community's approved Trog permissions.",
@@ -101,7 +101,13 @@ def classify_intent(message: str) -> str | None:
     normalized = re.sub(r"\s+", " ", normalized).strip()
     if re.search(r"\b(help|commands?|what can you do)\b", normalized):
         return "server_help"
-    if re.search(r"\b(add|install|enable)\b", normalized) and re.search(r"\bmod\b|\b\d{3,12}\b", normalized):
+    if (
+        re.search(r"^(?:@trog\s+)?(?:please\s+)?(?:add|install|enable)\b", normalized)
+        or (
+            re.search(r"\b(add|install|enable)\b", normalized)
+            and re.search(r"\bmod\b|\b\d{3,12}\b|\bto\s+(?:the\s+)?(?:map|server|world)\b", normalized)
+        )
+    ):
         return "mod_add"
     if re.search(r"\brestart\b", normalized):
         return "server_restart"
@@ -126,6 +132,21 @@ def extract_mod_id(message: str) -> str | None:
     normalized = re.sub(r"<@!?\d+>", " ", message)
     match = re.search(r"\b(?:add|install|enable)\b.*?\b(\d{3,12})\b", normalized, flags=re.IGNORECASE)
     return match.group(1) if match else None
+
+
+def extract_mod_reference(message: str) -> str | None:
+    normalized = re.sub(r"<@!?\d+>", " ", message)
+    normalized = re.sub(r"(^|\s)@trog\b", " ", normalized, flags=re.IGNORECASE)
+    match = re.search(
+        r"\b(?:add|install|enable)\b\s+(?:the\s+)?(?:mod\s+)?(.+?)(?:\s+to\s+(?:the\s+)?(?:map|server|world))?[.!?]*$",
+        normalized.strip(),
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    reference = " ".join(match.group(1).split()).strip(" `\"'")
+    reference = re.sub(r"\s+to\s+(?:the\s+)?(?:map|server|world)$", "", reference, flags=re.IGNORECASE)
+    return reference[:200] or None
 
 
 def game_server_for_guild(conn, guild_id: str, guild_map: dict[str, str] | None = None) -> GameServerRef | None:
@@ -343,8 +364,12 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
             return BotReply("That read capability has not been approved for this Discord server.", "read_not_approved")
         return BotReply("Only an authorized Community owner or administrator can change or restart this server.", "administrative_denied")
     if intent == "mod_add":
-        if not command_argument or not re.fullmatch(r"\d{3,12}", command_argument):
-            return BotReply("Give me the numeric CurseForge mod ID, for example: `@Trog add 123456 to the map`.", "mod_id_required")
+        if not command_argument:
+            return BotReply(
+                "Give me an exact CurseForge mod name or numeric project ID, for example: "
+                "`@Trog add Silent Structures to the world`.",
+                "mod_reference_required",
+            )
         return _execute_nitrado_operation(conn, decision, config, "instance.mods.write", command_argument)
     if intent == "server_restart":
         return _execute_nitrado_operation(conn, decision, config, "instance.restart.execute")
@@ -398,14 +423,17 @@ def _execute_provider_operation(conn, decision, config: Config, capability: str,
     provider = NitradoProvider(config)
     try:
         if capability == "instance.mods.write":
-            added, mods = provider.add_mod(resolution.context, argument)
+            resolved_mod = provider.resolve_mod(argument)
+            mod_id = resolved_mod["id"]
+            mod_name = resolved_mod["name"]
+            added, mods = provider.add_mod(resolution.context, mod_id)
             if not added:
-                message = f"Mod `{argument}` is already configured on **{context.game_server_name}**."
+                message = f"**{mod_name}** (`{mod_id}`) is already configured on **{context.game_server_name}**."
                 code = "mod_already_installed"
             else:
-                name = next((mod["name"] for mod in mods if mod["id"] == argument), f"Mod {argument}")
+                name = next((mod["name"] for mod in mods if mod["id"] == mod_id), mod_name)
                 message = (
-                    f"Added **{name}** (`{argument}`) to **{context.game_server_name}**. "
+                    f"Added **{name}** (`{mod_id}`) to **{context.game_server_name}**. "
                     "The setting is saved; use `@Trog restart` in this channel when you are ready to apply it."
                 )
                 code = "mod_added"

@@ -13,7 +13,7 @@ from .core import (
     DiscordBotConfigurationError,
     HELP_REPLY,
     classify_intent,
-    extract_mod_id,
+    extract_mod_reference,
     is_directly_mentioned,
     parse_guild_game_server_map,
     respond_to_request,
@@ -141,13 +141,13 @@ def main():
             request_limiter=request_limiter,
         )
 
-    @server_group.command(name="add-mod", description="Add an ASA mod by CurseForge mod ID")
-    async def server_add_mod(interaction, mod_id: str):
+    @server_group.command(name="add-mod", description="Add an ASA mod by exact CurseForge name or project ID")
+    async def server_add_mod(interaction, mod: str):
         await handle_interaction(
             interaction, "mod_add", database, config, guild_map,
             allowed_mentions=allowed_mentions,
             request_limiter=request_limiter,
-            command_argument=mod_id,
+            command_argument=mod,
         )
 
     tree.add_command(server_group)
@@ -253,7 +253,7 @@ async def handle_message(
             with database.connect() as conn:
                 reply = respond_to_request(
                     intent, str(message.guild.id), str(message.channel.id), str(message.author.id),
-                    conn, config, guild_map, command_argument=extract_mod_id(content),
+                    conn, config, guild_map, command_argument=extract_mod_reference(content),
                 )
     except DiscordBotConfigurationError:
         logger.warning("Discord guild is not connected to a valid TWE game server guild_id=%s", message.guild.id)

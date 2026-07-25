@@ -13,6 +13,7 @@ from twe.discord_bot.core import (
     GameServerRef,
     classify_intent,
     extract_mod_id,
+    extract_mod_reference,
     is_directly_mentioned,
     parse_guild_game_server_map,
     respond_to_message,
@@ -77,6 +78,8 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(classify_intent("<@123> list active mods"), "mod_list")
         self.assertEqual(classify_intent("<@123> add 123456 to the map"), "mod_add")
         self.assertEqual(classify_intent("@trog install mod 987654"), "mod_add")
+        self.assertEqual(classify_intent("@trog add Silent Structures to the server"), "mod_add")
+        self.assertEqual(classify_intent("@trog add Silent Structures"), "mod_add")
         self.assertEqual(classify_intent("@trog restart"), "server_restart")
         self.assertEqual(classify_intent("<@123> help"), "server_help")
         self.assertEqual(classify_intent("<@123> what can you do?"), "server_help")
@@ -86,6 +89,17 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(extract_mod_id("<@123> add 987654 to the map"), "987654")
         self.assertEqual(extract_mod_id("@Trog install mod 123456"), "123456")
         self.assertIsNone(extract_mod_id("@Trog add this mod"))
+
+    def test_extracts_numeric_or_named_mod_reference(self):
+        self.assertEqual(extract_mod_reference("<@123> add 987654 to the map"), "987654")
+        self.assertEqual(
+            extract_mod_reference("@Trog add mod Silent Structures to the server"),
+            "Silent Structures",
+        )
+        self.assertEqual(
+            extract_mod_reference("@Trog install Silent Structures"),
+            "Silent Structures",
+        )
 
     def test_bot_managed_role_mention_is_treated_as_direct_mention(self):
         self.assertTrue(

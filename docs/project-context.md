@@ -95,7 +95,10 @@ Read `production-architecture.md`, `current-state.md`, and
 - Encrypted, revocable Nitrado credential storage; service discovery and
   provider-resource binding.
 - Site-wide ASA mod-name catalog used to turn provider IDs into member-facing
-  names.
+  names. Authorized mod-add requests accept either a numeric CurseForge
+  project ID or an exact ASA mod name; uncatalogued references are verified
+  through the CurseForge API and persisted to the shared JSON catalog before
+  Nitrado is changed.
 - First read-only MCP server at `/mcp`, with bearer tokens mapped to real TWE
   Users and reuse of TWE tenant/capability checks.
 - Guided managed-Minecraft planning, CurseForge exact-file selection, Railway

@@ -517,6 +517,11 @@ class NitradoProvider:
         )
         return self._mod_catalog.enrich(mods) if self._mod_catalog else mods
 
+    def resolve_mod(self, reference: str) -> dict[str, str]:
+        if not self._mod_catalog:
+            raise ValueError("The shared ASA mod catalog is not configured.")
+        return self._mod_catalog.resolve(reference)
+
     def add_mod(self, context: ProviderContext, mod_id: str) -> tuple[bool, list[dict[str, str]]]:
         if context.connection.provider_key != "nitrado" or not re.fullmatch(r"\d{3,12}", mod_id):
             raise ValueError("A valid numeric CurseForge mod ID is required.")

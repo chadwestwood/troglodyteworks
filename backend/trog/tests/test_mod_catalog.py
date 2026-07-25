@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from twe.services.mod_catalog import AsaModCatalog
+from twe.services.mod_catalog import AsaModCatalog, ModResolutionError
 
 
 class _Lookup:
@@ -18,6 +18,17 @@ class _Lookup:
     def names_for(self, mod_ids):
         self.calls.append(mod_ids)
         return {mod_id: self.names[mod_id] for mod_id in mod_ids if mod_id in self.names}
+
+    def search_exact(self, name):
+        self.calls.append(("search", name))
+        matches = [
+            {"id": mod_id, "name": mod_name}
+            for mod_id, mod_name in self.names.items()
+            if mod_name.casefold() == name.casefold()
+        ]
+        if not matches:
+            raise ModResolutionError("not found")
+        return matches[0]
 
 
 class AsaModCatalogTests(unittest.TestCase):
@@ -62,6 +73,51 @@ class AsaModCatalogTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text())["mods"], [
                 {"id": "333", "name": "Provider Name"},
             ])
+
+    def test_resolves_new_numeric_id_and_persists_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "asa_mod_catalog.json"
+            path.write_text('{"mods": []}')
+            catalog = AsaModCatalog(path, _Lookup({"930381": "Silent Structures"}))
+
+            self.assertEqual(
+                catalog.resolve("930381"),
+                {"id": "930381", "name": "Silent Structures"},
+            )
+            self.assertIn(
+                {"id": "930381", "name": "Silent Structures"},
+                json.loads(path.read_text())["mods"],
+            )
+
+    def test_resolves_exact_name_to_id_and_persists_match(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "asa_mod_catalog.json"
+            path.write_text('{"mods": []}')
+            lookup = _Lookup({"930381": "Silent Structures"})
+            catalog = AsaModCatalog(path, lookup)
+
+            self.assertEqual(
+                catalog.resolve("Silent Structures"),
+                {"id": "930381", "name": "Silent Structures"},
+            )
+            self.assertEqual(lookup.calls, [("search", "Silent Structures")])
+            self.assertIn(
+                {"id": "930381", "name": "Silent Structures"},
+                json.loads(path.read_text())["mods"],
+            )
+
+    def test_resolves_name_from_shared_catalog_without_external_search(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "asa_mod_catalog.json"
+            path.write_text(json.dumps({"mods": [{"id": "930381", "name": "Silent Structures"}]}))
+            lookup = _Lookup({})
+            catalog = AsaModCatalog(path, lookup)
+
+            self.assertEqual(
+                catalog.resolve("silent-structures"),
+                {"id": "930381", "name": "Silent Structures"},
+            )
+            self.assertEqual(lookup.calls, [])
 
 
 if __name__ == "__main__":

@@ -97,11 +97,15 @@ payloads, platform account identifiers, credentials, and service internals are n
 included in Discord output.
 
 The former `local_asa` and RCON implementation is a superseded Genesis deployment
-path. Local mod-catalog behavior may remain useful for self-hosted instances, while
-Nitrado mod reads use the configured ASA mod order and fall back to CurseForge
-project IDs when the provider does not return display names. Do not promise broader
-map-setting summaries or other provider data unless the selected adapter advertises
-and implements the corresponding capability.
+path. Local mod-catalog behavior may remain useful for self-hosted instances. The
+Nitrado mod workflow uses the configured ASA mod order and a shared JSON
+ID-to-name catalog. An authorized add request can supply either a numeric
+CurseForge project ID or an exact ASA mod name. When the catalog does not already
+contain the reference, the worker verifies it through the CurseForge API, records
+the resolved ID and canonical name, and only then submits the numeric ID to
+Nitrado. Approximate or ambiguous names fail without changing the World. Do not
+promise broader World-setting summaries or other provider data unless the selected
+adapter advertises and implements the corresponding capability.
 
 Tokens, provider credentials, passwords, OAuth secrets, and session secrets must
 never be logged or committed.
