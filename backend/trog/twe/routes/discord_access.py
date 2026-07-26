@@ -246,19 +246,15 @@ def create_instance_access_request():
     provider_community_id = str(payload.get("provider_community_id", "")).strip()
     game_instance_id = str(payload.get("game_instance_id", "")).strip()
     requested = normalize_capabilities(payload.get("requested_capabilities") or list(READ_CAPABILITIES))
-    channel_scope = str(payload.get("channel_scope") or "all").strip()
-    channel_ids = normalize_snowflake_list(payload.get("allowed_channel_ids") or [])
-    if channel_scope not in {"all", "allowlist"}:
-        return api_error("VALIDATION_ERROR", "Channel scope must be all or allowlist.", 400)
+    # Discord exposes channel names only after the bot is installed. New
+    # connections therefore begin with an empty, fail-closed allowlist and
+    # cannot answer anywhere until the administrator explicitly saves channels.
+    channel_scope = "allowlist"
+    channel_ids = []
     if not provider_community_id or not game_instance_id:
         return api_error("VALIDATION_ERROR", "Provider Community and Instance are required.", 400)
     if requested is None:
         return api_error("VALIDATION_ERROR", "Only read-only Discord capabilities may be requested.", 400)
-    if channel_ids is None:
-        return api_error("VALIDATION_ERROR", "Discord channel IDs must be numeric.", 400)
-    # An empty allowlist is intentional during first-time setup: it fails closed
-    # until the Discord administrator chooses channel names after installation.
-
     with current_app.config["TWE_DB"].connect() as conn:
         if not membership_for_community(conn, g.current_user["id"], provider_community_id):
             return api_error("FORBIDDEN", "You must belong to the provider Community before requesting access.", 403)
@@ -482,7 +478,6 @@ def discord_oauth_callback():
 def approve_instance_access_request(grant_id):
     payload = request.get_json(silent=True) or {}
     capabilities = normalize_capabilities(payload.get("approved_capabilities") or list(READ_CAPABILITIES))
-    channel_scope = str(payload.get("channel_scope") or "").strip()
     if capabilities is None:
         return api_error("VALIDATION_ERROR", "Only read-only Discord capabilities may be approved.", 400)
 
@@ -515,8 +510,6 @@ def approve_instance_access_request(grant_id):
                 """,
                 (grant_id, capability, g.current_user["id"]),
             )
-        if channel_scope not in {"all", "allowlist"}:
-            channel_scope = grant["channel_scope"]
         updated = fetch_one(
             conn,
             """
@@ -537,7 +530,7 @@ def approve_instance_access_request(grant_id):
             WHERE id = %s
             RETURNING id::text, status, channel_scope
             """,
-            (g.current_user["id"], channel_scope, grant_id),
+            (g.current_user["id"], "allowlist", grant_id),
         )
         audit(conn, g.current_user["id"], grant["provider_community_id"], "discord.instance_access.approve", "discord_instance_access_grant", grant_id, {"approved_capabilities": capabilities})
 

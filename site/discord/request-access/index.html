@@ -40,7 +40,7 @@
             <h2 data-active-route-title>Choose where Trog should answer</h2>
             <p class="muted" data-active-route-summary></p>
           </div>
-          <span class="status-badge status-badge--success">Ready</span>
+          <span class="status-badge" data-active-route-status>Channels required</span>
         </div>
         <div data-active-route-channels></div>
       </section>
@@ -75,16 +75,14 @@
           </div>
         </section>
 
-        <fieldset class="discord-step-card option-cards">
-          <legend><span class="eyebrow">2 · Choose where Trog answers</span></legend>
-          <label><input type="radio" name="channel_scope" value="all" checked><span><strong>Every visible channel</strong><small>Best when this Discord server discusses one World.</small></span></label>
-          <label><input type="radio" name="channel_scope" value="allowlist"><span><strong>Specific channels</strong><small>Best when different channels discuss different Worlds.</small></span></label>
-        </fieldset>
-        <div data-channel-allowlist hidden>
-          <p class="guidance-note">Install Trog first. This page will then load the channel names that Trog can see so you can select them with checkboxes. Until channels are chosen, this connection will not answer in any channel.</p>
-        </div>
+        <section class="discord-step-card">
+          <p class="eyebrow">2 · Install, then choose channels</p>
+          <strong>Trog will not receive server-wide access.</strong>
+          <p class="muted">Discord can show Trog its channel list only after installation. You will return here immediately
+            afterward and must choose at least one channel before the connection is ready.</p>
+        </section>
 
-        <button class="primary-button" type="submit" data-discord-submit>Continue with Discord</button>
+        <button class="primary-button" type="submit" data-discord-submit>Install Trog and choose channels</button>
       </form>
 
       <div data-discord-share-section>
@@ -114,7 +112,7 @@
 
   <script src="/js/navigation.js?v=p0-p2-v1" defer></script>
   <script src="/js/twe-api.js?v=trog-oauth-v1"></script>
-  <script src="/js/discord-access.js?v=p0-p2-v1"></script>
+  <script src="/js/discord-access.js?v=explicit-channels-v1"></script>
 </body>
 
 </html>

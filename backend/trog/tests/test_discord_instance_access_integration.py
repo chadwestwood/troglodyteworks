@@ -74,14 +74,21 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
             raise unittest.SkipTest(f"PostgreSQL unavailable for instance access integration test: {exc.__class__.__name__}: {exc}")
         self.original_exchange = discord_access.exchange_guild_authorization
         self.original_installed = discord_access.installed_bot_guild
+        self.original_channels = discord_access.installed_bot_channels
         self.oauth_user_id = self.discord_user_id
         self.oauth_permissions = 32
         discord_access.exchange_guild_authorization = self._exchange_discord
         discord_access.installed_bot_guild = lambda guild_id, _config: {"id": guild_id, "name": "LizzLive"}
+        discord_access.installed_bot_channels = lambda _guild_id, _config: [
+            {"id": "333", "name": "genesis"},
+            {"id": "444", "name": "family-map"},
+            {"id": "777", "name": "second-server"},
+        ]
 
     def tearDown(self):
         discord_access.exchange_guild_authorization = self.original_exchange
         discord_access.installed_bot_guild = self.original_installed
+        discord_access.installed_bot_channels = self.original_channels
         with self.db.connect() as conn:
             execute(conn, "DELETE FROM communities WHERE id = %s", (self.community["id"],))
             execute(conn, "DELETE FROM users WHERE id IN (%s,%s,%s)", (self.owner["id"], self.matter["id"], self.member["id"]))
@@ -114,6 +121,7 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(approval.status_code, 200)
         self.assertEqual(approval.get_json()["request"]["status"], "active")
+        self._select_channels(grant_id, ["333"])
 
         with self.db.connect() as conn:
             status = authorize(conn, self.guild_id, "333", "public-user", "instance.status.read")
@@ -133,6 +141,26 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         self.assertFalse(restart.allowed)
         self.assertIn(restart.reason, {"channel_unmapped", "capability_not_granted"})
         self.assertIsNone(lizzlive)
+
+    def test_new_request_cannot_enable_all_channels(self):
+        response = self.matter_client.post(
+            "/api/v1/discord/instance-access-requests",
+            json={
+                "provider_community_id": self.community["id"],
+                "game_instance_id": self.instance["id"],
+                "requested_capabilities": ["instance.status.read"],
+                "channel_scope": "all",
+                "allowed_channel_ids": [],
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        grant_id = response.get_json()["request"]["id"]
+
+        request_data = self.matter_client.get(f"/api/v1/discord/instance-access-requests/{grant_id}")
+        self.assertEqual(request_data.status_code, 200)
+        request_record = request_data.get_json()["request"]
+        self.assertEqual(request_record["channel_scope"], "allowlist")
+        self.assertEqual(request_record["requested_channel_ids"], [])
 
     def test_unlinked_discord_identity_cannot_complete_verification(self):
         grant_id = self._create_request()
@@ -399,9 +427,19 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
             json={"approved_capabilities": ["instance.status.read"], "channel_scope": "allowlist"},
         )
         self.assertEqual(approval.status_code, 200)
+        self._select_channels(grant_id, [channel_id])
         return grant_id
 
-    def _create_request(self, channel_scope="all"):
+    def _select_channels(self, grant_id, channel_ids):
+        response = self.matter_client.patch(
+            f"/api/v1/discord/instance-access-grants/{grant_id}/channels",
+            json={"channel_ids": channel_ids},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["request"]["channel_scope"], "allowlist")
+        return response
+
+    def _create_request(self, channel_scope="allowlist"):
         response = self.matter_client.post(
             "/api/v1/discord/instance-access-requests",
             json={
@@ -413,7 +451,7 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
                     "instance.players.names.read",
                 ],
                 "channel_scope": channel_scope,
-                "allowed_channel_ids": ["333"] if channel_scope == "allowlist" else [],
+                "allowed_channel_ids": ["333"],
             },
         )
         self.assertEqual(response.status_code, 201)

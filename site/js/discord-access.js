@@ -17,6 +17,7 @@
   const activeRouteTitle = document.querySelector("[data-active-route-title]");
   const activeRouteSummary = document.querySelector("[data-active-route-summary]");
   const activeRouteChannels = document.querySelector("[data-active-route-channels]");
+  const activeRouteStatus = document.querySelector("[data-active-route-status]");
   const flowTitle = document.querySelector("[data-discord-flow-title]");
   const flowLabel = document.querySelector("[data-discord-flow-label]");
   const flowCopy = document.querySelector("[data-discord-flow-copy]");
@@ -36,10 +37,6 @@
     : requestedCommunityId && requestedInstanceId
     ? `/discord/request-access/?${new URLSearchParams({ community_id: requestedCommunityId, instance_id: requestedInstanceId })}`
     : "/discord/request-access/";
-  const allowlist = document.querySelector("[data-channel-allowlist]");
-  form.querySelectorAll('[name="channel_scope"]').forEach((radio) => radio.addEventListener("change", () => {
-    allowlist.hidden = form.elements.channel_scope.value !== "allowlist";
-  }));
   remember("twe.trog_return_to", setupReturnTo);
   const identities = await apiRequest("/account/identities");
   if (!identities.identities.discord.connected) {
@@ -134,6 +131,10 @@
     activeRoute.hidden = false;
     activeRouteTitle.textContent = `Choose channels for ${existingRequest.instance_name}`;
     activeRouteSummary.textContent = `Discord server: ${existingRequest.consumer_discord_guild_name || "Connected server"}`;
+    if (activeRouteStatus && existingRequest.requested_channel_ids?.length) {
+      activeRouteStatus.textContent = "Ready";
+      activeRouteStatus.classList.add("status-badge--success");
+    }
     if (existingRequest.can_manage_discord) {
       await renderChannelRouteEditor(activeRouteChannels, existingRequest);
     } else {
@@ -210,8 +211,6 @@
     const providerCommunityId = communitySelect.value.trim();
     const gameInstanceId = instanceSelect.value.trim();
     const discordGuildId = data.get("discord_guild_id").trim();
-    const channelScope = data.get("channel_scope") || "all";
-    const allowedChannelIds = [];
 
     try {
       if (existingRequest) {
@@ -229,8 +228,8 @@
             "instance.players.names.read",
             "instance.mods.names.read",
           ],
-          channel_scope: channelScope,
-          allowed_channel_ids: allowedChannelIds,
+          channel_scope: "allowlist",
+          allowed_channel_ids: [],
         }),
       });
 
@@ -317,8 +316,8 @@ async function renderAccessRequests(list, options = {}) {
   for (const request of installations) {
     const guild = request.consumer_discord_guild_name || request.consumer_discord_guild_id || "Discord verification pending";
     const channels = request.requested_channel_ids.length
-      ? `${request.requested_channel_ids.length} allowed channel(s)`
-      : "all visible channels";
+      ? `${request.requested_channel_ids.length} selected channel(s)`
+      : "channel setup required";
     const row = createResourceRow(
       `${request.provider_community_name} - ${request.instance_name}`,
       `${guild} · ${request.status.replaceAll("_", " ")} · ${channels}`,
@@ -457,7 +456,7 @@ async function renderChannelRouteEditor(row, request, button = null) {
     panel.appendChild(legend);
     const help = document.createElement("p");
     help.className = "muted";
-    help.textContent = "Choose the Discord channels that discuss this map. Trog will use this map whenever someone speaks to it there.";
+    help.textContent = "Choose every channel where Trog should answer about this World. At least one channel is required; Trog will remain silent everywhere else.";
     panel.appendChild(help);
     const choices = document.createElement("div");
     choices.className = "discord-channel-picker__choices";
@@ -503,8 +502,13 @@ async function renderChannelRouteEditor(row, request, button = null) {
           method: "PATCH",
           body: JSON.stringify({ channel_ids: channelIds }),
         });
-        selectionStatus.textContent = "Saved. Trog is ready in the selected channels.";
-        save.textContent = "Channels saved";
+        selectionStatus.textContent = "Connected. Trog is ready only in the selected channels.";
+        save.textContent = "Connection saved";
+        const routeStatus = document.querySelector("[data-active-route-status]");
+        if (routeStatus) {
+          routeStatus.textContent = "Ready";
+          routeStatus.classList.add("status-badge--success");
+        }
       } catch (error) {
         showError(error.message);
         save.disabled = false;
