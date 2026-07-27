@@ -71,6 +71,7 @@ async function initCommunities() {
   const list = document.querySelector("[data-communities-list]");
   const emptyState = document.querySelector("[data-empty-communities]");
   const chooserHint = document.querySelector("[data-community-chooser-hint]");
+  const actions = document.querySelector("[data-community-actions]");
   const data = await apiRequest("/communities");
   const pendingData = await apiRequest("/community-invitations/pending");
   const communities = rankCommunitiesByRole(data.communities || []);
@@ -80,7 +81,7 @@ async function initCommunities() {
   if (chooserHint) {
     chooserHint.hidden = communities.length < 2;
   }
-  communities.forEach((community) => {
+  communities.slice(0, 8).forEach((community) => {
     const tile = document.createElement("a");
     tile.className = "app-tile";
     tile.href = communityPath(community);
@@ -94,9 +95,12 @@ async function initCommunities() {
     });
     list.appendChild(tile);
   });
-  list.appendChild(actionTile("⌁", "Discover communities", "/explore/"));
-  list.appendChild(actionTile("＋", "Join with invite", "/onboarding/?path=member"));
-  list.appendChild(actionTile("✦", "Create my own Community", "/onboarding/?path=manager"));
+  if (actions) {
+    clearNode(actions);
+    actions.appendChild(actionTile("⌁", "Explore Communities", "/explore/"));
+    actions.appendChild(actionTile("＋", "Join with Invite Code", "/onboarding/?path=member"));
+    actions.appendChild(actionTile("✦", "Manage Communities", "/onboarding/?path=manager"));
+  }
 }
 
 function identityMedia(url, name) {

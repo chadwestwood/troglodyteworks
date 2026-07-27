@@ -1,0 +1,255 @@
+/*
+ * Desktop viewport contract
+ * Target: Chrome at 100% zoom in a 1280 × 720 CSS-pixel content viewport.
+ * Mobile remains naturally scrollable.
+ */
+@media (min-width: 961px) and (min-height: 620px) {
+    html,
+    body.app-page {
+        height: 100%;
+        min-height: 0;
+    }
+
+    body.app-page {
+        overflow: hidden;
+    }
+
+    .app-shell {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        width: min(1440px, calc(100% - 2.5rem));
+        height: 100dvh;
+        min-height: 0;
+        padding: 0.75rem 0;
+    }
+
+    .app-header {
+        min-height: 48px;
+        margin-bottom: 0.45rem;
+    }
+
+    .breadcrumbs {
+        min-height: 24px;
+        margin-bottom: 0.55rem;
+        font-size: 0.88rem;
+    }
+
+    .identity-shell,
+    .app-shell > main {
+        min-height: 0;
+        max-height: 100%;
+        overflow: hidden;
+    }
+
+    .identity-shell {
+        width: 100%;
+        max-width: none;
+        padding: 0.4rem 0 0;
+    }
+
+    .viewport-screen {
+        position: relative;
+        height: 100%;
+        min-height: 0;
+        padding-bottom: 52px;
+        overflow: hidden;
+    }
+
+    .screen-pagination {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.65rem;
+        min-height: 44px;
+        padding-top: 0.4rem;
+        background: linear-gradient(transparent, var(--color-background) 28%);
+    }
+
+    .screen-pagination__status {
+        margin-right: auto;
+        color: var(--color-text-subtle);
+        font-size: 0.86rem;
+        font-weight: 700;
+    }
+
+    .screen-pagination a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 38px;
+        padding: 0.45rem 1rem;
+        border: 1px solid var(--color-border-strong);
+        border-radius: 999px;
+        background: var(--color-surface);
+        color: var(--color-primary);
+        font-weight: 800;
+    }
+
+    /* My Communities */
+    .communities-screen {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: clamp(2rem, 6vw, 6rem);
+        height: 100%;
+    }
+
+    .communities-screen__main {
+        min-width: 0;
+    }
+
+    .communities-screen .identity-heading {
+        margin-bottom: 0.8rem;
+    }
+
+    .communities-screen .identity-heading .eyebrow,
+    .communities-screen .identity-heading .muted {
+        display: none;
+    }
+
+    .communities-screen h1 {
+        font-family: inherit;
+        font-size: clamp(2.2rem, 4vw, 3.4rem);
+    }
+
+    .community-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(120px, 172px));
+        grid-auto-rows: minmax(132px, 1fr);
+        gap: 1rem;
+        max-width: 736px;
+        max-height: 360px;
+        justify-content: start;
+    }
+
+    .community-grid .app-tile {
+        width: 100%;
+        aspect-ratio: auto;
+        min-height: 0;
+        border-radius: 20px;
+    }
+
+    .community-grid .app-tile__content {
+        padding: 0.8rem;
+    }
+
+    .community-grid .app-tile__content small {
+        display: none;
+    }
+
+    .communities-screen__actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding-top: 0.5rem;
+    }
+
+    .communities-screen__actions .app-tile {
+        width: 100%;
+        min-height: 72px;
+        aspect-ratio: auto;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 0.75rem 1rem;
+    }
+
+    .communities-screen__actions .app-tile span {
+        display: none;
+    }
+
+    .communities-screen__actions .app-tile strong {
+        font-size: 1rem;
+    }
+
+    .communities-screen__actions .app-tile:last-child {
+        margin-top: auto;
+    }
+
+    /* One Community */
+    .community-dashboard {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 0.75rem;
+        height: 100%;
+    }
+
+    .community-dashboard .community-hero {
+        grid-template-columns: 82px minmax(0, 1fr) auto;
+        gap: 0.9rem;
+        min-height: 82px;
+        margin: 0;
+        padding: 0.55rem 0.75rem;
+    }
+
+    .community-dashboard .identity-avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+    }
+
+    .community-dashboard .community-hero h1 {
+        font-size: clamp(1.85rem, 3vw, 2.7rem);
+    }
+
+    .community-dashboard .community-hero .muted {
+        line-height: 1.35;
+    }
+
+    .community-dashboard__worlds h2,
+    .community-dashboard__tools h2 {
+        margin-bottom: 0.45rem;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .community-dashboard__worlds .identity-heading {
+        margin: 0;
+    }
+
+    .community-dashboard__worlds .identity-heading .muted {
+        display: none;
+    }
+
+    .community-dashboard .server-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.65rem;
+    }
+
+    .community-dashboard .server-card {
+        min-height: 170px;
+        border-radius: 20px;
+    }
+
+    .community-dashboard__tools {
+        align-self: end;
+    }
+
+    .community-dashboard__tools .tile-grid {
+        grid-template-columns: repeat(4, 150px);
+        justify-content: start;
+        gap: 0.75rem;
+    }
+
+    .community-dashboard__tools .app-tile {
+        min-height: 118px;
+        aspect-ratio: auto;
+        border-radius: 18px;
+        padding: 0.8rem;
+    }
+
+    .community-dashboard__tools .app-tile span {
+        margin: 0 0 0.2rem;
+        font-size: 1.7rem;
+    }
+
+    .community-dashboard__tools .app-tile strong {
+        font-size: 1rem;
+    }
+
+    .community-dashboard__tools .app-tile small {
+        display: none;
+    }
+}

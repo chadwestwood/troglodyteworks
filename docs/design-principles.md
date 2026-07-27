@@ -177,6 +177,28 @@ A Member should immediately understand:
 
 Avoid combining unrelated tasks.
 
+## The Desktop Viewport Contract
+
+At 100% browser zoom on a 13-inch MacBook Pro in Chrome, every ordinary
+Troglodyte Works screen must fit inside the visible browser content area.
+
+The browser tabs, address bar, and bookmarks bar are part of the real
+environment. Designs must use the space left after them, not an idealized
+full-screen monitor.
+
+- No primary screen may require vertical scrolling.
+- Never solve overflow by shrinking text until it is hard to read.
+- Never hide useful content below a clipped edge.
+- If the screen cannot hold another task, link to a focused next screen.
+- Long collections use a fixed visible grid plus linked pages.
+- Detailed history, logs, advanced settings, and secondary explanations belong
+  on their own screens.
+- Mobile layouts may scroll when the physical viewport makes a single-screen
+  presentation impractical.
+
+The acceptance viewport for desktop work is 1280 × 720 CSS pixels. A screen
+that fits there will fit the target Chrome window at 100% zoom.
+
 ---
 
 # 13. Build For The Next Question

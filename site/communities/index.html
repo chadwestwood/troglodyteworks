@@ -3,9 +3,10 @@
 <body class="app-page" data-page="communities"><div class="app-shell">
 <header class="app-header"><a class="brand" href="/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a><nav class="header-actions" aria-label="User navigation"></nav></header>
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span>›</span> <span aria-current="page">My Communities</span></nav>
-<main class="identity-shell"><div class="identity-heading"><div><p class="eyebrow">Your home</p><h1>My Communities</h1><p class="muted">Open a Community or choose what you want to do next.</p></div></div>
-<p class="form-error" data-error hidden></p><div class="tile-grid" data-communities-list></div>
+<main class="identity-shell communities-screen"><section class="communities-screen__main"><div class="identity-heading"><div><p class="eyebrow">Your home</p><h1>My Communities</h1><p class="muted">Open a Community or choose what you want to do next.</p></div></div>
+<p class="form-error" data-error hidden></p><div class="community-grid" data-communities-list></div>
 <span class="sr-only">Create my own Community, then open the exact hosted map or world where Trog should work.</span>
 <section data-pending-invitations-section hidden><h2>Invitations</h2><div class="resource-list" data-pending-invitations></div></section>
 <section class="empty-state" data-empty-communities hidden><h2>Let’s find your first Community.</h2><p class="muted">Connect Discord, join with an invite, or start your own.</p><a class="primary-button" href="/onboarding/">Get started</a></section>
-</main></div><script src="/js/navigation.js?v=identity-v1" defer></script><script src="/js/twe-api.js?v=identity-v1"></script><script src="/js/twe-pages.js?v=identity-v1"></script></body></html>
+</section><aside class="communities-screen__actions" data-community-actions aria-label="Community actions"></aside>
+</main></div><script src="/js/navigation.js?v=viewport-contract-v1" defer></script><script src="/js/twe-api.js?v=identity-v1"></script><script src="/js/twe-pages.js?v=viewport-contract-v1"></script></body></html>

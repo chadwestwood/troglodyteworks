@@ -142,3 +142,94 @@ function breadcrumbHref(label) {
   if (["Connected Services", "Game Servers", "Worlds"].includes(label)) return parts[1] ? `/communities/${encodeURIComponent(parts[1])}/` : "/communities/";
   return "/";
 }
+
+/*
+ * A desktop screen is a finite presentation surface. When an existing screen
+ * contains more top-level tasks than the viewport can hold, present those
+ * tasks as linked screens instead of requiring vertical scrolling.
+ *
+ * This is a safety net for ordinary app screens. Purpose-built dashboards use
+ * their own fixed layouts above it.
+ */
+function initializeViewportScreens() {
+  const desktop = window.matchMedia("(min-width: 961px) and (min-height: 620px)");
+  const purposeBuilt = ".communities-screen, .community-dashboard";
+  let observer;
+
+  function paginate() {
+    if (observer) observer.disconnect();
+    document.querySelectorAll(".app-shell > main").forEach((main) => {
+      if (!desktop.matches || main.matches(purposeBuilt)) return;
+      main.classList.add("viewport-screen");
+      const existing = main.querySelector(":scope > .screen-pagination");
+      if (existing) existing.remove();
+      const children = [...main.children].filter((child) =>
+        !child.matches("dialog, .screen-pagination, [hidden]")
+      );
+      children.forEach((child) => { child.hidden = false; });
+      if (!children.length) return;
+
+      const available = Math.max(220, main.clientHeight - 52);
+      const groups = [];
+      let group = [];
+      let used = 0;
+      children.forEach((child) => {
+        const style = getComputedStyle(child);
+        const height = child.getBoundingClientRect().height
+          + parseFloat(style.marginTop || 0)
+          + parseFloat(style.marginBottom || 0);
+        if (group.length && used + height > available) {
+          groups.push(group);
+          group = [];
+          used = 0;
+        }
+        group.push(child);
+        used += height;
+      });
+      if (group.length) groups.push(group);
+      if (groups.length < 2) return;
+
+      const params = new URLSearchParams(window.location.search);
+      const selected = Math.min(
+        groups.length - 1,
+        Math.max(0, Number(params.get("screen") || 1) - 1)
+      );
+      children.forEach((child) => { child.hidden = true; });
+      groups[selected].forEach((child) => { child.hidden = false; });
+
+      const nav = document.createElement("nav");
+      nav.className = "screen-pagination";
+      nav.setAttribute("aria-label", "More on this page");
+      const status = document.createElement("span");
+      status.className = "screen-pagination__status";
+      status.textContent = `Screen ${selected + 1} of ${groups.length}`;
+      nav.appendChild(status);
+      if (selected > 0) nav.appendChild(screenLink("Back", selected));
+      if (selected < groups.length - 1) nav.appendChild(screenLink("Next", selected + 2));
+      main.appendChild(nav);
+    });
+    document.querySelectorAll(".app-shell > main").forEach((main) => {
+      observer.observe(main, { childList: true, subtree: true });
+    });
+  }
+
+  function screenLink(label, screen) {
+    const link = document.createElement("a");
+    const url = new URL(window.location.href);
+    url.searchParams.set("screen", screen);
+    link.href = `${url.pathname}${url.search}${url.hash}`;
+    link.textContent = label;
+    return link;
+  }
+
+  const schedule = () => {
+    window.clearTimeout(schedule.timer);
+    schedule.timer = window.setTimeout(paginate, 80);
+  };
+  window.addEventListener("load", schedule);
+  window.addEventListener("resize", schedule);
+  observer = new MutationObserver(schedule);
+  schedule();
+}
+
+initializeViewportScreens();
