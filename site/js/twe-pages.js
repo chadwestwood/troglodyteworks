@@ -485,6 +485,30 @@ async function initCommunity() {
   const canEdit = ["owner", "admin"].includes(communityData.community.current_user_role);
   document.querySelector("[data-edit-community]").hidden = !canEdit;
   document.querySelector("[data-community-admin]").hidden = !canEdit;
+  const requestsLink = document.querySelector("[data-community-trog-requests]");
+  if (requestsLink) {
+    const query = new URLSearchParams({ community_id: communityId, view: "requests" });
+    requestsLink.href = `/discord/request-access/?${query.toString()}`;
+    requestsLink.hidden = !canEdit;
+    if (canEdit) {
+      try {
+        const installations = await apiRequest("/discord/installations");
+        const pending = (installations.installations || []).filter(
+          (request) => request.provider_community_id === communityId
+            && request.can_manage_provider
+            && request.status === "pending_provider_approval"
+        ).length;
+        if (pending) {
+          setText(
+            "[data-community-trog-requests-copy]",
+            `${pending} ${pending === 1 ? "request needs" : "requests need"} your approval`
+          );
+        }
+      } catch (_error) {
+        // The destination remains available even if the count cannot be loaded.
+      }
+    }
+  }
   await renderServerTiles(instancesData.instances || [], basePath);
   setupCommunityIdentityForm(communityData.community);
 }
@@ -887,6 +911,36 @@ async function initWorld() {
     const query = new URLSearchParams({ community_id: communityId, instance_id: instanceId });
     trogLink.href = `/discord/request-access/?${query.toString()}`;
   });
+  const requestsLink = document.querySelector("[data-trog-requests-link]");
+  const canManageWorld = ["owner", "admin"].includes(instanceData.instance.viewer_role);
+  if (requestsLink) {
+    const query = new URLSearchParams({
+      community_id: communityId,
+      instance_id: instanceId,
+      view: "requests",
+    });
+    requestsLink.href = `/discord/request-access/?${query.toString()}`;
+    requestsLink.hidden = !canManageWorld;
+    if (canManageWorld) {
+      try {
+        const installations = await apiRequest("/discord/installations");
+        const pending = (installations.installations || []).filter(
+          (request) => request.provider_community_id === communityId
+            && request.game_instance_id === instanceId
+            && request.can_manage_provider
+            && request.status === "pending_provider_approval"
+        ).length;
+        if (pending) {
+          setText(
+            "[data-trog-requests-copy]",
+            `${pending} ${pending === 1 ? "request needs" : "requests need"} your approval`
+          );
+        }
+      } catch (_error) {
+        // The destination remains available even if the count cannot be loaded.
+      }
+    }
+  }
   document.querySelectorAll("[data-world-activity-link]").forEach((activityLink) => {
     activityLink.href = `${window.location.pathname.replace(/\/?$/, "/")}activity/`;
   });

@@ -29,6 +29,7 @@
   }
   const pageParameters = new URLSearchParams(window.location.search);
   const existingRequestId = pageParameters.get("request") || "";
+  const requestsOnly = pageParameters.get("view") === "requests";
   let requestedCommunityId = pageParameters.get("community_id") || "";
   let requestedInstanceId = pageParameters.get("instance_id") || "";
   let existingRequest = null;
@@ -38,6 +39,31 @@
     ? `/discord/request-access/?${new URLSearchParams({ community_id: requestedCommunityId, instance_id: requestedInstanceId })}`
     : "/discord/request-access/";
   remember("twe.trog_return_to", setupReturnTo);
+  if (requestsOnly) {
+    form.hidden = true;
+    if (shareSection) shareSection.hidden = true;
+    if (status) status.hidden = true;
+    if (flowLabel) flowLabel.textContent = "World owner controls";
+    if (flowTitle) flowTitle.textContent = "Review Trog requests";
+    if (flowCopy) {
+      flowCopy.textContent = requestedInstanceId
+        ? "Approve or deny Discord access requests for this World."
+        : "Approve or deny Discord access requests for Worlds in this Community.";
+    }
+    const accessHistory = document.querySelector("[data-access-history]");
+    if (accessHistory) accessHistory.open = true;
+    const historyTitle = document.querySelector("[data-access-history-title]");
+    const historySummary = document.querySelector("[data-access-history-summary]");
+    if (historyTitle) historyTitle.textContent = "Trog requests";
+    if (historySummary) historySummary.textContent = "Requests, active connections, and permissions";
+    await renderAccessRequests(requestList, {
+      providerCommunityId: requestedCommunityId,
+      gameInstanceId: requestedInstanceId,
+      emptyTitle: "No Trog requests for this selection.",
+      emptyCopy: "New Discord access requests will appear here.",
+    });
+    return;
+  }
   const identities = await apiRequest("/account/identities");
   if (!identities.identities.discord.connected) {
     clearNode(status);
@@ -298,12 +324,10 @@ async function renderAccessRequests(list, options = {}) {
   }
   const data = await apiRequest("/discord/installations");
   clearNode(list);
-  if (!data.installations.length) {
-    list.appendChild(createResourceRow("No Trog access requests yet.", "Create a request above to begin."));
-    return;
-  }
   const installations = data.installations
     .filter((request) => request.id !== options.excludeRequestId)
+    .filter((request) => !options.providerCommunityId || request.provider_community_id === options.providerCommunityId)
+    .filter((request) => !options.gameInstanceId || request.game_instance_id === options.gameInstanceId)
     .sort((left, right) => {
     if (left.id === options.focusRequestId) {
       return -1;
@@ -313,6 +337,14 @@ async function renderAccessRequests(list, options = {}) {
     }
     return 0;
   });
+  if (!installations.length) {
+    list.appendChild(createResourceRow(
+      options.emptyTitle || "No Trog access requests yet.",
+      options.emptyCopy || "Create a request above to begin.",
+    ));
+    return;
+  }
+  const refresh = () => renderAccessRequests(list, options);
   for (const request of installations) {
     const guild = request.consumer_discord_guild_name || request.consumer_discord_guild_id || "Discord verification pending";
     const channels = request.requested_channel_ids.length
@@ -358,7 +390,7 @@ async function renderAccessRequests(list, options = {}) {
               channel_scope: request.channel_scope,
             }),
           });
-          await renderAccessRequests(list);
+          await refresh();
         } catch (error) {
           showError(error.message);
         }
@@ -375,7 +407,7 @@ async function renderAccessRequests(list, options = {}) {
         }
         try {
           await apiRequest(`/discord/instance-access-requests/${request.id}/provider-denial`, { method: "POST" });
-          await renderAccessRequests(list);
+          await refresh();
         } catch (error) {
           showError(error.message);
         }
@@ -392,7 +424,7 @@ async function renderAccessRequests(list, options = {}) {
         }
         try {
           await apiRequest(`/discord/instance-access-grants/${request.id}/revoke`, { method: "POST" });
-          await renderAccessRequests(list);
+          await refresh();
         } catch (error) {
           showError(error.message);
         }
@@ -420,7 +452,7 @@ async function renderAccessRequests(list, options = {}) {
             method: "PATCH",
             body: JSON.stringify({ enabled: enabling }),
           });
-          await renderAccessRequests(list);
+          await refresh();
         } catch (error) {
           showError(error.message);
           operator.disabled = false;
