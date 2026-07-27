@@ -357,9 +357,9 @@ function renderIdentities(identities) {
     const row = createResourceRow(label, `${description} ${detail}`);
     const button = document.createElement("button");
     button.type = "button";
+    button.className = "identity-status-button";
     if (provider === "local") {
       button.textContent = identity.connected ? "Connected" : "Unavailable";
-      button.className = "identity-status-button";
       button.disabled = true;
     } else {
       if (identity.connected) {

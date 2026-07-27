@@ -325,6 +325,13 @@
     opacity: 1;
 }
 
+.resource-row .identity-status-button {
+    flex: 0 0 auto;
+    min-width: 9rem;
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
 .stack-form {
     display: grid;
     gap: var(--space-10);
@@ -910,6 +917,10 @@
 
     .resource-row>span:last-child {
         text-align: left;
+    }
+
+    .resource-row .identity-status-button {
+        width: 100%;
     }
 
     .invitation-method>div:first-child {
