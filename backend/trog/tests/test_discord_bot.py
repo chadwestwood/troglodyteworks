@@ -181,6 +181,14 @@ class DiscordBotCoreTests(unittest.TestCase):
         )
         self.assertEqual(reply.code, "status_unavailable")
 
+    def test_empty_status_response_is_treated_as_unavailable(self):
+        reply = server_status_reply(
+            self.server,
+            self.config,
+            health_provider=lambda _config: None,
+        )
+        self.assertEqual(reply.code, "status_unavailable")
+
     def test_server_ready_response(self):
         reply = server_status_reply(
             self.server,
@@ -245,6 +253,25 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertEqual(reply.code, "player_list")
         self.assertIn("No players are currently online", reply.text)
         self.assertIn("**Cohorts in the Wild**", reply.text)
+
+    def test_player_list_continues_when_status_response_is_empty(self):
+        reply = player_list_reply(
+            self.server,
+            self.config,
+            health_provider=lambda _config: None,
+            players_provider=lambda: {"players": ["A"]},
+        )
+        self.assertEqual(reply.code, "player_list")
+        self.assertIn("- A", reply.text)
+
+    def test_empty_player_response_is_treated_as_unavailable(self):
+        reply = player_list_reply(
+            self.server,
+            self.config,
+            health_provider=lambda _config: None,
+            players_provider=lambda: None,
+        )
+        self.assertEqual(reply.code, "players_unavailable")
 
     def test_mod_list_response_uses_names_in_launch_order(self):
         reply = mod_list_reply(

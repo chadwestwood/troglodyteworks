@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from collections.abc import Mapping
 import re
 
 from ..config import Config
@@ -195,6 +196,8 @@ def server_status_reply(game_server: GameServerRef | None, config: Config, healt
         health = health_provider(config) if health_provider else adapter.health(config)
     except Exception:
         return BotReply("I cannot check that server right now because its status service is unavailable.", "status_unavailable")
+    if not isinstance(health, Mapping):
+        return BotReply("I cannot check that server right now because its status service is unavailable.", "status_unavailable")
 
     overall = health.get("overall_status")
     checks = health.get("checks", [])
@@ -220,6 +223,8 @@ def player_count_reply(game_server: GameServerRef | None, config: Config, health
         data = players_provider() if players_provider else _default_players_provider()
     except Exception:
         return BotReply("I cannot read the player count right now because the player service is unavailable.", "players_unavailable")
+    if not isinstance(data, Mapping):
+        return BotReply("I cannot read the player count right now because the player service is unavailable.", "players_unavailable")
 
     players = data.get("players", [])
     count = len(players)
@@ -238,6 +243,8 @@ def player_list_reply(game_server: GameServerRef | None, config: Config, health_
     try:
         data = players_provider() if players_provider else _default_players_provider()
     except Exception:
+        return BotReply("I cannot read active players right now because the player service is unavailable.", "players_unavailable")
+    if not isinstance(data, Mapping):
         return BotReply("I cannot read active players right now because the player service is unavailable.", "players_unavailable")
 
     players = data.get("players", [])
