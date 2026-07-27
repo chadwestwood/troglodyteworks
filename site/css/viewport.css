@@ -1,26 +1,38 @@
 /*
  * Desktop viewport contract
- * Target: Chrome at 100% zoom in a 1280 × 720 CSS-pixel content viewport.
+ * Target: Chrome at 100% zoom on a 13-inch MacBook Pro.
  * Mobile remains naturally scrollable.
  */
-@media (min-width: 961px) and (min-height: 620px) {
+@media (min-width: 961px) {
     html,
-    body.app-page {
+    body.app-page,
+    body.home-page,
+    body.auth-page {
         height: 100%;
         min-height: 0;
     }
 
-    body.app-page {
+    body.app-page,
+    body.home-page,
+    body.auth-page {
         overflow: hidden;
     }
 
-    .app-shell {
+    .app-shell,
+    .home-shell,
+    .auth-shell {
         display: grid;
         grid-template-rows: auto auto minmax(0, 1fr);
         width: min(1440px, calc(100% - 2.5rem));
         height: 100dvh;
         min-height: 0;
         padding: 0.75rem 0;
+    }
+
+    main.app-shell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
     }
 
     .app-header {
@@ -35,7 +47,8 @@
     }
 
     .identity-shell,
-    .app-shell > main {
+    .app-shell > main,
+    main.app-shell {
         min-height: 0;
         max-height: 100%;
         overflow: hidden;
@@ -52,6 +65,16 @@
         height: 100%;
         min-height: 0;
         padding-bottom: 52px;
+        overflow: hidden;
+    }
+
+    main.app-shell.viewport-screen {
+        padding-bottom: 56px;
+    }
+
+    .viewport-screen [data-screen-container] {
+        min-height: 0;
+        max-height: 100%;
         overflow: hidden;
     }
 
@@ -92,9 +115,78 @@
     /* My Communities */
     .communities-screen {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 280px;
-        gap: clamp(2rem, 6vw, 6rem);
+        grid-template-columns: minmax(0, 760px) minmax(240px, 280px);
+        justify-content: space-between;
+        gap: clamp(1.5rem, 4vw, 4rem);
         height: 100%;
+    }
+
+    /* The public home is one decisive screen. The header already links to
+       Discover, Create, and Log in, so explanatory material belongs on those
+       linked screens rather than below the fold. */
+    .home-shell {
+        grid-template-rows: auto minmax(0, 1fr);
+        width: min(1440px, calc(100% - 2rem));
+    }
+
+    .home-shell > main {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .home-hero {
+        height: 100%;
+        min-height: 0;
+        padding: 0.75rem 0 0;
+    }
+
+    .home-scene,
+    .home-scene > img {
+        height: 100%;
+        min-height: 0;
+    }
+
+    .home-paths,
+    .home-explainer,
+    .home-capabilities,
+    .home-final-cta,
+    .home-footer {
+        display: none;
+    }
+
+    /* Sign-in is also one screen. */
+    .auth-shell {
+        grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .auth-main {
+        min-height: 0;
+        height: 100%;
+        padding: 0.75rem 0 0;
+    }
+
+    .auth-welcome {
+        min-height: 0;
+        height: 100%;
+    }
+
+    .auth-card {
+        max-height: 100%;
+        gap: clamp(0.55rem, 1.4vh, 1rem);
+        padding: clamp(1rem, 2.4vh, 1.75rem);
+        overflow: hidden;
+    }
+
+    .auth-card__heading {
+        gap: 0.3rem;
+    }
+
+    .auth-provider {
+        min-height: 56px;
+    }
+
+    .auth-assurance {
+        display: none;
     }
 
     .communities-screen__main {
@@ -118,10 +210,13 @@
     .community-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(120px, 172px));
-        grid-auto-rows: minmax(132px, 1fr);
+        grid-template-rows: repeat(2, 150px);
+        grid-auto-rows: 150px;
         gap: 1rem;
         max-width: 736px;
-        max-height: 360px;
+        height: 316px;
+        max-height: 316px;
+        align-content: start;
         justify-content: start;
     }
 

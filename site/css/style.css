@@ -10,7 +10,7 @@
 @import url("identity.css?v=identity-v1");
 @import url("instance.css?v=instance-home-v1");
 @import url("world-activity.css?v=world-activity-v1");
-@import url("viewport.css?v=viewport-contract-v1");
+@import url("viewport.css?v=viewport-contract-v2");
 /* First-run choices intentionally read like two plain answers, not a dashboard. */
 .choice-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:var(--space-16); margin-top:var(--space-24); }
 .choice-card { text-align:left; padding:var(--space-24); border:1px solid var(--color-border); border-radius:20px; background:var(--color-surface); color:inherit; cursor:pointer; }

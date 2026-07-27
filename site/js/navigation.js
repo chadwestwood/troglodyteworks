@@ -152,32 +152,35 @@ function breadcrumbHref(label) {
  * their own fixed layouts above it.
  */
 function initializeViewportScreens() {
-  const desktop = window.matchMedia("(min-width: 961px) and (min-height: 620px)");
+  const desktop = window.matchMedia("(min-width: 961px)");
   const purposeBuilt = ".communities-screen, .community-dashboard";
   let observer;
 
   function paginate() {
     if (observer) observer.disconnect();
-    document.querySelectorAll(".app-shell > main").forEach((main) => {
+    document.querySelectorAll(".app-shell > main, main.app-shell").forEach((main) => {
       if (!desktop.matches || main.matches(purposeBuilt)) return;
       main.classList.add("viewport-screen");
       const existing = main.querySelector(":scope > .screen-pagination");
       if (existing) existing.remove();
-      const children = [...main.children].filter((child) =>
-        !child.matches("dialog, .screen-pagination, [hidden]")
+      const fixedHeight = main.matches("main.app-shell")
+        ? [...main.children]
+          .filter((child) => child.matches("header, .breadcrumbs"))
+          .reduce((total, child) => total + outerHeight(child), 0)
+        : 0;
+      const available = Math.max(220, main.clientHeight - fixedHeight - 56);
+      const roots = [...main.children].filter((child) =>
+        !child.matches("header, .breadcrumbs, dialog, script, .screen-pagination")
       );
+      const children = roots.flatMap((child) => expandScreenCandidate(child, available));
       children.forEach((child) => { child.hidden = false; });
       if (!children.length) return;
 
-      const available = Math.max(220, main.clientHeight - 52);
       const groups = [];
       let group = [];
       let used = 0;
       children.forEach((child) => {
-        const style = getComputedStyle(child);
-        const height = child.getBoundingClientRect().height
-          + parseFloat(style.marginTop || 0)
-          + parseFloat(style.marginBottom || 0);
+        const height = Math.min(available, outerHeight(child));
         if (group.length && used + height > available) {
           groups.push(group);
           group = [];
@@ -196,6 +199,19 @@ function initializeViewportScreens() {
       );
       children.forEach((child) => { child.hidden = true; });
       groups[selected].forEach((child) => { child.hidden = false; });
+      main.querySelectorAll("[data-screen-container]").forEach((container) => {
+        const visibleChild = [...container.children].some((child) =>
+          !child.matches("dialog, script") && !child.hidden
+        );
+        container.hidden = !visibleChild;
+      });
+      groups[selected].forEach((child) => {
+        let parent = child.parentElement;
+        while (parent && parent !== main) {
+          if (parent.hasAttribute("data-screen-container")) parent.hidden = false;
+          parent = parent.parentElement;
+        }
+      });
 
       const nav = document.createElement("nav");
       nav.className = "screen-pagination";
@@ -208,9 +224,27 @@ function initializeViewportScreens() {
       if (selected < groups.length - 1) nav.appendChild(screenLink("Next", selected + 2));
       main.appendChild(nav);
     });
-    document.querySelectorAll(".app-shell > main").forEach((main) => {
+    document.querySelectorAll(".app-shell > main, main.app-shell").forEach((main) => {
       observer.observe(main, { childList: true, subtree: true });
     });
+  }
+
+  function expandScreenCandidate(element, available, depth = 0) {
+    element.hidden = false;
+    const height = outerHeight(element);
+    const children = [...element.children].filter((child) =>
+      !child.matches("header, .breadcrumbs, dialog, script, .screen-pagination, [data-error]")
+    );
+    if (height <= available || children.length < 2 || depth >= 3) return [element];
+    element.dataset.screenContainer = "";
+    return children.flatMap((child) => expandScreenCandidate(child, available, depth + 1));
+  }
+
+  function outerHeight(element) {
+    const style = getComputedStyle(element);
+    return element.getBoundingClientRect().height
+      + parseFloat(style.marginTop || 0)
+      + parseFloat(style.marginBottom || 0);
   }
 
   function screenLink(label, screen) {
