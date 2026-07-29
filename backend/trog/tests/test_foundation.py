@@ -195,7 +195,7 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"players online", page.data)
         self.assertIn(b"<strong>Use Trog</strong>", page.data)
         self.assertIn(b"data-capabilities-panel", page.data)
-        self.assertIn(b"configureGenesisAccessView", script.data)
+        self.assertIn(b"configureInstanceManager", script.data)
         self.assertIn(b"/admin/runtime-health", script.data)
         self.assertIn(b"Your Community role cannot request this Capability.", script.data)
 
