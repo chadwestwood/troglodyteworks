@@ -197,7 +197,7 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"data-capabilities-panel", page.data)
         self.assertIn(b"configureInstanceManager", script.data)
         self.assertIn(b"/admin/runtime-health", script.data)
-        self.assertIn(b"Your Community role cannot request this Capability.", script.data)
+        self.assertIn(b"button.disabled = !capability.available", script.data)
 
     def test_nitrado_hosting_page_preserves_the_secret_boundary(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
