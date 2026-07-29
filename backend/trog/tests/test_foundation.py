@@ -193,7 +193,7 @@ class FoundationTests(unittest.TestCase):
         script = client.get("/js/twe-pages.js")
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"players online", page.data)
-        self.assertIn(b"Set up Trog for this world", page.data)
+        self.assertIn(b"<strong>Use Trog</strong>", page.data)
         self.assertIn(b"data-capabilities-panel", page.data)
         self.assertIn(b"configureGenesisAccessView", script.data)
         self.assertIn(b"/admin/runtime-health", script.data)

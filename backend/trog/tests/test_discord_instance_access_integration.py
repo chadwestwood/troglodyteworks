@@ -392,7 +392,7 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
         self.assertIn(b"Trog Discord Access", response.data)
         self.assertIn(b"data-discord-guild-select", response.data)
         self.assertIn(b"Reconnect Discord to refresh", response.data)
-        self.assertIn(b"servers</button>", response.data)
+        self.assertIn(b"data-discord-submit>Install Trog</button>", response.data)
         self.assertNotIn(b"paste the Discord server ID", response.data)
 
     def _active_grant(self):
