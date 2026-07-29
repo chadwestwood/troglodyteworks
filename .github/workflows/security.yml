@@ -20,12 +20,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: python -m unittest scripts.test_security_check
-      - run: python scripts/security_check.py
+      - run: python -m unittest scripts.test_security_check scripts.test_verify_secret_inventory
+      - run: python scripts/security_check.py --production-config
+      - name: Check security-sensitive pull request changes
+        if: github.event_name == 'pull_request'
+        run: >-
+          python scripts/security_check.py
+          --production-config
+          --diff
+          "${{ github.event.pull_request.base.sha }}"
+          "${{ github.event.pull_request.head.sha }}"
 
   dependency-audit:
     name: Python dependency audit

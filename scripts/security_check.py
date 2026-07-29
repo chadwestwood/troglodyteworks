@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+from argparse import ArgumentParser
 from pathlib import Path
 
 
@@ -27,6 +28,17 @@ PLACEHOLDERS = (
     "put_password_here",
     "replace-with",
     "your-",
+)
+
+INSECURE_PRODUCTION_PATTERNS = (
+    (
+        "insecure production cookie setting",
+        re.compile(r"(?im)^\s*TWE_COOKIE_SECURE\s*=\s*(?:0|false|no)\s*$"),
+    ),
+    (
+        "Flask debug mode enabled",
+        re.compile(r"(?im)^\s*(?:FLASK_DEBUG|TWE_DEBUG)\s*=\s*(?:1|true|yes)\s*$"),
+    ),
 )
 
 
@@ -68,9 +80,30 @@ def scan_text(path: Path, text: str) -> list[str]:
     return findings
 
 
-def run() -> list[str]:
+def scan_production_configuration(path: Path, text: str) -> list[str]:
+    if path.name == ".env.example":
+        return []
     findings: list[str] = []
-    for path in tracked_files():
+    for label, pattern in INSECURE_PRODUCTION_PATTERNS:
+        for match in pattern.finditer(text):
+            line = text.count("\n", 0, match.start()) + 1
+            findings.append(f"{path.relative_to(ROOT)}:{line}: {label}")
+    return findings
+
+
+def changed_files(base: str, head: str) -> list[Path]:
+    result = subprocess.run(
+        ["git", "diff", "--name-only", "--diff-filter=ACMR", "-z", base, head],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    return [ROOT / item.decode() for item in result.stdout.split(b"\0") if item]
+
+
+def run(paths: list[Path] | None = None, *, production_config: bool = False) -> list[str]:
+    findings: list[str] = []
+    for path in paths if paths is not None else tracked_files():
         if not path.is_file():
             continue
         if forbidden_environment_file(path):
@@ -83,11 +116,27 @@ def run() -> list[str]:
         except (UnicodeDecodeError, OSError):
             continue
         findings.extend(scan_text(path, text))
+        if production_config:
+            findings.extend(scan_production_configuration(path, text))
     return sorted(set(findings))
 
 
 def main() -> int:
-    findings = run()
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--diff",
+        nargs=2,
+        metavar=("BASE", "HEAD"),
+        help="scan only files added or changed between two Git revisions",
+    )
+    parser.add_argument(
+        "--production-config",
+        action="store_true",
+        help="also reject production-insecure configuration assignments",
+    )
+    args = parser.parse_args()
+    paths = changed_files(*args.diff) if args.diff else None
+    findings = run(paths, production_config=args.production_config)
     if findings:
         print("Security checks failed:", file=sys.stderr)
         for finding in findings:
@@ -97,7 +146,11 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    print("Security checks passed: no tracked environment files or known secret patterns found.")
+    scope = "changed" if args.diff else "tracked"
+    print(
+        f"Security checks passed: no forbidden files, known secret patterns, "
+        f"or requested insecure settings found in {scope} files."
+    )
     return 0
 
 

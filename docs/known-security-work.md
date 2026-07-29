@@ -12,12 +12,20 @@ This file records validated security gaps without exposing exploit instructions,
 GitHub now runs the backend regression suite, a Python dependency vulnerability
 audit, and a repository policy check on pull requests and pushes to `main`. The
 policy check rejects tracked environment files, private keys, common provider
-token formats, and hard-coded secret assignments. It is intentionally
-dependency-free so it can run locally before external packages are installed.
+token formats, hard-coded secret assignments, and insecure production cookie or
+debug settings. Pull requests also receive a diff-scoped check. Dependabot
+opens weekly Python and GitHub Actions update pull requests. The policy scanner
+is intentionally dependency-free so it can run locally before external
+packages are installed.
 
 Scanner findings must not be bypassed with real-value allowlists. Confirmed
 credential exposure requires provider-side revocation and rotation; deleting the
 current file does not remove the value from Git history.
+
+The production inventory, rotation sequence, recovery steps, and minimum
+deployment gate are documented in
+[`secret-rotation-and-recovery.md`](secret-rotation-and-recovery.md). The
+inventory verifier reports names only and never prints secret values.
 
 ## Password-login abuse protection
 

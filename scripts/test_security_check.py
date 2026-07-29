@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.security_check import ROOT, scan_text
+from scripts.security_check import ROOT, scan_production_configuration, scan_text
 
 
 class SecurityCheckTests(unittest.TestCase):
@@ -24,6 +24,21 @@ class SecurityCheckTests(unittest.TestCase):
         path = ROOT / "config.py"
         findings = scan_text(path, 'token = os.environ.get("SERVICE_TOKEN")')
         self.assertEqual(findings, [])
+
+    def test_insecure_production_cookie_is_rejected(self):
+        path = ROOT / "production.env"
+        findings = scan_production_configuration(path, "TWE_COOKIE_SECURE=false")
+        self.assertEqual(len(findings), 1)
+
+    def test_secure_production_cookie_is_allowed(self):
+        path = ROOT / "production.env"
+        findings = scan_production_configuration(path, "TWE_COOKIE_SECURE=true")
+        self.assertEqual(findings, [])
+
+    def test_debug_mode_is_rejected(self):
+        path = ROOT / "railway.env"
+        findings = scan_production_configuration(path, "FLASK_DEBUG=1")
+        self.assertEqual(len(findings), 1)
 
 
 if __name__ == "__main__":
