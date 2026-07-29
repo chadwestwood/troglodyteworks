@@ -31,6 +31,25 @@ the same pipeline before they can be enabled.
 - `twe_get_active_players`
 - `twe_get_installed_mods`
 - `twe_get_operation_history`
+- `twe_search_knowledge`
+
+`twe_search_knowledge` performs hybrid full-text and pgvector retrieval over
+approved TWE sources. It returns source-preserving excerpts and citation URIs,
+optionally focused by capability or an accessible Community. Globally approved
+sources are available to authenticated callers; Community-scoped sources are
+returned only to that Community's Members. Retrieval never grants a capability,
+approves an operation, reads provider secrets, or executes an action.
+
+The initial approved capability documents are:
+
+- restart a World server;
+- schedule World maintenance;
+- create a Community poll; and
+- plan a weekend event.
+
+Each document states its permission, arguments, confirmation, execution,
+failure, and rollback contract. A document may describe a planned workflow; it
+does not make that workflow an implemented production action.
 
 The server uses Streamable HTTP at `/mcp`. Clients authenticate with a
 revocable TWE MCP bearer token. Tokens resolve to a normal TWE User; every tool
@@ -41,6 +60,13 @@ Player names require `instance.players.names.read` independently of player
 count access. Every completed, failed, or denied tool call writes
 `mcp.tool.called` to the existing audit log without provider credentials or
 bearer-token material.
+
+Approved sources are registered in
+`backend/trog/knowledge/sources.json`, synchronized after migrations, chunked
+with headings retained as citation anchors, and stored in PostgreSQL. The
+current embedding implementation is deterministic and local; PostgreSQL
+full-text rank is combined with pgvector similarity so the rail requires no
+external model credential.
 
 ### Personal token API
 

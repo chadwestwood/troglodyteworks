@@ -10,6 +10,7 @@ from .provider_resolution import (
     read_game_server_players,
     resolve_game_server_provider,
 )
+from .knowledge_rail import KnowledgeRail, KnowledgeRailError
 
 
 class McpToolError(RuntimeError):
@@ -22,6 +23,7 @@ class McpReadTools:
     def __init__(self, database, config):
         self.database = database
         self.config = config
+        self.knowledge = KnowledgeRail(database)
 
     def list_instances(self, identity: dict) -> dict:
         with self.database.connect() as conn:
@@ -185,6 +187,49 @@ class McpReadTools:
             ],
         }
 
+    def search_knowledge(
+        self,
+        identity: dict,
+        query: str,
+        capability_key: str | None = None,
+        community_id: str | None = None,
+        limit: int = 5,
+    ) -> dict:
+        try:
+            result = self.knowledge.search(
+                identity,
+                query,
+                capability_key=capability_key,
+                community_id=community_id,
+                limit=limit,
+            )
+        except KnowledgeRailError as error:
+            with self.database.connect() as conn:
+                self._audit(
+                    conn,
+                    identity,
+                    "twe_search_knowledge",
+                    "denied" if error.code in {"NOT_FOUND", "FORBIDDEN"} else "failed",
+                    details={
+                        "error_code": error.code,
+                        "community_scope_requested": bool(community_id),
+                    },
+                )
+            raise McpToolError(error.code, str(error)) from None
+        with self.database.connect() as conn:
+            self._audit(
+                conn,
+                identity,
+                "twe_search_knowledge",
+                "completed",
+                details={
+                    "result_count": len(result["results"]),
+                    "capability_key": result["capability_key"],
+                    "community_scope_requested": bool(community_id),
+                },
+            )
+        return result
+
     def _authorize(self, identity, instance_id, capability, tool_name):
         access = self._access(identity, instance_id, tool_name)
         with self.database.connect() as conn:
@@ -263,4 +308,3 @@ class McpReadTools:
                 "slug": access["instance_slug"],
             },
         }
-

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "source_key": "capability.restart-server",
+      "title": "Restart a World server",
+      "path": "capabilities/restart-server.md",
+      "source_uri": "https://github.com/chadwestwood/troglodyteworks/blob/main/backend/trog/knowledge/capabilities/restart-server.md",
+      "source_type": "capability",
+      "capability_key": "instance.restart",
+      "approved": true,
+      "scope": "global"
+    },
+    {
+      "source_key": "capability.schedule-maintenance",
+      "title": "Schedule World maintenance",
+      "path": "capabilities/schedule-maintenance.md",
+      "source_uri": "https://github.com/chadwestwood/troglodyteworks/blob/main/backend/trog/knowledge/capabilities/schedule-maintenance.md",
+      "source_type": "capability",
+      "capability_key": "instance.maintenance.schedule",
+      "approved": true,
+      "scope": "global"
+    },
+    {
+      "source_key": "capability.create-poll",
+      "title": "Create a Community poll",
+      "path": "capabilities/create-poll.md",
+      "source_uri": "https://github.com/chadwestwood/troglodyteworks/blob/main/backend/trog/knowledge/capabilities/create-poll.md",
+      "source_type": "capability",
+      "capability_key": "community.poll.create",
+      "approved": true,
+      "scope": "global"
+    },
+    {
+      "source_key": "capability.weekend-event",
+      "title": "Plan a weekend event",
+      "path": "capabilities/weekend-event.md",
+      "source_uri": "https://github.com/chadwestwood/troglodyteworks/blob/main/backend/trog/knowledge/capabilities/weekend-event.md",
+      "source_type": "capability",
+      "capability_key": "community.event.weekend.plan",
+      "approved": true,
+      "scope": "global"
+    }
+  ]
+}

@@ -89,7 +89,35 @@ class McpReadToolTests(unittest.TestCase):
         self.assertEqual(result["context"]["instance"]["id"], self.access["instance_id"])
         self.assertEqual(result["mods"][0]["name"], "Silent Structures")
 
+    @patch("twe.services.mcp_tools.execute")
+    def test_knowledge_search_is_citation_backed_and_audited(self, audit):
+        self.tools.knowledge.search = lambda *_args, **_kwargs: {
+            "query": "restart",
+            "capability_key": "instance.restart",
+            "results": [
+                {
+                    "content": "Restart requires confirmation.",
+                    "citation": {
+                        "source_key": "capability.restart-server",
+                        "title": "Restart a World server",
+                        "uri": "https://example.test/restart#confirmation",
+                    },
+                }
+            ],
+            "grounding": {"result_count": 1},
+        }
+        result = self.tools.search_knowledge(
+            self.identity,
+            "restart",
+            capability_key="instance.restart",
+        )
+        self.assertEqual(
+            result["results"][0]["citation"]["source_key"],
+            "capability.restart-server",
+        )
+        self.assertIn("mcp.tool.called", audit.call_args.args[1])
+        self.assertNotIn("authorize", result["results"][0])
+
 
 if __name__ == "__main__":
     unittest.main()
-

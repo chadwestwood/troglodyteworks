@@ -62,6 +62,7 @@ class Config:
     railway_environment_id: str | None = None
     railway_minecraft_image: str = "itzg/minecraft-server:latest"
     mcp_allowed_hosts: tuple[str, ...] = ("127.0.0.1:*", "localhost:*")
+    knowledge_manifest_path: str | None = None
 
     @property
     def session_lifetime(self) -> timedelta:
@@ -156,6 +157,10 @@ def load_config() -> Config:
         mcp_allowed_hosts=parse_mcp_allowed_hosts(
             os.environ.get("TWE_MCP_ALLOWED_HOSTS"),
             os.environ.get("RAILWAY_PUBLIC_DOMAIN"),
+        ),
+        knowledge_manifest_path=os.environ.get(
+            "TWE_KNOWLEDGE_MANIFEST_PATH",
+            str(Path(__file__).resolve().parents[1] / "knowledge" / "sources.json"),
         ),
     )
 

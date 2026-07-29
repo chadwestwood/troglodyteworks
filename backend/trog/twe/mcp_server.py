@@ -55,6 +55,22 @@ def create_mcp_server(config=None, database=None):
         """Read recent operation outcomes for an authorized game instance."""
         return _call(tools.get_operation_history, instance_id, limit)
 
+    @server.tool()
+    def twe_search_knowledge(
+        query: str,
+        capability_key: str | None = None,
+        community_id: str | None = None,
+        limit: int = 5,
+    ) -> dict:
+        """Retrieve approved TWE evidence with citations; never authorize or execute actions."""
+        return _call(
+            tools.search_knowledge,
+            query,
+            capability_key,
+            community_id,
+            limit,
+        )
+
     return server, twe_database
 
 

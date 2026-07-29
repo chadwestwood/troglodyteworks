@@ -317,6 +317,34 @@ Fields:
 - identifier_hash
 - attempted_at
 
+### Knowledge Source
+
+Registers one approved source for the read-only TWE knowledge rail.
+
+Fields include `source_key`, `title`, `source_uri`, `source_type`,
+`capability_key`, optional `community_id`, `approved`, `content_sha256`, and
+controlled JSON metadata. A null Community means globally approved. A
+Community-scoped source is retrievable only by a current Member of that
+Community.
+
+Repository-managed sources come from the explicit
+`backend/trog/knowledge/sources.json` allowlist. Removing a managed source from
+that manifest disables it on the next synchronization.
+
+### Knowledge Chunk
+
+Stores citation-preserving sections from an approved Knowledge Source.
+
+Fields include `source_id`, `chunk_index`, `heading`, `anchor`, `content`,
+`token_count`, `embedding vector(384)`, generated `search_vector`, and
+controlled JSON metadata. Heading anchors are retained in returned citation
+URIs. Hybrid retrieval combines PostgreSQL full-text rank with pgvector cosine
+similarity.
+
+Knowledge tables contain documentation evidence, not provider credentials,
+authorization grants, or operation approval. They are never consulted as proof
+that a user may execute an action.
+
 ## Historical Initial Seed Data
 
 The following values describe the original local Genesis seed. They are retained

@@ -274,11 +274,13 @@ Read `authentication.md`, `database-schema.md`,
 `products-and-entitlements.md`, `known-security-work.md`, and the applicable
 integration tests.
 
-### MCP, tools, or future RAG
+### MCP, tools, or knowledge/RAG
 
 Read `architecture.md`, `tools.md`, `mcp_server.py`, `mcp_tools.py`, and
-`known-security-work.md`. MCP is the controlled action/query boundary. RAG is a
-future knowledge-retrieval layer and must not become an authorization path.
+`known-security-work.md`. MCP is the controlled action/query boundary. The
+implemented citation-backed knowledge rail uses approved sources, PostgreSQL
+full-text search, and pgvector through `twe_search_knowledge`. Retrieval remains
+read-only and must never become an authorization or action path.
 
 ### Database or migration
 

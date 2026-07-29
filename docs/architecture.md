@@ -138,6 +138,17 @@ Implemented reads:
 - Read active-player count and separately authorized names
 - Read installed mods
 - Read operation history
+- Retrieve approved knowledge excerpts with citations
+
+The knowledge rail is deliberately separate from authorization and action
+execution:
+
+1. an approved source manifest controls what can be indexed;
+2. Markdown headings become citation-preserving chunks;
+3. PostgreSQL full-text search and pgvector rank relevant evidence;
+4. Community-scoped sources require current Community membership; and
+5. the MCP tool returns evidence and citations, never a permission decision or
+   provider mutation.
 
 MCP action tools are still gated. The shared deterministic operation pipeline
 and explicit Discord confirmation rules are implemented, but MCP writes remain

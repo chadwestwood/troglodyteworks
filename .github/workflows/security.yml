@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:0.8.2-pg16
         env:
           POSTGRES_USER: twe_app
           POSTGRES_PASSWORD: test-password

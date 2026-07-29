@@ -63,6 +63,7 @@ class McpProtocolTests(unittest.TestCase):
                 "twe_get_active_players",
                 "twe_get_installed_mods",
                 "twe_get_operation_history",
+                "twe_search_knowledge",
             ],
         )
         self.assertFalse(any("restart" in name or "write" in name for name in names))
@@ -83,4 +84,3 @@ class McpProtocolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

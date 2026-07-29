@@ -49,6 +49,13 @@ See `docs/production-architecture.md` for boundaries and request flow.
   member experience.
 - The first read-only MCP server is available at `/mcp` and reuses TWE identity,
   tenant, and capability checks.
+- The read-only MCP knowledge tool retrieves citation-backed evidence from
+  approved global or membership-scoped sources. PostgreSQL full-text search and
+  pgvector are used for hybrid ranking; retrieval cannot authorize or execute
+  actions.
+- Focused capability documents define restart, maintenance scheduling, polls,
+  and weekend-event workflows, including permissions, arguments, confirmation,
+  failure behavior, and rollback boundaries.
 - Guided managed-Minecraft planning supports CurseForge exact-file selection,
   cost acknowledgement, and resumable Railway provisioning behind platform
   configuration and beta gates.
