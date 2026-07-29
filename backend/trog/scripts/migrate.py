@@ -8,6 +8,7 @@ sys.path.insert(0, str(ROOT))
 
 from twe.config import load_config
 from twe.db import Database, DatabaseUnavailable
+from twe.services.knowledge_rail import sync_approved_sources
 
 
 def main():
@@ -34,6 +35,8 @@ def main():
                     cur.execute(path.read_text())
                     cur.execute("INSERT INTO schema_migrations (version) VALUES (%s)", (version,))
                     print(f"apply {version}")
+        knowledge = sync_approved_sources(db, config.knowledge_manifest_path)
+        print(f"knowledge sources={knowledge['sources']} chunks={knowledge['chunks']}")
     except (DatabaseUnavailable, Exception) as exc:
         raise SystemExit(f"Migration failed. Check TWE_DATABASE_URL and PostgreSQL access. {exc.__class__.__name__}")
 
