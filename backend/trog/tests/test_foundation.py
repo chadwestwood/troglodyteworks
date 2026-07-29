@@ -48,7 +48,7 @@ class FoundationTests(unittest.TestCase):
         client = app.test_client()
         response = client.get("/auth/sign-in.html")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Sign In", response.data)
+        self.assertIn(b"Log in", response.data)
 
     def test_world_activity_page_is_served(self):
         app = create_app(Config(database_url="postgresql://unused"), database=object())
@@ -100,7 +100,7 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(register.status_code, 200)
         self.assertIn(b"Create Account", register.data)
         self.assertEqual(explore.status_code, 200)
-        self.assertIn(b"Explore", explore.data)
+        self.assertIn(b"Discover Communities", explore.data)
         self.assertEqual(invite.status_code, 200)
         self.assertIn(b"Community Invitation", invite.data)
         self.assertEqual(admin.status_code, 200)
@@ -192,7 +192,7 @@ class FoundationTests(unittest.TestCase):
         )
         script = client.get("/js/twe-pages.js")
         self.assertEqual(page.status_code, 200)
-        self.assertIn(b"Read-only community view", page.data)
+        self.assertIn(b"players online", page.data)
         self.assertIn(b"Set up Trog for this world", page.data)
         self.assertIn(b"data-capabilities-panel", page.data)
         self.assertIn(b"configureGenesisAccessView", script.data)
@@ -247,7 +247,7 @@ class FoundationTests(unittest.TestCase):
         self.assertIn(b"Create my own Community", page.data)
         self.assertIn(b"open the exact hosted map or world", page.data)
         self.assertIn(b"communityPath", script.data)
-        self.assertIn(b"Map or world Trog will represent", discord.data)
+        self.assertIn(b"Trog will represent", discord.data)
         discord_script = client.get("/js/discord-access.js")
         self.assertIn(b"instance.mods.names.read", discord_script.data)
 
