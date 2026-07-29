@@ -15,6 +15,7 @@ from .core import (
     classify_intent,
     extract_mod_reference,
     is_directly_mentioned,
+    operation_request_from_message,
     parse_guild_game_server_map,
     respond_to_request,
 )
@@ -134,20 +135,22 @@ def main():
         )
 
     @server_group.command(name="restart", description="Request a server restart")
-    async def server_restart(interaction):
+    async def server_restart(interaction, confirm: bool = False):
         await handle_interaction(
             interaction, "server_restart", database, config, guild_map,
             allowed_mentions=allowed_mentions,
             request_limiter=request_limiter,
+            confirmed=confirm,
         )
 
     @server_group.command(name="add-mod", description="Add an ASA mod by exact CurseForge name or project ID")
-    async def server_add_mod(interaction, mod: str):
+    async def server_add_mod(interaction, mod: str, confirm: bool = False):
         await handle_interaction(
             interaction, "mod_add", database, config, guild_map,
             allowed_mentions=allowed_mentions,
             request_limiter=request_limiter,
             command_argument=mod,
+            confirmed=confirm,
         )
 
     tree.add_command(server_group)
@@ -223,7 +226,8 @@ async def handle_message(
         mentioned_role_ids=mentioned_role_ids,
         bot_role_ids=bot_role_ids,
     )
-    intent = classify_intent(content)
+    operation_request = operation_request_from_message(content)
+    intent = operation_request.intent if operation_request else classify_intent(content)
 
     logger.info(
         "Discord message received guild_id=%s channel_id=%s author_id=%s mentions_trog=%s intent=%s content_length=%s",
@@ -253,7 +257,13 @@ async def handle_message(
             with database.connect() as conn:
                 reply = respond_to_request(
                     intent, str(message.guild.id), str(message.channel.id), str(message.author.id),
-                    conn, config, guild_map, command_argument=extract_mod_reference(content),
+                    conn, config, guild_map,
+                    command_argument=(
+                        operation_request.argument
+                        if operation_request
+                        else extract_mod_reference(content)
+                    ),
+                    confirmed=bool(operation_request and operation_request.confirmed),
                 )
     except DiscordBotConfigurationError:
         logger.warning("Discord guild is not connected to a valid TWE game server guild_id=%s", message.guild.id)
@@ -293,7 +303,7 @@ async def handle_message(
 
 async def handle_interaction(
     interaction, intent, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
-    request_limiter=None, command_argument=None,
+    request_limiter=None, command_argument=None, confirmed=False,
 ):
     guild_id = str(interaction.guild_id) if interaction.guild_id else ""
     channel_id = str(interaction.channel_id) if interaction.channel_id else ""
@@ -319,6 +329,7 @@ async def handle_interaction(
                 reply = respond_to_request(
                     intent, guild_id, channel_id, author_id, conn, config, guild_map,
                     command_argument=command_argument,
+                    confirmed=confirmed,
                 )
     except Exception:
         logger.exception("Discord interaction handling failed guild_id=%s intent=%s", guild_id, intent)

@@ -139,9 +139,10 @@ Implemented reads:
 - Read installed mods
 - Read operation history
 
-MCP action tools are still gated. They will provide approved actions only after
-the shared operation service, explicit confirmation rules, and end-to-end
-authorization tests are proven.
+MCP action tools are still gated. The shared deterministic operation pipeline
+and explicit Discord confirmation rules are implemented, but MCP writes remain
+disabled until each action has a provider adapter, audit contract, and
+end-to-end authorization coverage.
 
 Examples:
 

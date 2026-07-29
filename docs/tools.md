@@ -7,6 +7,23 @@ implemented.
 
 MCP tools are safe actions the AI can request.
 
+## Shared Operation Pipeline
+
+Conversational operations use a provider-independent pipeline:
+
+1. interpret the supported intent and bounded arguments;
+2. resolve the fixed capability for that intent;
+3. authorize the caller against the routed Community and World;
+4. validate required arguments;
+5. require explicit confirmation for write actions; and
+6. invoke exactly one approved provider tool.
+
+The language layer cannot skip or reorder these gates. A confirmed request is
+parsed again and authorization is re-evaluated before execution. Discord
+restart and mod-add requests now use this pipeline. Read-only MCP tools retain
+their existing tenant and capability checks; future MCP action tools must use
+the same pipeline before they can be enabled.
+
 ## Implemented Read-Only Tools
 
 - `twe_list_instances`

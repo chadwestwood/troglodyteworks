@@ -1,6 +1,6 @@
 # Troglodyte Works Current State
 
-**Last updated:** 2026-07-24
+**Last updated:** 2026-07-29
 
 **Status:** Current production baseline
 
@@ -57,6 +57,10 @@ See `docs/production-architecture.md` for boundaries and request flow.
 - Nitrado rate limits, outages, and credential failures use stable secret-free API errors rather than generic application failures.
 - Sensitive public writes use a hashed-identifier, database-backed limiter shared by Railway replicas.
 - Trog natural-language requests require a direct mention and are burst-limited per Discord user and guild.
+- Trog routes supported Discord requests through a deterministic
+  intent → permission → validation → confirmation → tool pipeline. Restart and
+  mod-add requests cannot reach their provider tool until an authorized user
+  repeats the explicit confirmation command.
 - The public beta page documents the supported identity, Community, hosting, installation, and command-verification path.
 - GitHub pull requests and pushes to `main` run backend regressions, a Python dependency audit, and tracked-secret/configuration policy checks.
 

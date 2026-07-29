@@ -13,6 +13,7 @@ from ..services.provider_resolution import (
 )
 from ..services.nitrado_provider import NitradoProvider, NitradoProviderError
 from ..services.railway_minecraft import RailwayMinecraft, RailwayMinecraftError
+from ..operation_pipeline import OperationPipeline, OperationRequest, OperationSpec
 from .authorization import authorize, resolve_guild
 
 
@@ -45,6 +46,26 @@ HELP_REPLY = BotReply(
     "- `/server settings` — show the combined server overview\n"
     "You can also mention me and ask the same questions naturally. Read access follows your Community's approved Trog permissions.",
     "server_help",
+)
+
+DISCORD_OPERATION_PIPELINE = OperationPipeline(
+    (
+        OperationSpec("server_status", "instance.status.read"),
+        OperationSpec("player_count", "instance.players.count.read"),
+        OperationSpec("player_list", "instance.players.names.read"),
+        OperationSpec("mod_list", "instance.mods.names.read"),
+        OperationSpec(
+            "mod_add",
+            "instance.mods.write",
+            requires_confirmation=True,
+            required_argument="mod_reference",
+        ),
+        OperationSpec(
+            "server_restart",
+            "instance.restart.execute",
+            requires_confirmation=True,
+        ),
+    )
 )
 
 
@@ -94,7 +115,8 @@ def is_directly_mentioned(
 
 
 def classify_intent(message: str) -> str | None:
-    normalized = message.lower()
+    normalized, _confirmed = normalize_operation_message(message)
+    normalized = normalized.lower()
     # Normalize common Unicode punctuation from mobile/desktop clients.
     normalized = normalized.replace("\u2019", "'").replace("\u2018", "'")
     normalized = normalized.replace("\u201c", '"').replace("\u201d", '"')
@@ -127,6 +149,27 @@ def classify_intent(message: str) -> str | None:
     if re.search(r"\b(how many|players?|online|count)\b", normalized) and re.search(r"\b(players?|online)\b", normalized):
         return "player_count"
     return None
+
+
+def normalize_operation_message(message: str) -> tuple[str, bool]:
+    normalized = message
+    normalized = normalized.replace("\u2019", "'").replace("\u2018", "'")
+    normalized = re.sub(r"<@!?\d+>", " ", normalized)
+    normalized = re.sub(r"(^|\s)@trog\b", " ", normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    confirmed = bool(re.match(r"^(?:yes[,\s]+)?confirm\b", normalized, flags=re.IGNORECASE))
+    if confirmed:
+        normalized = re.sub(r"^(?:yes[,\s]+)?confirm\b[\s,:-]*", "", normalized, flags=re.IGNORECASE)
+    return normalized, confirmed
+
+
+def operation_request_from_message(message: str) -> OperationRequest | None:
+    normalized, confirmed = normalize_operation_message(message)
+    intent = classify_intent(normalized)
+    if not intent:
+        return None
+    argument = extract_mod_reference(normalized) if intent == "mod_add" else None
+    return OperationRequest(intent=intent, argument=argument, confirmed=confirmed)
 
 
 def extract_mod_id(message: str) -> str | None:
@@ -330,7 +373,7 @@ def capability_for_intent(intent: str) -> str:
 
 def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user_id: str,
                        conn, config: Config, guild_map: dict[str, str] | None = None,
-                       command_argument: str | None = None) -> BotReply:
+                       command_argument: str | None = None, confirmed: bool = False) -> BotReply:
     if intent == "server_help":
         return HELP_REPLY
     if intent == "server_settings":
@@ -340,8 +383,23 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
         ]
         return server_settings_reply(*replies)
 
-    capability = capability_for_intent(intent)
-    decision = authorize(conn, guild_id, channel_id, discord_user_id, capability)
+    request = OperationRequest(intent=intent, argument=command_argument, confirmed=confirmed)
+    result = DISCORD_OPERATION_PIPELINE.run(
+        request,
+        authorize=lambda capability: authorize(
+            conn, guild_id, channel_id, discord_user_id, capability
+        ),
+        execute=lambda operation, _spec, decision: _execute_authorized_request(
+            operation,
+            decision,
+            conn,
+            config,
+        ),
+    )
+    capability = result.spec.capability if result.spec else ""
+    decision = result.authorization
+    if result.stage == "intent":
+        return HELP_REPLY
     if not decision.context and guild_map:
         # Temporary compatibility for read-only installations not migrated to PostgreSQL yet.
         if capability in {
@@ -360,7 +418,7 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
                 players_provider=players_provider,
                 mods_provider=mods_provider,
             )
-    if not decision.allowed:
+    if result.stage == "permission":
         if decision.reason == "guild_not_connected":
             return BotReply("This Discord server is not connected to a Troglodyte Works game server yet.", "guild_not_connected")
         if decision.reason == "channel_unmapped":
@@ -370,25 +428,59 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
         if capability.endswith(".read"):
             return BotReply("That read capability has not been approved for this Discord server.", "read_not_approved")
         return BotReply("Only an authorized Community owner or administrator can change or restart this server.", "administrative_denied")
-    if intent == "mod_add":
-        if not command_argument:
+    if result.stage == "validation":
+        return BotReply(
+            "Give me an exact CurseForge mod name or numeric project ID, for example: "
+            "`@Trog add Silent Structures to the world`.",
+            "mod_reference_required",
+        )
+    if result.stage == "confirmation":
+        if intent == "server_restart":
             return BotReply(
-                "Give me an exact CurseForge mod name or numeric project ID, for example: "
-                "`@Trog add Silent Structures to the world`.",
-                "mod_reference_required",
+                "This will restart the routed World. To continue, reply "
+                "`@Trog confirm restart`.",
+                "confirmation_required",
             )
-        return _execute_nitrado_operation(conn, decision, config, "instance.mods.write", command_argument)
-    if intent == "server_restart":
-        return _execute_nitrado_operation(conn, decision, config, "instance.restart.execute")
+        return BotReply(
+            f"This will add **{command_argument}** to the routed World. To continue, reply "
+            f"`@Trog confirm add {command_argument} to the world`.",
+            "confirmation_required",
+        )
+    return result.value
+
+
+def _execute_authorized_request(
+    request: OperationRequest,
+    decision,
+    conn,
+    config: Config,
+) -> BotReply:
+    if request.intent == "mod_add":
+        return _execute_nitrado_operation(
+            conn,
+            decision,
+            config,
+            "instance.mods.write",
+            request.argument,
+        )
+    if request.intent == "server_restart":
+        return _execute_nitrado_operation(
+            conn,
+            decision,
+            config,
+            "instance.restart.execute",
+        )
     game_server = GameServerRef(
         id=decision.context.game_server_id,
         name=decision.context.game_server_name,
         slug=decision.context.game_server_slug,
         management_adapter=decision.context.management_adapter,
     )
-    health_provider, players_provider, mods_provider = _resolved_read_providers(conn, game_server, config, intent)
+    health_provider, players_provider, mods_provider = _resolved_read_providers(
+        conn, game_server, config, request.intent
+    )
     return _read_reply(
-        intent,
+        request.intent,
         game_server,
         config,
         health_provider=health_provider,

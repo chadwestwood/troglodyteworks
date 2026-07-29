@@ -15,6 +15,7 @@ from twe.discord_bot.core import (
     extract_mod_id,
     extract_mod_reference,
     is_directly_mentioned,
+    operation_request_from_message,
     parse_guild_game_server_map,
     respond_to_message,
     respond_to_request,
@@ -100,6 +101,21 @@ class DiscordBotCoreTests(unittest.TestCase):
             extract_mod_reference("@Trog install Silent Structures"),
             "Silent Structures",
         )
+
+    def test_confirmation_is_explicit_and_preserves_operation_arguments(self):
+        restart = operation_request_from_message("@Trog confirm restart")
+        self.assertEqual(restart.intent, "server_restart")
+        self.assertTrue(restart.confirmed)
+
+        add_mod = operation_request_from_message(
+            "@Trog confirm add Silent Structures to the world"
+        )
+        self.assertEqual(add_mod.intent, "mod_add")
+        self.assertEqual(add_mod.argument, "Silent Structures")
+        self.assertTrue(add_mod.confirmed)
+
+        unconfirmed = operation_request_from_message("@Trog restart")
+        self.assertFalse(unconfirmed.confirmed)
 
     def test_bot_managed_role_mention_is_treated_as_direct_mention(self):
         self.assertTrue(
@@ -340,9 +356,30 @@ class DiscordBotCoreTests(unittest.TestCase):
             DiscordIdentity("111", "user", "membership", "owner"),
         )
         execute_mock.return_value = BotReply("Restart accepted.", "restart_requested")
-        reply = respond_to_request("server_restart", "222", "333", "111", object(), self.config)
+        reply = respond_to_request(
+            "server_restart", "222", "333", "111", object(), self.config,
+            confirmed=True,
+        )
         self.assertEqual(reply.code, "restart_requested")
         execute_mock.assert_called_once()
+
+    @patch("twe.discord_bot.core._execute_nitrado_operation")
+    @patch("twe.discord_bot.core.authorize")
+    def test_authorized_restart_stops_before_tool_without_confirmation(
+        self, authorize_mock, execute_mock
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True, "authorized", "instance.restart.execute", self._context(),
+            DiscordIdentity("111", "user", "membership", "owner"),
+        )
+
+        reply = respond_to_request(
+            "server_restart", "222", "333", "111", object(), self.config
+        )
+
+        self.assertEqual(reply.code, "confirmation_required")
+        self.assertIn("@Trog confirm restart", reply.text)
+        execute_mock.assert_not_called()
 
     @patch("twe.discord_bot.core.authorize")
     def test_unauthorized_restart_is_denied(self, authorize_mock):
