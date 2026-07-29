@@ -15,6 +15,7 @@ Documentation is part of the product. Every document should identify whether it 
 9. `vertical-slices/` — bounded implementation records.
 10. `codex-guidelines.md` — implementation-agent expectations.
 11. `products-and-entitlements.md` — customer plans and their separation from owner-granted authority.
+12. `database-backup-and-restore.md` — production backup retention, recovery, and restore-drill procedure.
 
 Repository-root `AGENTS.md` tells a fresh Codex task to load the bootstrap.
 `task-starters.md` provides reusable prompts for focused tasks without depending
@@ -37,6 +38,7 @@ on another chat's transcript.
 - `server-operation-lifecycle.md`
 - `services.md`
 - `products-and-entitlements.md`
+- `database-backup-and-restore.md`
 
 ### Research
 
