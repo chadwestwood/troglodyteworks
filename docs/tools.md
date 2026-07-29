@@ -24,6 +24,34 @@ restart and mod-add requests now use this pipeline. Read-only MCP tools retain
 their existing tenant and capability checks; future MCP action tools must use
 the same pipeline before they can be enabled.
 
+## Trog Language Gateway
+
+The OpenAI Responses API is isolated behind a service interface. Its input
+contains only the resolved actor, Discord guild and channel, Community, World,
+effective capabilities, request text, approved grounding, citations, and a
+correlation ID. Secret-like keys or values are rejected before a request can be
+sent.
+
+The model receives no provider credentials and no direct tools. Strict
+structured output permits only:
+
+- `grounded_answer`
+- `clarification`
+- `refusal`
+- `action_proposal`
+
+Every action proposal is typed, must target the resolved World, must name one
+of the caller's effective capabilities, and must require confirmation. It is
+then treated as untrusted input to the existing authorization and execution
+pipeline. The model cannot grant permissions or call a provider.
+
+The model, timeout, retry count, and output-token limit are runtime
+configuration. The API key is supplied only through the runtime secret manager
+and is excluded from request payloads and logs. Missing configuration,
+ambiguous scope, malformed output, unexpected model tool calls, and service
+failures all return deterministic non-AI responses. The feature remains
+disabled until the Discord handoff is explicitly enabled and verified.
+
 ## Implemented Read-Only Tools
 
 - `twe_list_instances`

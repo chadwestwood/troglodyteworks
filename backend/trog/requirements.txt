@@ -7,3 +7,4 @@ google-auth[requests]
 cryptography
 mcp[cli]==1.28.1
 uvicorn
+openai

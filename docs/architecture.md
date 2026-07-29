@@ -122,6 +122,25 @@ Examples:
 
 AI never directly changes the operating system.
 
+Trog's language boundary is a versioned, typed contract:
+
+1. TWE resolves the authenticated Discord user, guild, channel, Community,
+   World, and effective capabilities before contacting a model.
+2. Only bounded, tenant-scoped facts and approved citations cross the boundary.
+   Provider credentials, session material, and unrelated tenant data are
+   rejected.
+3. The OpenAI Responses API returns strict structured output: a grounded
+   answer, clarification, refusal, or typed action proposal.
+4. A proposal is not execution. TWE independently checks its World and
+   capability, requires confirmation, reauthorizes the caller, and invokes only
+   an approved provider tool.
+5. Model failures, malformed output, and unexpected tool calls fail closed to a
+   deterministic response.
+
+The gateway is configuration-gated and the Discord handoff remains disabled
+until its end-to-end authorization and fallback behavior are production
+verified.
+
 ---
 
 # Layer 6 — MCP Tools

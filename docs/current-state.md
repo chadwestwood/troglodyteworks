@@ -68,6 +68,16 @@ See `docs/production-architecture.md` for boundaries and request flow.
   intent → permission → validation → confirmation → tool pipeline. Restart and
   mod-add requests cannot reach their provider tool until an authorized user
   repeats the explicit confirmation command.
+- A guarded OpenAI Responses API gateway now defines Trog's versioned language
+  input and structured output contracts. It receives only tenant-scoped
+  identity, Community, World, effective-capability, grounding, and correlation
+  context; rejects secret-like data; and can return only a grounded answer,
+  clarification, refusal, or typed action proposal.
+- Model-proposed actions cannot execute directly. They must target the already
+  resolved World, name an effective capability, require confirmation, and pass
+  through the existing deterministic authorization and provider-tool pipeline.
+  Invalid, unavailable, or unexpected model output falls back to a stable
+  non-AI response.
 - The public beta page documents the supported identity, Community, hosting, installation, and command-verification path.
 - GitHub pull requests and pushes to `main` run backend regressions, a Python dependency audit, and tracked-secret/configuration policy checks.
 
@@ -77,6 +87,9 @@ See `docs/production-architecture.md` for boundaries and request flow.
   workflows. Arbitrary settings, file access, backups, restores, console
   commands, and other mutations remain disabled.
 - MCP remains read-only.
+- The OpenAI language gateway remains opt-in until the Discord conversation
+  handoff is connected and verified end to end. Supplying an API key alone does
+  not enable model responses.
 - Paid managed-Minecraft resource creation remains platform-configuration and
   beta gated.
 - Local `local_asa` documentation describes a superseded Genesis deployment and is not the production provider path.

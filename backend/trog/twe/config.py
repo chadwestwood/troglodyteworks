@@ -63,6 +63,12 @@ class Config:
     railway_minecraft_image: str = "itzg/minecraft-server:latest"
     mcp_allowed_hosts: tuple[str, ...] = ("127.0.0.1:*", "localhost:*")
     knowledge_manifest_path: str | None = None
+    openai_api_key: str | None = field(default=None, repr=False)
+    trog_brain_enabled: bool = False
+    trog_brain_model: str = "gpt-5-mini"
+    trog_brain_timeout_seconds: float = 20.0
+    trog_brain_max_retries: int = 1
+    trog_brain_max_output_tokens: int = 700
 
     @property
     def session_lifetime(self) -> timedelta:
@@ -161,6 +167,19 @@ def load_config() -> Config:
         knowledge_manifest_path=os.environ.get(
             "TWE_KNOWLEDGE_MANIFEST_PATH",
             str(Path(__file__).resolve().parents[1] / "knowledge" / "sources.json"),
+        ),
+        openai_api_key=os.environ.get("OPENAI_API_KEY"),
+        trog_brain_enabled=os.environ.get("TWE_TROG_BRAIN_ENABLED", "").lower()
+        in {"1", "true", "yes"},
+        trog_brain_model=os.environ.get("TWE_TROG_BRAIN_MODEL", "gpt-5-mini"),
+        trog_brain_timeout_seconds=float(
+            os.environ.get("TWE_TROG_BRAIN_TIMEOUT_SECONDS", "20")
+        ),
+        trog_brain_max_retries=int(
+            os.environ.get("TWE_TROG_BRAIN_MAX_RETRIES", "1")
+        ),
+        trog_brain_max_output_tokens=int(
+            os.environ.get("TWE_TROG_BRAIN_MAX_OUTPUT_TOKENS", "700")
         ),
     )
 
