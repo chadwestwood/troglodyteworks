@@ -383,7 +383,8 @@ async def answer_advisory_question(
                 "The connected game is ARK: Survival Ascended.",
                 (
                     "This is an advisory conversation. Give a conservative, reversible "
-                    "recommendation and name the relevant ARK setting when known."
+                    "recommendation and name the relevant ARK setting when known. "
+                    "Present it as a short, friendly guide with one clear next step."
                 ),
                 (
                     "Do not claim to know the World's current setting values unless they "
