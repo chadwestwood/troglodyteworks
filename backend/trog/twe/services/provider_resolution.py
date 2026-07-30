@@ -56,6 +56,15 @@ def read_game_server_mods(resolution: ResolvedGameServerProvider, config) -> lis
     return adapter.installed_mods(config)
 
 
+def read_game_server_settings(resolution: ResolvedGameServerProvider, config):
+    if resolution.mode != "provider" or not resolution.context:
+        raise LookupError("The connected World does not expose verified live settings.")
+    reader = build_provider_registry(config).settings_reader(
+        resolution.context.connection.provider_key
+    )
+    return reader.read_settings(resolution.context)
+
+
 def resolve_game_server_provider(
     conn,
     game_server_id: str,

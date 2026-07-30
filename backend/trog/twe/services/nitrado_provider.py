@@ -16,6 +16,8 @@ from .provider_contracts import (
     CredentialValidation,
     DiscoveredResource,
     ProviderContext,
+    ProviderSetting,
+    ProviderSettingsSnapshot,
     ProviderStatus,
     ProviderStatusCheck,
 )
@@ -168,6 +170,27 @@ class NitradoClient:
         mods, _setting = self.get_gameserver_mod_configuration(service_id, credential)
         return mods
 
+    def get_gameserver_settings(
+        self, service_id: str, credential: bytes,
+    ) -> ProviderSettingsSnapshot:
+        if not service_id.isdigit():
+            raise NitradoMalformedResponseError()
+        # The World summary is Nitrado's established read endpoint and is also
+        # the source used for status and mod configuration. Prefer it so an
+        # advisory answer is grounded in the same live World the channel routes
+        # to. Some Nitrado service variants omit settings from that response;
+        # only then try the dedicated settings representation. If neither
+        # contains settings, parsing fails closed and Trog will not guess.
+        response = self._get(f"/services/{service_id}/gameservers", credential)
+        try:
+            return self._parse_gameserver_settings(response.body)
+        except NitradoMalformedResponseError:
+            response = self._get(
+                f"/services/{service_id}/gameservers/settings",
+                credential,
+            )
+            return self._parse_gameserver_settings(response.body)
+
     def get_gameserver_mod_configuration(
         self, service_id: str, credential: bytes,
     ) -> tuple[list[dict[str, str]], tuple[str, str] | None]:
@@ -175,6 +198,43 @@ class NitradoClient:
             raise NitradoMalformedResponseError()
         response = self._get(f"/services/{service_id}/gameservers", credential)
         return self._parse_gameserver_mod_configuration(response.body)
+
+    @staticmethod
+    def _parse_gameserver_settings(body: bytes) -> ProviderSettingsSnapshot:
+        try:
+            payload = json.loads(body.decode("utf-8"))
+            data = payload["data"]
+            if not isinstance(data, dict):
+                raise TypeError
+            containers = []
+            gameserver = data.get("gameserver")
+            if isinstance(gameserver, dict):
+                for container_name in ("settings", "game_specific"):
+                    container = gameserver.get(container_name)
+                    if isinstance(container, dict):
+                        containers.append((container_name, container))
+            for container_name in ("settings", "game_specific"):
+                container = data.get(container_name)
+                if isinstance(container, dict):
+                    containers.append((container_name, container))
+            if not containers:
+                raise KeyError("settings")
+            settings = []
+            seen_paths = set()
+            for container_name, container in containers:
+                for setting in _safe_provider_settings(container_name, container):
+                    if setting.path in seen_paths:
+                        continue
+                    seen_paths.add(setting.path)
+                    settings.append(setting)
+            if not settings:
+                raise KeyError("settings")
+            return ProviderSettingsSnapshot(
+                settings=tuple(settings[:250]),
+                checked_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            )
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            raise NitradoMalformedResponseError() from None
 
     def set_gameserver_mods(
         self,
@@ -521,6 +581,15 @@ class NitradoProvider:
         )
         return self._mod_catalog.enrich(mods) if self._mod_catalog else mods
 
+    def read_settings(self, context: ProviderContext) -> ProviderSettingsSnapshot:
+        if context.connection.provider_key != "nitrado":
+            raise ValueError("Nitrado adapter received the wrong Provider Connection.")
+        credential = self._credential(context)
+        return self._client.get_gameserver_settings(
+            context.resource.external_resource_id,
+            credential,
+        )
+
     def resolve_mod(self, reference: str) -> dict[str, str]:
         if not self._mod_catalog:
             raise ValueError("The shared ASA mod catalog is not configured.")
@@ -683,6 +752,42 @@ def _gameserver_from_body(body: bytes) -> dict:
     if not isinstance(gameserver, dict):
         raise ValueError
     return gameserver
+
+
+_SENSITIVE_SETTING_MARKERS = (
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "apikey",
+    "rcon",
+    "credential",
+    "websocket",
+    "ftp",
+)
+
+
+def _safe_provider_settings(prefix: str, container: dict) -> list[ProviderSetting]:
+    settings = []
+    for key, value in container.items():
+        path = f"{prefix}.{key}"
+        normalized_path = re.sub(r"[^a-z0-9]+", "", path.lower())
+        if any(marker in normalized_path for marker in _SENSITIVE_SETTING_MARKERS):
+            continue
+        if isinstance(value, dict):
+            settings.extend(_safe_provider_settings(path, value))
+            continue
+        if not isinstance(value, (str, int, float, bool)) or value in ("", None):
+            continue
+        if isinstance(value, bool):
+            rendered = "true" if value else "false"
+        else:
+            rendered = str(value).strip()
+        if rendered:
+            settings.append(
+                ProviderSetting(path=path[:180], value=rendered[:300])
+            )
+    return settings
 
 
 def _find_mod_values(container: dict) -> list:

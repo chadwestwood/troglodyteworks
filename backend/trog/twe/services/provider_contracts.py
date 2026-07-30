@@ -123,6 +123,18 @@ class ProviderStatus:
         }
 
 
+@dataclass(frozen=True)
+class ProviderSetting:
+    path: str
+    value: str
+
+
+@dataclass(frozen=True)
+class ProviderSettingsSnapshot:
+    settings: tuple[ProviderSetting, ...]
+    checked_at: str
+
+
 class ConnectionDescriber(Protocol):
     def describe_connection(self) -> ConnectionDescription:
         raise NotImplementedError
@@ -155,4 +167,9 @@ class PlayerReader(Protocol):
 
 class ModReader(Protocol):
     def read_mods(self, context: ProviderContext) -> list[dict[str, str]]:
+        raise NotImplementedError
+
+
+class SettingsReader(Protocol):
+    def read_settings(self, context: ProviderContext) -> ProviderSettingsSnapshot:
         raise NotImplementedError

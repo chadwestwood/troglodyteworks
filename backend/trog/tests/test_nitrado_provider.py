@@ -101,6 +101,25 @@ def _gameserver_mods_response(mods):
     )
 
 
+def _gameserver_settings_response(*, nested=True):
+    settings = {
+        "general": {
+            "PlayerHarvestingDamageMultiplier": 3,
+            "HarvestXPMultiplier": 3.0,
+            "ServerAdminPassword": "must-not-survive",
+            "RCONPort": 11550,
+        },
+    }
+    data = {"gameserver": {"settings": settings}} if nested else {"settings": settings}
+    return NitradoHttpResponse(
+        status=200,
+        body=json.dumps({
+            "status": "success",
+            "data": data,
+        }).encode(),
+    )
+
+
 class NitradoProviderTests(unittest.TestCase):
     def setUp(self):
         self.key = b"k" * 32
@@ -259,6 +278,61 @@ class NitradoProviderTests(unittest.TestCase):
 
         self.assertEqual(mods[0], {"id": "927090", "name": "Awesome SpyGlass"})
         self.assertEqual(mods[1], {"id": "928708", "name": "Dino Depot"})
+
+    def test_reads_sanitized_live_settings_from_world_summary(self):
+        transport = _Transport(_gameserver_settings_response())
+
+        snapshot = NitradoProvider(self.config, transport).read_settings(self._context())
+
+        self.assertEqual(
+            transport.calls[0][0],
+            "https://api.nitrado.net/services/42/gameservers",
+        )
+        self.assertEqual(len(transport.calls), 1)
+        values = {setting.path: setting.value for setting in snapshot.settings}
+        self.assertEqual(
+            values["settings.general.PlayerHarvestingDamageMultiplier"],
+            "3",
+        )
+        self.assertEqual(values["settings.general.HarvestXPMultiplier"], "3.0")
+        rendered = repr(snapshot)
+        self.assertNotIn("ServerAdminPassword", rendered)
+        self.assertNotIn("RCONPort", rendered)
+        self.assertNotIn("must-not-survive", rendered)
+        self.assertNotIn("secret-token", rendered)
+
+    def test_falls_back_to_dedicated_settings_representation(self):
+        transport = _Transport([
+            _gameserver_response("started"),
+            _gameserver_settings_response(nested=False),
+        ])
+
+        snapshot = NitradoProvider(self.config, transport).read_settings(self._context())
+
+        self.assertEqual(
+            [call[0] for call in transport.calls],
+            [
+                "https://api.nitrado.net/services/42/gameservers",
+                "https://api.nitrado.net/services/42/gameservers/settings",
+            ],
+        )
+        values = {setting.path: setting.value for setting in snapshot.settings}
+        self.assertEqual(
+            values["settings.general.PlayerHarvestingDamageMultiplier"],
+            "3",
+        )
+
+    def test_live_settings_read_fails_closed_without_a_settings_payload(self):
+        provider = NitradoProvider(
+            self.config,
+            _Transport([
+                _gameserver_response("started"),
+                _gameserver_response("started"),
+            ]),
+        )
+
+        with self.assertRaises(NitradoMalformedResponseError):
+            provider.read_settings(self._context())
 
     def test_enriches_ordered_mod_ids_from_nested_provider_metadata(self):
         response = json.dumps({

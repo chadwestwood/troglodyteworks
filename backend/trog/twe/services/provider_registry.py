@@ -24,6 +24,7 @@ class ProviderRegistration:
     status_reader_factory: Callable[[], object] | None = None
     player_reader_factory: Callable[[], object] | None = None
     mod_reader_factory: Callable[[], object] | None = None
+    settings_reader_factory: Callable[[], object] | None = None
     provisioning_factory: Callable[[], object] | None = None
     credential_validator_factory: Callable[[], object] | None = None
     credential_resource_discoverer_factory: Callable[[], object] | None = None
@@ -52,6 +53,9 @@ class ProviderRegistry:
 
     def mod_reader(self, provider_key: str):
         return self._capability(provider_key, "mod_reader_factory")
+
+    def settings_reader(self, provider_key: str):
+        return self._capability(provider_key, "settings_reader_factory")
 
     def provisioner(self, provider_key: str):
         return self._capability(provider_key, "provisioning_factory")
@@ -104,6 +108,7 @@ def build_provider_registry(config, nitrado_transport=None) -> ProviderRegistry:
             status_reader_factory=lambda: NitradoProvider(config, nitrado_transport),
             player_reader_factory=lambda: NitradoProvider(config, nitrado_transport),
             mod_reader_factory=lambda: NitradoProvider(config, nitrado_transport),
+            settings_reader_factory=lambda: NitradoProvider(config, nitrado_transport),
             credential_validator_factory=lambda: NitradoProvider(config, nitrado_transport),
             credential_resource_discoverer_factory=lambda: NitradoProvider(config, nitrado_transport),
         ),

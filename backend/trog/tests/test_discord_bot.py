@@ -42,6 +42,7 @@ from twe.discord_bot.service import (
     monitor_restart_until_ready,
     split_discord_message,
 )
+from twe.services.provider_contracts import ProviderSetting, ProviderSettingsSnapshot
 from twe.trog_brain import TrogBrainResponse
 
 
@@ -511,8 +512,12 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.bot = FakeUser(999)
         self.author = FakeUser(111)
 
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
     @patch("twe.discord_bot.service.authorize")
-    async def test_unknown_ark_question_uses_scoped_trog_brain(self, authorize_mock):
+    async def test_unknown_ark_question_uses_scoped_trog_brain(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
         context = DiscordContext(
             "installation",
             "222",
@@ -534,10 +539,22 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
             "instance.status.read",
             context,
         )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting(
+                    "settings.general.PlayerHarvestingDamageMultiplier",
+                    "3",
+                ),
+                ProviderSetting("settings.general.HarvestXPMultiplier", "3.0"),
+                ProviderSetting("settings.general.TamingSpeedMultiplier", "5"),
+            ),
+            checked_at="2026-07-30T12:00:00Z",
+        )
         gateway = FakeBrainGateway(
             TrogBrainResponse(
                 kind="grounded_answer",
-                message="Reduce HarvestAmountMultiplier in a small step.",
+                message="Reduce PlayerHarvestingDamageMultiplier in a small step.",
             )
         )
         message = FakeMessage(
@@ -558,13 +575,59 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(handled)
         self.assertEqual(len(message.channel.sent), 1)
-        self.assertIn("HarvestAmountMultiplier", message.channel.sent[0])
+        self.assertIn("PlayerHarvestingDamageMultiplier", message.channel.sent[0])
         self.assertEqual(gateway.requests[0].community_name, "Cohorts in the Wild")
         self.assertEqual(gateway.requests[0].world_name, "Genesis")
         self.assertIn(
             "instance.status.read",
             gateway.requests[0].effective_capabilities,
         )
+        grounding = " ".join(gateway.requests[0].grounding_facts)
+        self.assertIn("PlayerHarvestingDamageMultiplier = 3", grounding)
+        self.assertIn("HarvestXPMultiplier = 3.0", grounding)
+        self.assertNotIn("TamingSpeedMultiplier", grounding)
+
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
+    async def test_unknown_ark_question_refuses_to_guess_without_live_settings(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.status.read",
+            DiscordContext(
+                "installation",
+                "222",
+                "community",
+                "server",
+                "Cohorts in the Wild - Genesis",
+                "ark-survival-ascended",
+                "nitrado",
+                instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.side_effect = LookupError("settings unavailable")
+        gateway = FakeBrainGateway(
+            TrogBrainResponse(kind="grounded_answer", message="Should not be sent.")
+        )
+
+        reply = await answer_advisory_question(
+            "<@999> harvesting feels too easy. What should I change?",
+            "222",
+            "333",
+            "111",
+            FakeDatabase(),
+            self.config,
+            brain_gateway=gateway,
+        )
+
+        self.assertEqual(reply.code, "brain_settings_unavailable")
+        self.assertIn("won’t guess", reply.text)
+        self.assertEqual(gateway.requests, [])
 
     @patch("twe.discord_bot.service.authorize")
     async def test_unknown_question_fails_closed_outside_routed_channel(

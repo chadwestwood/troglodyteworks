@@ -1,13 +1,18 @@
 import asyncio
 import logging
 import os
+import re
 import time
 import uuid
 
 from ..config import load_config
 from ..db import Database
 from ..services.runtime_heartbeat import record_runtime_heartbeat
-from ..services.provider_resolution import read_game_server_health, resolve_game_server_provider
+from ..services.provider_resolution import (
+    read_game_server_health,
+    read_game_server_settings,
+    resolve_game_server_provider,
+)
 from ..services.trog_brain_gateway import build_trog_brain_gateway
 from ..trog_brain import TrogBrainRequest
 from .authorization import (
@@ -40,6 +45,26 @@ RESTART_WATCH_POLL_SECONDS = 15
 RESTART_WATCH_TIMEOUT_SECONDS = 15 * 60
 RESTART_READY_CONFIRMATION_SECONDS = 60
 _RESTART_WATCH_TASKS = {}
+_SETTING_STOP_WORDS = {
+    "a", "an", "and", "are", "but", "change", "do", "does", "easy", "feels",
+    "for", "how", "i", "is", "it", "make", "me", "my", "not", "of", "on",
+    "recommend", "server", "setting", "settings", "should", "the", "this", "to",
+    "too", "want", "what", "which", "world", "would", "you",
+}
+_SETTING_TOPIC_ALIASES = {
+    "harvest": {"harvest", "harvesting", "gather", "gathering", "resource", "resources"},
+    "tame": {"tame", "taming"},
+    "breed": {"breed", "breeding", "mating", "hatch", "mature", "baby"},
+    "experience": {"xp", "experience"},
+    "difficulty": {"difficulty"},
+    "damage": {"damage"},
+    "player": {"player", "players"},
+    "dino": {"dino", "dinos", "dinosaur", "creature", "creatures"},
+    "structure": {"structure", "structures", "building"},
+    "food": {"food", "hunger"},
+    "water": {"water", "thirst"},
+    "stamina": {"stamina"},
+}
 
 
 class DiscordRequestLimiter:
@@ -328,6 +353,7 @@ async def answer_advisory_question(
     brain_gateway=None,
 ):
     """Route an addressed, non-command question through the scoped Trog Brain."""
+    correlation_id = str(uuid.uuid4())
     with database.connect() as conn:
         base_decision = authorize(
             conn,
@@ -348,6 +374,11 @@ async def answer_advisory_question(
             )
 
         context = base_decision.context
+        provider_resolution = resolve_game_server_provider(
+            conn,
+            context.game_server_id,
+            correlation_id=correlation_id,
+        )
         effective_capabilities = []
         for capability in sorted(PUBLIC_CAPABILITIES | ADMINISTRATIVE_CAPABILITIES):
             decision = (
@@ -364,6 +395,33 @@ async def answer_advisory_question(
             if decision.allowed:
                 effective_capabilities.append(capability)
 
+    try:
+        if not provider_resolution:
+            raise LookupError("No connected provider was resolved.")
+        settings_snapshot = await asyncio.to_thread(
+            read_game_server_settings,
+            provider_resolution,
+            config,
+        )
+        relevant_settings = _relevant_provider_settings(
+            request_text,
+            settings_snapshot.settings,
+        )
+        if not relevant_settings:
+            raise LookupError("No relevant live settings were returned.")
+    except Exception as exc:
+        LOGGER.warning(
+            "Verified World settings unavailable correlation_id=%s game_server_id=%s error=%s",
+            correlation_id,
+            context.game_server_id,
+            type(exc).__name__,
+        )
+        return BotReply(
+            "I can’t verify the relevant live settings for this World right now, "
+            "so I won’t guess. Please try again shortly.",
+            "brain_settings_unavailable",
+        )
+
     community_name = context.provider_community_name or context.game_server_name
     world_name = context.instance_name or context.game_server_name
     world_id = context.instance_id or context.game_server_id
@@ -378,17 +436,26 @@ async def answer_advisory_question(
             "world_name": world_name,
             "effective_capabilities": effective_capabilities,
             "request_text": request_text,
-            "correlation_id": str(uuid.uuid4()),
+            "correlation_id": correlation_id,
             "grounding_facts": [
                 "The connected game is ARK: Survival Ascended.",
                 (
+                    f"Verified live provider settings, checked at "
+                    f"{settings_snapshot.checked_at}: "
+                    + "; ".join(
+                        f"{setting.path} = {setting.value}"
+                        for setting in relevant_settings
+                    )
+                ),
+                (
                     "This is an advisory conversation. Give a conservative, reversible "
-                    "recommendation and name the relevant ARK setting when known. "
+                    "recommendation using only the verified live values above. "
+                    "Name the relevant ARK setting when known. "
                     "Present it as a short, friendly guide with one clear next step."
                 ),
                 (
-                    "Do not claim to know the World's current setting values unless they "
-                    "are explicitly present in this request."
+                    "Do not use defaults or generic values. If the supplied live values "
+                    "do not support an answer, say you cannot verify the setting."
                 ),
             ],
             "citations": [],
@@ -397,6 +464,36 @@ async def answer_advisory_question(
     gateway = brain_gateway or build_trog_brain_gateway(config)
     response = await asyncio.to_thread(gateway.respond, request)
     return BotReply(response.message, f"trog_brain_{response.kind}")
+
+
+def _relevant_provider_settings(request_text, settings, *, limit=12):
+    request_tokens = _expanded_setting_tokens(request_text)
+    ranked = []
+    for setting in settings:
+        path_tokens = _expanded_setting_tokens(setting.path)
+        overlap = request_tokens & path_tokens
+        if not overlap:
+            continue
+        score = len(overlap)
+        if any(token in setting.path.lower() for token in request_tokens):
+            score += 1
+        ranked.append((score, setting.path, setting))
+    ranked.sort(key=lambda item: (-item[0], item[1].lower()))
+    return [item[2] for item in ranked[:limit]]
+
+
+def _expanded_setting_tokens(value):
+    tokens = {
+        token
+        for token in re.findall(r"[a-z0-9]+", str(value).lower())
+        if len(token) > 1 and token not in _SETTING_STOP_WORDS
+    }
+    expanded = set(tokens)
+    compact = re.sub(r"[^a-z0-9]+", "", str(value).lower())
+    for canonical, aliases in _SETTING_TOPIC_ALIASES.items():
+        if any(alias in tokens or alias in compact for alias in aliases):
+            expanded.add(canonical)
+    return expanded
 
 
 async def handle_interaction(
