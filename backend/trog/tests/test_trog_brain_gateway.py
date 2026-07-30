@@ -165,6 +165,7 @@ class TrogBrainContractTests(unittest.TestCase):
         call = client.responses.calls[0]
         self.assertEqual(call["model"], "configured-model")
         self.assertEqual(call["max_output_tokens"], 321)
+        self.assertEqual(call["reasoning"], {"effort": "low"})
         self.assertEqual(call["text"]["format"]["type"], "json_schema")
         sent_context = json.loads(call["input"])
         self.assertNotIn("openai_api_key", sent_context)
@@ -230,6 +231,54 @@ class TrogBrainContractTests(unittest.TestCase):
             )
             response = gateway.respond(TrogBrainRequest.from_dict(request_payload()))
             self.assertEqual(response.kind, "refusal")
+
+    def test_incomplete_response_returns_fallback_and_logs_safe_diagnostics(self):
+        model_response = SimpleNamespace(
+            status="incomplete",
+            incomplete_details=SimpleNamespace(reason="max_output_tokens"),
+            output=[SimpleNamespace(type="reasoning")],
+            output_text="",
+        )
+        gateway = OpenAIResponsesGateway(
+            Config(
+                database_url="postgresql://unused",
+                openai_api_key="not-a-real-key",
+                trog_brain_enabled=True,
+            ),
+            client=FakeClient(model_response),
+        )
+
+        with self.assertLogs("twe.trog_brain", level="WARNING") as captured:
+            response = gateway.respond(
+                TrogBrainRequest.from_dict(request_payload())
+            )
+
+        self.assertEqual(response.kind, "refusal")
+        log_text = "\n".join(captured.output)
+        self.assertIn("response_status=incomplete", log_text)
+        self.assertIn("incomplete_reason=max_output_tokens", log_text)
+        self.assertIn("output_text_length=0", log_text)
+        self.assertIn("output_item_types=('reasoning',)", log_text)
+
+    def test_empty_completed_response_returns_fallback(self):
+        model_response = SimpleNamespace(
+            status="completed",
+            incomplete_details=None,
+            output=[SimpleNamespace(type="message")],
+            output_text="",
+        )
+        gateway = OpenAIResponsesGateway(
+            Config(
+                database_url="postgresql://unused",
+                openai_api_key="not-a-real-key",
+                trog_brain_enabled=True,
+            ),
+            client=FakeClient(model_response),
+        )
+
+        response = gateway.respond(TrogBrainRequest.from_dict(request_payload()))
+
+        self.assertEqual(response.kind, "refusal")
 
     def test_provider_failure_logs_only_safe_classification(self):
         gateway = OpenAIResponsesGateway(

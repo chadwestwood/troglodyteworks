@@ -133,6 +133,7 @@ class OpenAIResponsesGateway:
         if not self.config.trog_brain_enabled or not self.config.openai_api_key:
             return language_service_fallback()
 
+        response = None
         try:
             response = self.client.responses.create(
                 model=self.config.trog_brain_model,
@@ -144,7 +145,9 @@ class OpenAIResponsesGateway:
                 ),
                 text={"format": TROG_BRAIN_OUTPUT_FORMAT},
                 max_output_tokens=self.config.trog_brain_max_output_tokens,
+                reasoning={"effort": "low"},
             )
+            self._require_completed_response(response)
             self._reject_unexpected_tool_calls(response)
             result = TrogBrainResponse.from_dict(json.loads(response.output_text))
             if result.action and (
@@ -166,10 +169,18 @@ class OpenAIResponsesGateway:
             AttributeError,
             TypeError,
             ValueError,
-        ):
+        ) as exc:
+            diagnostics = _safe_response_diagnostics(response)
             LOGGER.warning(
-                "Trog brain returned an invalid response correlation_id=%s",
+                "Trog brain returned an invalid response correlation_id=%s "
+                "error_type=%s response_status=%s incomplete_reason=%s "
+                "output_text_length=%s output_item_types=%s",
                 request.correlation_id,
+                type(exc).__name__,
+                diagnostics["status"],
+                diagnostics["incomplete_reason"],
+                diagnostics["output_text_length"],
+                diagnostics["output_item_types"],
             )
             return language_service_fallback()
         except Exception as exc:
@@ -194,6 +205,18 @@ class OpenAIResponsesGateway:
                 max_retries=self.config.trog_brain_max_retries,
             )
         return self._client
+
+    @staticmethod
+    def _require_completed_response(response) -> None:
+        status = getattr(response, "status", "completed")
+        if status != "completed":
+            raise TrogBrainValidationError(
+                "The model response did not complete."
+            )
+        if not getattr(response, "output_text", ""):
+            raise TrogBrainValidationError(
+                "The model response contained no output text."
+            )
 
     @staticmethod
     def _reject_unexpected_tool_calls(response) -> None:
@@ -224,3 +247,36 @@ def _safe_error_code(exc: Exception) -> str | None:
     if isinstance(error, dict) and error.get("code"):
         return str(error["code"])
     return None
+
+
+def _safe_response_diagnostics(response) -> dict[str, object]:
+    if response is None:
+        return {
+            "status": None,
+            "incomplete_reason": None,
+            "output_text_length": 0,
+            "output_item_types": (),
+        }
+
+    incomplete_details = getattr(response, "incomplete_details", None)
+    if isinstance(incomplete_details, dict):
+        incomplete_reason = incomplete_details.get("reason")
+    else:
+        incomplete_reason = getattr(incomplete_details, "reason", None)
+
+    item_types = []
+    for item in getattr(response, "output", ()) or ():
+        item_type = (
+            item.get("type")
+            if isinstance(item, dict)
+            else getattr(item, "type", None)
+        )
+        item_types.append(str(item_type or "unknown"))
+
+    output_text = getattr(response, "output_text", "") or ""
+    return {
+        "status": getattr(response, "status", None),
+        "incomplete_reason": incomplete_reason,
+        "output_text_length": len(output_text),
+        "output_item_types": tuple(item_types),
+    }

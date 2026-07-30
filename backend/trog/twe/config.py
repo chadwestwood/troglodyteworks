@@ -68,7 +68,7 @@ class Config:
     trog_brain_model: str = "gpt-5-mini"
     trog_brain_timeout_seconds: float = 20.0
     trog_brain_max_retries: int = 1
-    trog_brain_max_output_tokens: int = 700
+    trog_brain_max_output_tokens: int = 1600
 
     @property
     def session_lifetime(self) -> timedelta:
@@ -179,7 +179,7 @@ def load_config() -> Config:
             os.environ.get("TWE_TROG_BRAIN_MAX_RETRIES", "1")
         ),
         trog_brain_max_output_tokens=int(
-            os.environ.get("TWE_TROG_BRAIN_MAX_OUTPUT_TOKENS", "700")
+            os.environ.get("TWE_TROG_BRAIN_MAX_OUTPUT_TOKENS", "1600")
         ),
     )
 
