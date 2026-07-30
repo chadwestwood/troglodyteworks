@@ -2,12 +2,20 @@ import asyncio
 import logging
 import os
 import time
+import uuid
 
 from ..config import load_config
 from ..db import Database
 from ..services.runtime_heartbeat import record_runtime_heartbeat
 from ..services.provider_resolution import read_game_server_health, resolve_game_server_provider
-from .authorization import resolve_guild
+from ..services.trog_brain_gateway import build_trog_brain_gateway
+from ..trog_brain import TrogBrainRequest
+from .authorization import (
+    ADMINISTRATIVE_CAPABILITIES,
+    PUBLIC_CAPABILITIES,
+    authorize,
+    resolve_guild,
+)
 from .core import (
     BotReply,
     DiscordBotConfigurationError,
@@ -197,7 +205,7 @@ async def worker_heartbeat_loop(client, database, interval_seconds=30, logger=LO
 
 async def handle_message(
     message, bot_user, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
-    request_limiter=None,
+    request_limiter=None, brain_gateway=None,
 ):
     if not bot_user:
         logger.warning("Discord message ignored because bot user is not ready.")
@@ -252,7 +260,15 @@ async def handle_message(
 
     try:
         if not intent:
-            reply = HELP_REPLY
+            reply = await answer_advisory_question(
+                content,
+                str(message.guild.id),
+                str(message.channel.id),
+                str(message.author.id),
+                database,
+                config,
+                brain_gateway=brain_gateway,
+            )
         else:
             with database.connect() as conn:
                 reply = respond_to_request(
@@ -299,6 +315,87 @@ async def handle_message(
         )
     logger.info("Discord reply sent guild_id=%s response_code=%s", message.guild.id, reply.code)
     return True
+
+
+async def answer_advisory_question(
+    request_text,
+    guild_id,
+    channel_id,
+    discord_user_id,
+    database,
+    config,
+    *,
+    brain_gateway=None,
+):
+    """Route an addressed, non-command question through the scoped Trog Brain."""
+    with database.connect() as conn:
+        base_decision = authorize(
+            conn,
+            guild_id,
+            channel_id,
+            discord_user_id,
+            "instance.status.read",
+        )
+        if not base_decision.allowed or not base_decision.context:
+            if base_decision.reason == "channel_unmapped":
+                return BotReply(
+                    "Trog is not connected to this Discord channel yet.",
+                    "brain_channel_unmapped",
+                )
+            return BotReply(
+                "This Discord server is not connected to a Troglodyte Works World yet.",
+                "brain_world_not_connected",
+            )
+
+        context = base_decision.context
+        effective_capabilities = []
+        for capability in sorted(PUBLIC_CAPABILITIES | ADMINISTRATIVE_CAPABILITIES):
+            decision = (
+                base_decision
+                if capability == "instance.status.read"
+                else authorize(
+                    conn,
+                    guild_id,
+                    channel_id,
+                    discord_user_id,
+                    capability,
+                )
+            )
+            if decision.allowed:
+                effective_capabilities.append(capability)
+
+    community_name = context.provider_community_name or context.game_server_name
+    world_name = context.instance_name or context.game_server_name
+    world_id = context.instance_id or context.game_server_id
+    request = TrogBrainRequest.from_dict(
+        {
+            "user_id": discord_user_id,
+            "guild_id": guild_id,
+            "channel_id": channel_id,
+            "community_id": context.community_id,
+            "community_name": community_name,
+            "world_id": world_id,
+            "world_name": world_name,
+            "effective_capabilities": effective_capabilities,
+            "request_text": request_text,
+            "correlation_id": str(uuid.uuid4()),
+            "grounding_facts": [
+                "The connected game is ARK: Survival Ascended.",
+                (
+                    "This is an advisory conversation. Give a conservative, reversible "
+                    "recommendation and name the relevant ARK setting when known."
+                ),
+                (
+                    "Do not claim to know the World's current setting values unless they "
+                    "are explicitly present in this request."
+                ),
+            ],
+            "citations": [],
+        }
+    )
+    gateway = brain_gateway or build_trog_brain_gateway(config)
+    response = await asyncio.to_thread(gateway.respond, request)
+    return BotReply(response.message, f"trog_brain_{response.kind}")
 
 
 async def handle_interaction(

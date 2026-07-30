@@ -36,11 +36,13 @@ from twe.discord_bot.authorization import (
 )
 from twe.discord_bot.service import (
     DiscordRequestLimiter,
+    answer_advisory_question,
     handle_interaction,
     handle_message,
     monitor_restart_until_ready,
     split_discord_message,
 )
+from twe.trog_brain import TrogBrainResponse
 
 
 class DiscordBotCoreTests(unittest.TestCase):
@@ -509,18 +511,86 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.bot = FakeUser(999)
         self.author = FakeUser(111)
 
-    async def test_message_event_received_for_direct_unsupported_mention(self):
+    @patch("twe.discord_bot.service.authorize")
+    async def test_unknown_ark_question_uses_scoped_trog_brain(self, authorize_mock):
+        context = DiscordContext(
+            "installation",
+            "222",
+            "community",
+            "server",
+            "Cohorts in the Wild - Genesis",
+            "ark-survival-ascended",
+            "nitrado",
+            instance_access_grant_id="grant",
+            instance_id="world",
+            instance_name="Genesis",
+            provider_community_name="Cohorts in the Wild",
+            channel_scope="allowlist",
+            allowed_channel_ids=("333",),
+        )
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.status.read",
+            context,
+        )
+        gateway = FakeBrainGateway(
+            TrogBrainResponse(
+                kind="grounded_answer",
+                message="Reduce HarvestAmountMultiplier in a small step.",
+            )
+        )
         message = FakeMessage(
-            content="<@999> hello",
+            content="<@999> harvesting feels too easy. What should I change?",
             author=self.author,
             guild=FakeGuild(222),
             channel=FakeChannel(333),
             mentions=[],
         )
-        handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
+        handled = await handle_message(
+            message,
+            self.bot,
+            FakeDatabase(),
+            self.config,
+            {},
+            brain_gateway=gateway,
+        )
+
         self.assertTrue(handled)
         self.assertEqual(len(message.channel.sent), 1)
-        self.assertIn("/server status", message.channel.sent[0])
+        self.assertIn("HarvestAmountMultiplier", message.channel.sent[0])
+        self.assertEqual(gateway.requests[0].community_name, "Cohorts in the Wild")
+        self.assertEqual(gateway.requests[0].world_name, "Genesis")
+        self.assertIn(
+            "instance.status.read",
+            gateway.requests[0].effective_capabilities,
+        )
+
+    @patch("twe.discord_bot.service.authorize")
+    async def test_unknown_question_fails_closed_outside_routed_channel(
+        self, authorize_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            False,
+            "channel_unmapped",
+            "instance.status.read",
+            None,
+        )
+        gateway = FakeBrainGateway(
+            TrogBrainResponse(kind="grounded_answer", message="Should not be sent.")
+        )
+        reply = await answer_advisory_question(
+            "<@999> what should I change?",
+            "222",
+            "333",
+            "111",
+            FakeDatabase(),
+            self.config,
+            brain_gateway=gateway,
+        )
+
+        self.assertEqual(reply.code, "brain_channel_unmapped")
+        self.assertEqual(gateway.requests, [])
 
     async def test_message_reply_disables_generated_mentions(self):
         message = FakeMessage(
@@ -832,6 +902,16 @@ class FakeCursor:
 
     def fetchone(self):
         return None
+
+
+class FakeBrainGateway:
+    def __init__(self, response):
+        self.response = response
+        self.requests = []
+
+    def respond(self, request):
+        self.requests.append(request)
+        return self.response
 
 
 async def _no_sleep(_seconds):
