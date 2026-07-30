@@ -172,10 +172,14 @@ class OpenAIResponsesGateway:
                 request.correlation_id,
             )
             return language_service_fallback()
-        except Exception:
+        except Exception as exc:
             LOGGER.warning(
-                "Trog brain request failed correlation_id=%s",
+                "Trog brain request failed correlation_id=%s error_type=%s "
+                "status_code=%s error_code=%s",
                 request.correlation_id,
+                type(exc).__name__,
+                getattr(exc, "status_code", None),
+                _safe_error_code(exc),
             )
             return language_service_fallback()
 
@@ -207,3 +211,16 @@ class OpenAIResponsesGateway:
 
 def build_trog_brain_gateway(config: Config, client=None) -> TrogBrainGateway:
     return OpenAIResponsesGateway(config, client=client)
+
+
+def _safe_error_code(exc: Exception) -> str | None:
+    code = getattr(exc, "code", None)
+    if code:
+        return str(code)
+    body = getattr(exc, "body", None)
+    if not isinstance(body, dict):
+        return None
+    error = body.get("error")
+    if isinstance(error, dict) and error.get("code"):
+        return str(error["code"])
+    return None

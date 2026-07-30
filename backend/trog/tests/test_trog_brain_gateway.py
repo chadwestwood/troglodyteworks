@@ -69,6 +69,14 @@ class FakeClient:
         self.responses = FakeResponses(response)
 
 
+class FailingResponses:
+    def create(self, **kwargs):
+        error = RuntimeError("secret-bearing provider message")
+        error.status_code = 429
+        error.code = "insufficient_quota"
+        raise error
+
+
 class TrogBrainContractTests(unittest.TestCase):
     def test_input_is_versioned_and_requires_actor_and_discord_context(self):
         request = TrogBrainRequest.from_dict(request_payload())
@@ -222,6 +230,28 @@ class TrogBrainContractTests(unittest.TestCase):
             )
             response = gateway.respond(TrogBrainRequest.from_dict(request_payload()))
             self.assertEqual(response.kind, "refusal")
+
+    def test_provider_failure_logs_only_safe_classification(self):
+        gateway = OpenAIResponsesGateway(
+            Config(
+                database_url="postgresql://unused",
+                openai_api_key="not-a-real-key",
+                trog_brain_enabled=True,
+            ),
+            client=SimpleNamespace(responses=FailingResponses()),
+        )
+
+        with self.assertLogs("twe.trog_brain", level="WARNING") as captured:
+            response = gateway.respond(
+                TrogBrainRequest.from_dict(request_payload())
+            )
+
+        self.assertEqual(response.kind, "refusal")
+        log_text = "\n".join(captured.output)
+        self.assertIn("error_type=RuntimeError", log_text)
+        self.assertIn("status_code=429", log_text)
+        self.assertIn("error_code=insufficient_quota", log_text)
+        self.assertNotIn("secret-bearing provider message", log_text)
 
 
 if __name__ == "__main__":
