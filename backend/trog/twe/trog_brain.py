@@ -11,6 +11,7 @@ RESPONSE_KINDS = {
     "clarification",
     "refusal",
     "action_proposal",
+    "knowledge_gap",
 }
 _SENSITIVE_KEY = re.compile(
     r"(?:^|_)(?:api_?key|authorization|cookie|credential|password|secret|token)(?:$|_)",

@@ -57,6 +57,29 @@
         <div class="resource-list" data-admin-runtime-health></div>
       </section>
 
+      <section class="app-panel admin-gap-panel">
+        <div class="admin-section-heading">
+          <div>
+            <p class="eyebrow">Trog learning</p>
+            <h2>Knowledge gaps <span class="admin-count" data-admin-gap-count></span></h2>
+          </div>
+          <div class="admin-gap-actions">
+            <label><span class="sr-only">Filter knowledge gaps</span>
+              <select data-admin-gap-status>
+                <option value="pending">Needs review</option>
+                <option value="resolved">Resolved</option>
+                <option value="ignored">Ignored</option>
+                <option value="all">All</option>
+              </select>
+            </label>
+            <a class="header-link" href="/api/v1/admin/knowledge-gaps/export" download>Export JSON</a>
+          </div>
+        </div>
+        <p class="muted">Questions Trog could not answer because durable knowledge, a playbook, or a tool is missing.
+          Temporary outages are excluded.</p>
+        <div class="resource-list" data-admin-knowledge-gaps></div>
+      </section>
+
       <section class="app-panel">
         <div class="admin-section-heading">
           <div>
@@ -95,7 +118,7 @@
 
   <script src="/js/navigation.js?v=viewport-contract-v4" defer></script>
   <script src="/js/twe-api.js?v=admin-operations-v1"></script>
-  <script src="/js/twe-pages.js?v=admin-runtime-health-v2"></script>
+  <script src="/js/twe-pages.js?v=knowledge-gap-inbox-v1"></script>
 </body>
 
 </html>

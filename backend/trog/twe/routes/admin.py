@@ -1,7 +1,7 @@
 from functools import wraps
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app, g, jsonify
+from flask import Blueprint, current_app, g, jsonify, request
 
 from ..auth import require_user
 from ..db import fetch_all, fetch_one
@@ -231,6 +231,80 @@ def admin_runtime_health():
     return jsonify({
         "components": runtime_heartbeat_response([*live_components, *rows], now=checked_at),
     })
+
+
+@admin_bp.get("/admin/knowledge-gaps")
+@require_admin
+def admin_knowledge_gaps():
+    status = request.args.get("status", "pending").strip().lower()
+    if status not in {"all", "pending", "resolved", "ignored"}:
+        return api_error("INVALID_STATUS", "Choose pending, resolved, ignored, or all.", 400)
+    where_clause = "" if status == "all" else "WHERE status = %s"
+    params = () if status == "all" else (status,)
+    with current_app.config["TWE_DB"].connect() as conn:
+        rows = fetch_all(
+            conn,
+            f"""
+            SELECT id::text, sanitized_question, game_type, intent, gap_type,
+                   response_code, safe_context, occurrence_count, status,
+                   first_seen_at, last_seen_at, resolution_notes, linked_playbook
+            FROM knowledge_gaps
+            {where_clause}
+            ORDER BY last_seen_at DESC
+            LIMIT 250
+            """,
+            params,
+        )
+    return jsonify({"knowledge_gaps": [dict(row) for row in rows]})
+
+
+@admin_bp.get("/admin/knowledge-gaps/export")
+@require_admin
+def admin_knowledge_gaps_export():
+    with current_app.config["TWE_DB"].connect() as conn:
+        rows = fetch_all(
+            conn,
+            """
+            SELECT id::text, sanitized_question, game_type, intent, gap_type,
+                   response_code, safe_context, occurrence_count, status,
+                   first_seen_at, last_seen_at, resolution_notes, linked_playbook
+            FROM knowledge_gaps
+            ORDER BY last_seen_at DESC
+            """,
+        )
+    return jsonify({
+        "exported_at": datetime.now(timezone.utc),
+        "knowledge_gaps": [dict(row) for row in rows],
+    })
+
+
+@admin_bp.patch("/admin/knowledge-gaps/<uuid:gap_id>")
+@require_admin
+def admin_update_knowledge_gap(gap_id):
+    payload = request.get_json(silent=True) or {}
+    status = str(payload.get("status", "")).strip().lower()
+    if status not in {"pending", "resolved", "ignored"}:
+        return api_error("INVALID_STATUS", "Choose pending, resolved, or ignored.", 400)
+    resolution_notes = str(payload.get("resolution_notes", "")).strip()[:2000] or None
+    linked_playbook = str(payload.get("linked_playbook", "")).strip()[:500] or None
+    with current_app.config["TWE_DB"].connect() as conn:
+        row = fetch_one(
+            conn,
+            """
+            UPDATE knowledge_gaps
+            SET status = %s,
+                resolution_notes = %s,
+                linked_playbook = %s
+            WHERE id = %s
+            RETURNING id::text, sanitized_question, game_type, intent, gap_type,
+                      response_code, safe_context, occurrence_count, status,
+                      first_seen_at, last_seen_at, resolution_notes, linked_playbook
+            """,
+            (status, resolution_notes, linked_playbook, gap_id),
+        )
+    if row is None:
+        return api_error("NOT_FOUND", "Knowledge gap not found.", 404)
+    return jsonify({"knowledge_gap": dict(row)})
 
 
 def user_row(row):

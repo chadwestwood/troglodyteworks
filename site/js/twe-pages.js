@@ -142,12 +142,13 @@ async function initAccount() {
 
 async function initAdmin() {
   await requireCurrentUser();
-  const [overview, users, communities, discordAccess, runtimeHealth] = await Promise.all([
+  const [overview, users, communities, discordAccess, runtimeHealth, knowledgeGaps] = await Promise.all([
     apiRequest("/admin/overview"),
     apiRequest("/admin/users"),
     apiRequest("/admin/communities"),
     apiRequest("/admin/discord-access"),
     apiRequest("/admin/runtime-health"),
+    apiRequest("/admin/knowledge-gaps?status=pending"),
   ]);
   const state = {
     overview: overview.overview,
@@ -155,6 +156,8 @@ async function initAdmin() {
     communities: communities.communities,
     discordAccess: discordAccess.discord_access,
     runtimeHealth: runtimeHealth.components,
+    knowledgeGaps: knowledgeGaps.knowledge_gaps,
+    gapStatus: "pending",
     showTest: false,
     search: "",
   };
@@ -165,6 +168,12 @@ async function initAdmin() {
   });
   document.querySelector("[data-admin-search]")?.addEventListener("input", (event) => {
     state.search = event.target.value.trim().toLowerCase();
+    render();
+  });
+  document.querySelector("[data-admin-gap-status]")?.addEventListener("change", async (event) => {
+    state.gapStatus = event.target.value;
+    const data = await apiRequest(`/admin/knowledge-gaps?status=${encodeURIComponent(state.gapStatus)}`);
+    state.knowledgeGaps = data.knowledge_gaps;
     render();
   });
   render();
@@ -179,9 +188,66 @@ function renderAdminDashboard(state) {
   renderAdminCommunities(visibleCommunities);
   renderAdminDiscordAccess(visibleAccess);
   renderAdminRuntimeHealth(state.runtimeHealth);
+  renderAdminKnowledgeGaps(state.knowledgeGaps, state);
   setText("[data-admin-user-count]", visibleUsers.length);
   setText("[data-admin-community-count]", visibleCommunities.length);
   setText("[data-admin-access-count]", visibleAccess.length);
+  setText("[data-admin-gap-count]", state.knowledgeGaps.length);
+}
+
+function renderAdminKnowledgeGaps(gaps, state) {
+  const list = document.querySelector("[data-admin-knowledge-gaps]");
+  clearNode(list);
+  if (!gaps.length) {
+    list.appendChild(createAdminRecord(
+      "No knowledge gaps in this view",
+      "New unanswered questions will appear here automatically.",
+      [],
+    ));
+    return;
+  }
+  gaps.forEach((gap) => {
+    const record = createAdminRecord(
+      gap.sanitized_question,
+      `${gap.gap_type} · ${gap.game_type || "game not identified"}`,
+      [
+        `${gap.occurrence_count} occurrence(s) · last seen ${formatAdminDate(gap.last_seen_at)}`,
+        gap.linked_playbook ? `Playbook: ${gap.linked_playbook}` : "No playbook linked",
+      ],
+      gap.status,
+      gap.status === "pending" ? "attention" : gap.status,
+    );
+    if (gap.status === "pending") {
+      const actions = document.createElement("div");
+      actions.className = "admin-gap-record-actions";
+      actions.appendChild(createAdminGapButton("Mark resolved", async () => {
+        await updateAdminKnowledgeGap(gap, "resolved", state);
+      }));
+      actions.appendChild(createAdminGapButton("Ignore", async () => {
+        await updateAdminKnowledgeGap(gap, "ignored", state);
+      }, "text-button"));
+      record.appendChild(actions);
+    }
+    list.appendChild(record);
+  });
+}
+
+function createAdminGapButton(label, handler, className = "secondary-button") {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.textContent = label;
+  button.addEventListener("click", () => handler().catch((error) => showError(error.message)));
+  return button;
+}
+
+async function updateAdminKnowledgeGap(gap, status, state) {
+  await apiRequest(`/admin/knowledge-gaps/${gap.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+  state.knowledgeGaps = state.knowledgeGaps.filter((item) => item.id !== gap.id);
+  renderAdminDashboard(state);
 }
 
 function renderAdminRuntimeHealth(components) {

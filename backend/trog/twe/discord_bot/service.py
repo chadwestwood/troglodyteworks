@@ -14,6 +14,7 @@ from ..services.provider_resolution import (
     resolve_game_server_provider,
 )
 from ..services.trog_brain_gateway import build_trog_brain_gateway
+from ..services.knowledge_gaps import schedule_knowledge_gap
 from ..trog_brain import TrogBrainRequest
 from .authorization import (
     ADMINISTRATIVE_CAPABILITIES,
@@ -463,6 +464,13 @@ async def answer_advisory_question(
     )
     gateway = brain_gateway or build_trog_brain_gateway(config)
     response = await asyncio.to_thread(gateway.respond, request)
+    if response.kind == "knowledge_gap":
+        schedule_knowledge_gap(
+            database,
+            message_content,
+            game_type="ark_survival_ascended",
+            intent="advisory",
+        )
     return BotReply(response.message, f"trog_brain_{response.kind}")
 
 

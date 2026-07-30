@@ -18,3 +18,12 @@
 .choice-card strong, .choice-card span { display:block; }
 .choice-card strong { font-size:1.25rem; margin-bottom:var(--space-8); }
 .choice-card span { color:var(--color-muted); line-height:1.5; }
+.admin-gap-actions,
+.admin-gap-record-actions {
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:var(--space-8);
+}
+.admin-gap-actions label { min-width:10rem; }
+.admin-gap-record-actions { margin-top:var(--space-8); }

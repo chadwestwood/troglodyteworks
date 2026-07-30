@@ -48,6 +48,7 @@ TROG_BRAIN_OUTPUT_FORMAT = {
                     "clarification",
                     "refusal",
                     "action_proposal",
+                    "knowledge_gap",
                 ],
             },
             "message": {"type": "string"},
@@ -135,6 +136,12 @@ If the user requests an action, return only a typed action proposal and require
 confirmation. The application will independently authorize, confirm, and execute
 any proposal. If the required capability is absent, refuse the action.
 Do not invent provider state, server status, player names, mods, or citations.
+Return kind "knowledge_gap" only when the request is within the supported
+game-management, gameplay, or tutorial scope but the supplied knowledge,
+playbook, or available tool capability is insufficient to answer safely. Do
+not use "knowledge_gap" for temporary model, provider, database, or network
+failures, unrelated topics, unclear Community or World routing, or ordinary
+requests for clarification.
 """.strip()
 
 
