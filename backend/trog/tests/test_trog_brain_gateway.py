@@ -313,6 +313,79 @@ class TrogBrainContractTests(unittest.TestCase):
         self.assertEqual(len(responses.calls), 2)
         self.assertIn("retrying=True", "\n".join(captured.output))
 
+    def test_greeting_only_grounded_answer_is_retried_once(self):
+        greeting_only = SimpleNamespace(
+            status="completed",
+            incomplete_details=None,
+            output=[SimpleNamespace(type="message")],
+            output_text=json.dumps(
+                response_payload(message="Let's check it out.")
+            ),
+        )
+        completed = SimpleNamespace(
+            status="completed",
+            incomplete_details=None,
+            output=[SimpleNamespace(type="message")],
+            output_text=json.dumps(
+                response_payload(
+                    message=(
+                        "Let's check it out.\n\n**What I see now**\n"
+                        "- HarvestAmountMultiplier: **3.0**\n\n"
+                        "**What I'd try**\nLower it to **2.5** first."
+                    )
+                )
+            ),
+        )
+        responses = SequenceResponses(greeting_only, completed)
+        gateway = OpenAIResponsesGateway(
+            Config(
+                database_url="postgresql://unused",
+                openai_api_key="not-a-real-key",
+                trog_brain_enabled=True,
+            ),
+            client=SimpleNamespace(responses=responses),
+        )
+
+        with self.assertLogs("twe.trog_brain", level="WARNING") as captured:
+            response = gateway.respond(
+                TrogBrainRequest.from_dict(request_payload())
+            )
+
+        self.assertEqual(response.kind, "grounded_answer")
+        self.assertIn("What I see now", response.message)
+        self.assertEqual(len(responses.calls), 2)
+        self.assertIn(
+            "previous response was incomplete",
+            responses.calls[1]["instructions"].lower(),
+        )
+        self.assertIn("retrying=True", "\n".join(captured.output))
+
+    def test_two_greeting_only_grounded_answers_return_fallback(self):
+        greeting_only = SimpleNamespace(
+            status="completed",
+            incomplete_details=None,
+            output=[SimpleNamespace(type="message")],
+            output_text=json.dumps(
+                response_payload(message="Let's check it out.")
+            ),
+        )
+        responses = SequenceResponses(greeting_only, greeting_only)
+        gateway = OpenAIResponsesGateway(
+            Config(
+                database_url="postgresql://unused",
+                openai_api_key="not-a-real-key",
+                trog_brain_enabled=True,
+            ),
+            client=SimpleNamespace(responses=responses),
+        )
+
+        response = gateway.respond(
+            TrogBrainRequest.from_dict(request_payload())
+        )
+
+        self.assertEqual(response.kind, "refusal")
+        self.assertEqual(len(responses.calls), 2)
+
     def test_transient_request_failure_is_retried_once(self):
         transient = RuntimeError("temporary upstream failure")
         transient.status_code = 503

@@ -17,6 +17,11 @@ LOGGER = logging.getLogger("twe.trog_brain")
 _ALLOWED_OUTPUT_ITEM_TYPES = {"message", "reasoning"}
 _GATEWAY_ATTEMPTS = 2
 
+
+class _RetryableTrogBrainValidationError(TrogBrainValidationError):
+    """A safe model-output failure that may succeed on one clean retry."""
+
+
 TROG_BRAIN_OUTPUT_FORMAT = {
     "type": "json_schema",
     "name": "trog_brain_response",
@@ -120,6 +125,8 @@ to scan in Discord:
 - End with one clear next step or a short offer to prepare a proposed change.
 - Avoid dense paragraphs, technical preambles, repeated caveats, and labels
   such as "Conservative recommendation".
+- The friendly opening must always be followed by the useful answer. A greeting
+  such as "Let's check it out." by itself is incomplete and invalid.
 Never claim to have executed an action.
 Never grant or expand permissions.
 Never request, reveal, infer, or handle provider credentials or secrets.
@@ -155,9 +162,15 @@ class OpenAIResponsesGateway:
         for attempt in range(1, _GATEWAY_ATTEMPTS + 1):
             response = None
             try:
+                instructions = TROG_BRAIN_INSTRUCTIONS
+                if attempt > 1:
+                    instructions += (
+                        "\nThe previous response was incomplete. Return the full "
+                        "useful answer now, not only an opening sentence."
+                    )
                 response = self.client.responses.create(
                     model=self.config.trog_brain_model,
-                    instructions=TROG_BRAIN_INSTRUCTIONS,
+                    instructions=instructions,
                     input=model_input,
                     text={"format": TROG_BRAIN_OUTPUT_FORMAT},
                     max_output_tokens=self.config.trog_brain_max_output_tokens,
@@ -168,6 +181,7 @@ class OpenAIResponsesGateway:
                 result = TrogBrainResponse.from_dict(
                     json.loads(response.output_text)
                 )
+                self._require_useful_grounded_answer(result)
                 if result.action and (
                     result.action.world_id != request.world_id
                     or result.action.capability
@@ -196,7 +210,10 @@ class OpenAIResponsesGateway:
                 diagnostics = _safe_response_diagnostics(response)
                 should_retry = (
                     attempt < _GATEWAY_ATTEMPTS
-                    and _is_retryable_invalid_response(diagnostics)
+                    and (
+                        isinstance(exc, _RetryableTrogBrainValidationError)
+                        or _is_retryable_invalid_response(diagnostics)
+                    )
                 )
                 LOGGER.warning(
                     "Trog brain returned an invalid response correlation_id=%s "
@@ -272,6 +289,27 @@ class OpenAIResponsesGateway:
                 raise TrogBrainValidationError(
                     "The model attempted an unapproved tool call."
                 )
+
+    @staticmethod
+    def _require_useful_grounded_answer(result: TrogBrainResponse) -> None:
+        if result.kind != "grounded_answer":
+            return
+        normalized = " ".join(result.message.lower().split()).strip(" .!?")
+        short_opening_only = (
+            len(normalized.split()) <= 10
+            and normalized.startswith(
+                (
+                    "let's check",
+                    "let's take a look",
+                    "let me check",
+                    "let me take a look",
+                )
+            )
+        )
+        if short_opening_only:
+            raise _RetryableTrogBrainValidationError(
+                "The grounded answer contained only an opening sentence."
+            )
 
 
 def build_trog_brain_gateway(config: Config, client=None) -> TrogBrainGateway:
