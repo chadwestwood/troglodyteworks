@@ -70,11 +70,28 @@ class FakeClient:
 
 
 class FailingResponses:
+    def __init__(self):
+        self.calls = []
+
     def create(self, **kwargs):
+        self.calls.append(kwargs)
         error = RuntimeError("secret-bearing provider message")
         error.status_code = 429
         error.code = "insufficient_quota"
         raise error
+
+
+class SequenceResponses:
+    def __init__(self, *results):
+        self.results = list(results)
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        result = self.results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
 
 
 class TrogBrainContractTests(unittest.TestCase):
@@ -262,6 +279,67 @@ class TrogBrainContractTests(unittest.TestCase):
         self.assertIn("incomplete_reason=max_output_tokens", log_text)
         self.assertIn("output_text_length=0", log_text)
         self.assertIn("output_item_types=('reasoning',)", log_text)
+        self.assertIn("attempt=2", log_text)
+
+    def test_incomplete_response_is_retried_once(self):
+        incomplete = SimpleNamespace(
+            status="incomplete",
+            incomplete_details=SimpleNamespace(reason="max_output_tokens"),
+            output=[SimpleNamespace(type="reasoning")],
+            output_text="",
+        )
+        completed = SimpleNamespace(
+            status="completed",
+            incomplete_details=None,
+            output=[SimpleNamespace(type="message")],
+            output_text=json.dumps(response_payload()),
+        )
+        responses = SequenceResponses(incomplete, completed)
+        gateway = OpenAIResponsesGateway(
+            Config(
+                database_url="postgresql://unused",
+                openai_api_key="not-a-real-key",
+                trog_brain_enabled=True,
+            ),
+            client=SimpleNamespace(responses=responses),
+        )
+
+        with self.assertLogs("twe.trog_brain", level="WARNING") as captured:
+            response = gateway.respond(
+                TrogBrainRequest.from_dict(request_payload())
+            )
+
+        self.assertEqual(response.kind, "grounded_answer")
+        self.assertEqual(len(responses.calls), 2)
+        self.assertIn("retrying=True", "\n".join(captured.output))
+
+    def test_transient_request_failure_is_retried_once(self):
+        transient = RuntimeError("temporary upstream failure")
+        transient.status_code = 503
+        completed = SimpleNamespace(
+            status="completed",
+            incomplete_details=None,
+            output=[SimpleNamespace(type="message")],
+            output_text=json.dumps(response_payload()),
+        )
+        responses = SequenceResponses(transient, completed)
+        gateway = OpenAIResponsesGateway(
+            Config(
+                database_url="postgresql://unused",
+                openai_api_key="not-a-real-key",
+                trog_brain_enabled=True,
+            ),
+            client=SimpleNamespace(responses=responses),
+        )
+
+        with self.assertLogs("twe.trog_brain", level="WARNING") as captured:
+            response = gateway.respond(
+                TrogBrainRequest.from_dict(request_payload())
+            )
+
+        self.assertEqual(response.kind, "grounded_answer")
+        self.assertEqual(len(responses.calls), 2)
+        self.assertIn("retrying=True", "\n".join(captured.output))
 
     def test_empty_completed_response_returns_fallback(self):
         model_response = SimpleNamespace(
@@ -284,13 +362,14 @@ class TrogBrainContractTests(unittest.TestCase):
         self.assertEqual(response.kind, "refusal")
 
     def test_provider_failure_logs_only_safe_classification(self):
+        failing_responses = FailingResponses()
         gateway = OpenAIResponsesGateway(
             Config(
                 database_url="postgresql://unused",
                 openai_api_key="not-a-real-key",
                 trog_brain_enabled=True,
             ),
-            client=SimpleNamespace(responses=FailingResponses()),
+            client=SimpleNamespace(responses=failing_responses),
         )
 
         with self.assertLogs("twe.trog_brain", level="WARNING") as captured:
@@ -304,6 +383,7 @@ class TrogBrainContractTests(unittest.TestCase):
         self.assertIn("status_code=429", log_text)
         self.assertIn("error_code=insufficient_quota", log_text)
         self.assertNotIn("secret-bearing provider message", log_text)
+        self.assertEqual(len(failing_responses.calls), 1)
 
 
 if __name__ == "__main__":

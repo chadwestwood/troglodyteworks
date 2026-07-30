@@ -15,6 +15,7 @@ from ..trog_brain import (
 
 LOGGER = logging.getLogger("twe.trog_brain")
 _ALLOWED_OUTPUT_ITEM_TYPES = {"message", "reasoning"}
+_GATEWAY_ATTEMPTS = 2
 
 TROG_BRAIN_OUTPUT_FORMAT = {
     "type": "json_schema",
@@ -146,66 +147,94 @@ class OpenAIResponsesGateway:
         if not self.config.trog_brain_enabled or not self.config.openai_api_key:
             return language_service_fallback()
 
-        response = None
-        try:
-            response = self.client.responses.create(
-                model=self.config.trog_brain_model,
-                instructions=TROG_BRAIN_INSTRUCTIONS,
-                input=json.dumps(
-                    request.to_model_payload(),
-                    separators=(",", ":"),
-                    sort_keys=True,
-                ),
-                text={"format": TROG_BRAIN_OUTPUT_FORMAT},
-                max_output_tokens=self.config.trog_brain_max_output_tokens,
-                reasoning={"effort": "low"},
-            )
-            self._require_completed_response(response)
-            self._reject_unexpected_tool_calls(response)
-            result = TrogBrainResponse.from_dict(json.loads(response.output_text))
-            if result.action and (
-                result.action.world_id != request.world_id
-                or result.action.capability not in request.effective_capabilities
-            ):
+        model_input = json.dumps(
+            request.to_model_payload(),
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        for attempt in range(1, _GATEWAY_ATTEMPTS + 1):
+            response = None
+            try:
+                response = self.client.responses.create(
+                    model=self.config.trog_brain_model,
+                    instructions=TROG_BRAIN_INSTRUCTIONS,
+                    input=model_input,
+                    text={"format": TROG_BRAIN_OUTPUT_FORMAT},
+                    max_output_tokens=self.config.trog_brain_max_output_tokens,
+                    reasoning={"effort": "low"},
+                )
+                self._require_completed_response(response)
+                self._reject_unexpected_tool_calls(response)
+                result = TrogBrainResponse.from_dict(
+                    json.loads(response.output_text)
+                )
+                if result.action and (
+                    result.action.world_id != request.world_id
+                    or result.action.capability
+                    not in request.effective_capabilities
+                ):
+                    LOGGER.warning(
+                        "Trog brain proposed an unauthorized action "
+                        "correlation_id=%s",
+                        request.correlation_id,
+                    )
+                    return TrogBrainResponse(
+                        kind="refusal",
+                        message=(
+                            "You do not have permission to request that action "
+                            "for this World."
+                        ),
+                    )
+                return result
+            except (
+                json.JSONDecodeError,
+                TrogBrainValidationError,
+                AttributeError,
+                TypeError,
+                ValueError,
+            ) as exc:
+                diagnostics = _safe_response_diagnostics(response)
+                should_retry = (
+                    attempt < _GATEWAY_ATTEMPTS
+                    and _is_retryable_invalid_response(diagnostics)
+                )
                 LOGGER.warning(
-                    "Trog brain proposed an unauthorized action correlation_id=%s",
+                    "Trog brain returned an invalid response correlation_id=%s "
+                    "attempt=%s retrying=%s error_type=%s response_status=%s "
+                    "incomplete_reason=%s output_text_length=%s "
+                    "output_item_types=%s",
                     request.correlation_id,
+                    attempt,
+                    should_retry,
+                    type(exc).__name__,
+                    diagnostics["status"],
+                    diagnostics["incomplete_reason"],
+                    diagnostics["output_text_length"],
+                    diagnostics["output_item_types"],
                 )
-                return TrogBrainResponse(
-                    kind="refusal",
-                    message="You do not have permission to request that action for this World.",
+                if should_retry:
+                    continue
+                return language_service_fallback()
+            except Exception as exc:
+                should_retry = (
+                    attempt < _GATEWAY_ATTEMPTS
+                    and _is_retryable_request_error(exc)
                 )
-            return result
-        except (
-            json.JSONDecodeError,
-            TrogBrainValidationError,
-            AttributeError,
-            TypeError,
-            ValueError,
-        ) as exc:
-            diagnostics = _safe_response_diagnostics(response)
-            LOGGER.warning(
-                "Trog brain returned an invalid response correlation_id=%s "
-                "error_type=%s response_status=%s incomplete_reason=%s "
-                "output_text_length=%s output_item_types=%s",
-                request.correlation_id,
-                type(exc).__name__,
-                diagnostics["status"],
-                diagnostics["incomplete_reason"],
-                diagnostics["output_text_length"],
-                diagnostics["output_item_types"],
-            )
-            return language_service_fallback()
-        except Exception as exc:
-            LOGGER.warning(
-                "Trog brain request failed correlation_id=%s error_type=%s "
-                "status_code=%s error_code=%s",
-                request.correlation_id,
-                type(exc).__name__,
-                getattr(exc, "status_code", None),
-                _safe_error_code(exc),
-            )
-            return language_service_fallback()
+                LOGGER.warning(
+                    "Trog brain request failed correlation_id=%s attempt=%s "
+                    "retrying=%s error_type=%s status_code=%s error_code=%s",
+                    request.correlation_id,
+                    attempt,
+                    should_retry,
+                    type(exc).__name__,
+                    getattr(exc, "status_code", None),
+                    _safe_error_code(exc),
+                )
+                if should_retry:
+                    continue
+                return language_service_fallback()
+
+        return language_service_fallback()
 
     @property
     def client(self):
@@ -292,4 +321,34 @@ def _safe_response_diagnostics(response) -> dict[str, object]:
         "incomplete_reason": incomplete_reason,
         "output_text_length": len(output_text),
         "output_item_types": tuple(item_types),
+    }
+
+
+def _is_retryable_invalid_response(diagnostics: dict[str, object]) -> bool:
+    return (
+        diagnostics["status"] == "incomplete"
+        or diagnostics["output_text_length"] == 0
+    )
+
+
+def _is_retryable_request_error(exc: Exception) -> bool:
+    error_code = (_safe_error_code(exc) or "").lower()
+    if error_code in {
+        "insufficient_quota",
+        "invalid_api_key",
+        "model_not_found",
+        "project_not_found",
+    }:
+        return False
+
+    status_code = getattr(exc, "status_code", None)
+    if status_code in {408, 409, 429}:
+        return True
+    if isinstance(status_code, int) and status_code >= 500:
+        return True
+
+    return type(exc).__name__ in {
+        "APIConnectionError",
+        "APITimeoutError",
+        "RateLimitError",
     }
