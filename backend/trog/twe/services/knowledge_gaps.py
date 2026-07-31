@@ -77,23 +77,99 @@ def classify_gap(question: str) -> str:
     return "knowledge"
 
 
-def record_knowledge_gap(
+def failure_category_for_response(
+    response_code: str,
+    assistant_response: str = "",
+    question: str = "",
+) -> str | None:
+    code = str(response_code or "").lower()
+    message = str(assistant_response or "").lower()
+    if not code:
+        return "unknown"
+    if code == "trog_brain_knowledge_gap":
+        return classify_gap(question)
+    if code == "trog_brain_refusal":
+        if "unavailable" in message or "try again" in message:
+            return "provider_outage"
+        return "topic_boundary"
+    if "rate_limit" in code:
+        return "rate_limit"
+    if any(word in code for word in ("unauthorized", "forbidden", "permission", "denied")):
+        return "authorization"
+    if code in {"channel_disabled", "read_not_approved"}:
+        return "authorization"
+    if any(word in code for word in (
+        "channel_unmapped", "world_not_connected", "guild_not_connected",
+        "instance_unavailable",
+    )):
+        return "routing"
+    if code == "provider_write_unavailable":
+        return "capability"
+    if any(word in code for word in ("not_configured", "configuration", "credential")):
+        return "configuration"
+    if code == "mod_reference_required" or any(
+        word in code for word in ("invalid", "ambiguous", "clarification", "missing_argument")
+    ):
+        return "validation"
+    if any(word in code for word in (
+        "settings_unavailable", "status_unavailable", "players_unavailable",
+        "mods_unavailable", "health_unavailable",
+    )):
+        return "live_data"
+    if code == "provider_operation_failed" or any(word in code for word in (
+        "provider_unavailable", "curseforge_unavailable", "language_unavailable",
+        "brain_unavailable",
+    )):
+        return "provider_outage"
+    if code in {"no_result", "interaction_unavailable", "internal_error"}:
+        return "internal_error"
+    if any(word in message for word in (
+        "could not answer", "could not process", "can’t verify", "can't verify",
+        "unavailable right now", "please try again shortly",
+    )):
+        return "unknown"
+    return None
+
+
+def record_failed_response(
     database,
     question: str,
     *,
     game_type: str | None = None,
     intent: str | None = None,
     response_code: str = "trog_brain_knowledge_gap",
+    assistant_response: str = "",
+    failure_category: str | None = None,
+    source: str = "discord",
+    guild_id: str | None = None,
+    channel_id: str | None = None,
+    author_id: str | None = None,
 ) -> None:
     sanitized = sanitize_question(question)
     normalized = normalize_question(sanitized)
     if not normalized:
         return
-    gap_type = classify_gap(normalized)
+    gap_type = failure_category or failure_category_for_response(
+        response_code,
+        assistant_response,
+        sanitized,
+    )
+    if not gap_type:
+        return
+    safe_response = sanitize_question(assistant_response)
     dedupe_key = dedupe_question(sanitized)
     signature_source = "|".join((game_type or "", intent or "", gap_type, dedupe_key))
     signature = hashlib.sha256(signature_source.encode("utf-8")).hexdigest()
-    safe_context = json.dumps({"source": "discord"})
+    safe_context = json.dumps({
+        key: value
+        for key, value in {
+            "source": source,
+            "guild_id": str(guild_id) if guild_id else None,
+            "channel_id": str(channel_id) if channel_id else None,
+            "author_id": str(author_id) if author_id else None,
+        }.items()
+        if value is not None
+    })
     try:
         with database.connect() as conn:
             execute(
@@ -101,14 +177,16 @@ def record_knowledge_gap(
                 """
                 INSERT INTO knowledge_gaps (
                     signature, sanitized_question, normalized_question, game_type,
-                    intent, gap_type, response_code, safe_context
+                    intent, gap_type, response_code, safe_context, assistant_response
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s)
                 ON CONFLICT (signature) DO UPDATE
                 SET occurrence_count = knowledge_gaps.occurrence_count + 1,
                     last_seen_at = now(),
                     sanitized_question = EXCLUDED.sanitized_question,
-                    response_code = EXCLUDED.response_code
+                    response_code = EXCLUDED.response_code,
+                    assistant_response = EXCLUDED.assistant_response,
+                    safe_context = EXCLUDED.safe_context
                 """,
                 (
                     signature,
@@ -119,21 +197,30 @@ def record_knowledge_gap(
                     gap_type,
                     response_code,
                     safe_context,
+                    safe_response,
                 ),
             )
     except Exception:
-        LOGGER.exception("Knowledge-gap capture failed without interrupting the Discord reply.")
+        LOGGER.exception("Failed-response capture failed without interrupting the Discord reply.")
 
 
-def schedule_knowledge_gap(database, question: str, **metadata) -> None:
+def schedule_failed_response(database, question: str, **metadata) -> None:
     task = asyncio.create_task(
-        asyncio.to_thread(record_knowledge_gap, database, question, **metadata)
+        asyncio.to_thread(record_failed_response, database, question, **metadata)
     )
 
     def consume_result(completed):
         try:
             completed.result()
         except Exception:
-            LOGGER.exception("Unexpected knowledge-gap background task failure.")
+            LOGGER.exception("Unexpected failed-response background task failure.")
 
     task.add_done_callback(consume_result)
+
+
+def record_knowledge_gap(database, question: str, **metadata) -> None:
+    record_failed_response(database, question, **metadata)
+
+
+def schedule_knowledge_gap(database, question: str, **metadata) -> None:
+    schedule_failed_response(database, question, **metadata)

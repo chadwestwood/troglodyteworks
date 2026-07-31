@@ -148,7 +148,7 @@ async function initAdmin() {
     apiRequest("/admin/communities"),
     apiRequest("/admin/discord-access"),
     apiRequest("/admin/runtime-health"),
-    apiRequest("/admin/knowledge-gaps?status=pending"),
+    apiRequest("/admin/failed-responses?status=pending"),
   ]);
   const state = {
     overview: overview.overview,
@@ -172,7 +172,7 @@ async function initAdmin() {
   });
   document.querySelector("[data-admin-gap-status]")?.addEventListener("change", async (event) => {
     state.gapStatus = event.target.value;
-    const data = await apiRequest(`/admin/knowledge-gaps?status=${encodeURIComponent(state.gapStatus)}`);
+    const data = await apiRequest(`/admin/failed-responses?status=${encodeURIComponent(state.gapStatus)}`);
     state.knowledgeGaps = data.knowledge_gaps;
     render();
   });
@@ -200,8 +200,8 @@ function renderAdminKnowledgeGaps(gaps, state) {
   clearNode(list);
   if (!gaps.length) {
     list.appendChild(createAdminRecord(
-      "No knowledge gaps in this view",
-      "New unanswered questions will appear here automatically.",
+      "No failed responses in this view",
+      "Questions Trog could not answer will appear here automatically.",
       [],
     ));
     return;
@@ -209,9 +209,10 @@ function renderAdminKnowledgeGaps(gaps, state) {
   gaps.forEach((gap) => {
     const record = createAdminRecord(
       gap.sanitized_question,
-      `${gap.gap_type} · ${gap.game_type || "game not identified"}`,
+      `${gap.gap_type.replaceAll("_", " ")} · ${gap.response_code} · ${gap.game_type || "game not identified"}`,
       [
         `${gap.occurrence_count} occurrence(s) · last seen ${formatAdminDate(gap.last_seen_at)}`,
+        gap.assistant_response ? `Trog replied: ${gap.assistant_response}` : "No reply text recorded",
         gap.linked_playbook ? `Playbook: ${gap.linked_playbook}` : "No playbook linked",
       ],
       gap.status,
@@ -242,7 +243,7 @@ function createAdminGapButton(label, handler, className = "secondary-button") {
 }
 
 async function updateAdminKnowledgeGap(gap, status, state) {
-  await apiRequest(`/admin/knowledge-gaps/${gap.id}`, {
+  await apiRequest(`/admin/failed-responses/${gap.id}`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
