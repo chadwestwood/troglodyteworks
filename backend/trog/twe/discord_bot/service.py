@@ -14,7 +14,10 @@ from ..services.provider_resolution import (
     resolve_game_server_provider,
 )
 from ..services.trog_brain_gateway import build_trog_brain_gateway
-from ..services.knowledge_gaps import schedule_knowledge_gap
+from ..services.knowledge_gaps import (
+    failure_category_for_response,
+    schedule_failed_response,
+)
 from ..trog_brain import TrogBrainRequest
 from .authorization import (
     ADMINISTRATIVE_CAPABILITIES,
@@ -277,10 +280,18 @@ async def handle_message(
         return False
 
     if request_limiter and not request_limiter.allow(str(message.guild.id), str(message.author.id)):
-        send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
-        await message.channel.send(
+        reply = BotReply(
             "You are asking me too quickly. Please wait a few seconds and try again.",
-            **send_options,
+            "discord_rate_limited",
+        )
+        send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
+        await message.channel.send(reply.text, **send_options)
+        schedule_failed_response(
+            database, content, intent=intent, response_code=reply.code,
+            assistant_response=reply.text,
+            guild_id=str(message.guild.id),
+            channel_id=str(message.channel.id),
+            author_id=str(message.author.id),
         )
         return True
 
@@ -325,6 +336,21 @@ async def handle_message(
             mentioned,
         )
         reply = NO_RESULT_REPLY
+
+    failure_category = failure_category_for_response(reply.code, reply.text, content)
+    if failure_category:
+        schedule_failed_response(
+            database,
+            content,
+            game_type="ark_survival_ascended",
+            intent=intent or "advisory",
+            response_code=reply.code,
+            assistant_response=reply.text,
+            failure_category=failure_category,
+            guild_id=str(message.guild.id),
+            channel_id=str(message.channel.id),
+            author_id=str(message.author.id),
+        )
 
     send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
     for chunk in split_discord_message(reply.text):
@@ -464,13 +490,6 @@ async def answer_advisory_question(
     )
     gateway = brain_gateway or build_trog_brain_gateway(config)
     response = await asyncio.to_thread(gateway.respond, request)
-    if response.kind == "knowledge_gap":
-        schedule_knowledge_gap(
-            database,
-            message_content,
-            game_type="ark_survival_ascended",
-            intent="advisory",
-        )
     return BotReply(response.message, f"trog_brain_{response.kind}")
 
 
@@ -523,6 +542,16 @@ async def handle_interaction(
         )
         send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
         await interaction.followup.send(reply.text, ephemeral=True, **send_options)
+        schedule_failed_response(
+            database,
+            f"/server {intent}",
+            intent=intent,
+            response_code=reply.code,
+            assistant_response=reply.text,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            author_id=author_id,
+        )
         return reply
     try:
         if intent == "server_help":
@@ -541,6 +570,24 @@ async def handle_interaction(
         "Discord authorization result guild_id=%s channel_id=%s author_id=%s capability=%s response_code=%s",
         guild_id, channel_id, author_id, intent, reply.code,
     )
+    failure_category = failure_category_for_response(
+        reply.code,
+        reply.text,
+        f"/server {intent} {command_argument or ''}".strip(),
+    )
+    if failure_category:
+        schedule_failed_response(
+            database,
+            f"/server {intent} {command_argument or ''}".strip(),
+            game_type="ark_survival_ascended",
+            intent=intent,
+            response_code=reply.code,
+            assistant_response=reply.text,
+            failure_category=failure_category,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            author_id=author_id,
+        )
     send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
     for chunk in split_discord_message(reply.text):
         await interaction.followup.send(chunk, ephemeral=ephemeral, **send_options)

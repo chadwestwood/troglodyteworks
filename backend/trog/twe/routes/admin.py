@@ -233,6 +233,7 @@ def admin_runtime_health():
     })
 
 
+@admin_bp.get("/admin/failed-responses")
 @admin_bp.get("/admin/knowledge-gaps")
 @require_admin
 def admin_knowledge_gaps():
@@ -245,7 +246,7 @@ def admin_knowledge_gaps():
         rows = fetch_all(
             conn,
             f"""
-            SELECT id::text, sanitized_question, game_type, intent, gap_type,
+            SELECT id::text, sanitized_question, assistant_response, game_type, intent, gap_type,
                    response_code, safe_context, occurrence_count, status,
                    first_seen_at, last_seen_at, resolution_notes, linked_playbook
             FROM knowledge_gaps
@@ -258,6 +259,7 @@ def admin_knowledge_gaps():
     return jsonify({"knowledge_gaps": [dict(row) for row in rows]})
 
 
+@admin_bp.get("/admin/failed-responses/export")
 @admin_bp.get("/admin/knowledge-gaps/export")
 @require_admin
 def admin_knowledge_gaps_export():
@@ -265,7 +267,7 @@ def admin_knowledge_gaps_export():
         rows = fetch_all(
             conn,
             """
-            SELECT id::text, sanitized_question, game_type, intent, gap_type,
+            SELECT id::text, sanitized_question, assistant_response, game_type, intent, gap_type,
                    response_code, safe_context, occurrence_count, status,
                    first_seen_at, last_seen_at, resolution_notes, linked_playbook
             FROM knowledge_gaps
@@ -278,6 +280,7 @@ def admin_knowledge_gaps_export():
     })
 
 
+@admin_bp.patch("/admin/failed-responses/<uuid:gap_id>")
 @admin_bp.patch("/admin/knowledge-gaps/<uuid:gap_id>")
 @require_admin
 def admin_update_knowledge_gap(gap_id):
@@ -296,14 +299,14 @@ def admin_update_knowledge_gap(gap_id):
                 resolution_notes = %s,
                 linked_playbook = %s
             WHERE id = %s
-            RETURNING id::text, sanitized_question, game_type, intent, gap_type,
+            RETURNING id::text, sanitized_question, assistant_response, game_type, intent, gap_type,
                       response_code, safe_context, occurrence_count, status,
                       first_seen_at, last_seen_at, resolution_notes, linked_playbook
             """,
             (status, resolution_notes, linked_playbook, gap_id),
         )
     if row is None:
-        return api_error("NOT_FOUND", "Knowledge gap not found.", 404)
+        return api_error("NOT_FOUND", "Failed response not found.", 404)
     return jsonify({"knowledge_gap": dict(row)})
 
 
