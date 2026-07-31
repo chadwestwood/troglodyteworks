@@ -69,6 +69,20 @@ _SETTING_TOPIC_ALIASES = {
     "water": {"water", "thirst"},
     "stamina": {"stamina"},
 }
+_SETTING_TOPIC_PRIORITIES = {
+    # A breeding question spans the whole lifecycle. Keep mating, incubation,
+    # maturation, and imprinting represented instead of returning whichever
+    # alphabetically sorted Baby* settings happen to come first.
+    "breed": (
+        "MatingIntervalMultiplier",
+        "MatingSpeedMultiplier",
+        "EggHatchSpeedMultiplier",
+        "BabyMatureSpeedMultiplier",
+        "BabyCuddleIntervalMultiplier",
+        "BabyFoodConsumptionSpeedMultiplier",
+        "BabyImprintAmountMultiplier",
+    ),
+}
 
 
 class DiscordRequestLimiter:
@@ -440,7 +454,7 @@ async def answer_advisory_question(
         relevant_settings = _relevant_provider_settings(
             request_text,
             settings_snapshot.settings,
-            limit=5 if response_mode == "factual" else 6,
+            limit=_factual_setting_limit(request_text) if response_mode == "factual" else 6,
         )
         if not relevant_settings:
             raise LookupError("No relevant live settings were returned.")
@@ -579,7 +593,35 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
             score += 1
         ranked.append((score, setting.path, setting))
     ranked.sort(key=lambda item: (-item[0], item[1].lower()))
-    return [item[2] for item in ranked[:limit]]
+    ranked_settings = [item[2] for item in ranked]
+
+    prioritized = []
+    seen_paths = set()
+    for topic, preferred_names in _SETTING_TOPIC_PRIORITIES.items():
+        if topic not in request_tokens:
+            continue
+        for preferred_name in preferred_names:
+            preferred_compact = re.sub(r"[^a-z0-9]+", "", preferred_name.lower())
+            for setting in ranked_settings:
+                path = str(setting.path)
+                path_compact = re.sub(r"[^a-z0-9]+", "", path.lower())
+                if preferred_compact not in path_compact or path in seen_paths:
+                    continue
+                prioritized.append(setting)
+                seen_paths.add(path)
+                break
+
+    for setting in ranked_settings:
+        if setting.path in seen_paths:
+            continue
+        prioritized.append(setting)
+        seen_paths.add(setting.path)
+    return prioritized[:limit]
+
+
+def _factual_setting_limit(request_text):
+    request_tokens = _expanded_setting_tokens(request_text)
+    return 7 if "breed" in request_tokens else 5
 
 
 def _expanded_setting_tokens(value):

@@ -670,6 +670,54 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("Why", reply.text)
         self.assertEqual(gateway.requests, [])
 
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
+    async def test_factual_breeding_question_covers_the_full_breeding_lifecycle(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.status.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting("settings.general.BabyCuddleGracePeriodMultiplier", "1.0"),
+                ProviderSetting("settings.general.BabyCuddleIntervalMultiplier", "0.25"),
+                ProviderSetting("settings.general.BabyFoodConsumptionSpeedMultiplier", "1.0"),
+                ProviderSetting("settings.general.BabyImprintAmountMultiplier", "2.0"),
+                ProviderSetting("settings.general.BabyMatureSpeedMultiplier", "10.0"),
+                ProviderSetting("settings.general.EggHatchSpeedMultiplier", "8.0"),
+                ProviderSetting("settings.general.MatingIntervalMultiplier", "0.5"),
+                ProviderSetting("settings.general.MatingSpeedMultiplier", "3.0"),
+                ProviderSetting("settings.general.TamingSpeedMultiplier", "5.0"),
+            ),
+            checked_at="2026-07-31T12:00:00Z",
+        )
+
+        reply = await answer_advisory_question(
+            "What are the current breeding settings on this World?",
+            "222", "333", "111", FakeDatabase(), self.config,
+            brain_gateway=FakeBrainGateway(
+                TrogBrainResponse(kind="grounded_answer", message="Should not be used.")
+            ),
+        )
+
+        self.assertEqual(reply.code, "trog_brain_grounded_answer")
+        self.assertIn("Mating Interval Multiplier: 0.5", reply.text)
+        self.assertIn("Mating Speed Multiplier: 3.0", reply.text)
+        self.assertIn("Egg Hatch Speed Multiplier: 8.0", reply.text)
+        self.assertIn("Baby Mature Speed Multiplier: 10.0", reply.text)
+        self.assertIn("Baby Cuddle Interval Multiplier: 0.25", reply.text)
+        self.assertNotIn("Taming", reply.text)
+
     @patch("twe.discord_bot.service.authorize")
     async def test_unverified_tutorial_is_logged_instead_of_guessed(
         self, authorize_mock,
