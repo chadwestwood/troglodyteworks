@@ -380,6 +380,7 @@ async def answer_advisory_question(
     brain_gateway=None,
 ):
     """Route an addressed, non-command question through the scoped Trog Brain."""
+    response_mode = _classify_brain_intent(request_text)
     correlation_id = str(uuid.uuid4())
     with database.connect() as conn:
         base_decision = authorize(
@@ -401,6 +402,12 @@ async def answer_advisory_question(
             )
 
         context = base_decision.context
+        if response_mode == "guide":
+            return BotReply(
+                "I don’t have a verified guide for that yet, so I won’t guess. "
+                "I’ve added this question for review.",
+                "trog_brain_knowledge_gap",
+            )
         provider_resolution = resolve_game_server_provider(
             conn,
             context.game_server_id,
@@ -433,6 +440,7 @@ async def answer_advisory_question(
         relevant_settings = _relevant_provider_settings(
             request_text,
             settings_snapshot.settings,
+            limit=5 if response_mode == "factual" else 6,
         )
         if not relevant_settings:
             raise LookupError("No relevant live settings were returned.")
@@ -447,6 +455,12 @@ async def answer_advisory_question(
             "I can’t verify the relevant live settings for this World right now, "
             "so I won’t guess. Please try again shortly.",
             "brain_settings_unavailable",
+        )
+
+    if response_mode == "factual":
+        return BotReply(
+            _format_requested_settings(relevant_settings),
+            "trog_brain_grounded_answer",
         )
 
     community_name = context.provider_community_name or context.game_server_name
@@ -474,12 +488,7 @@ async def answer_advisory_question(
                         for setting in relevant_settings
                     )
                 ),
-                (
-                    "This is an advisory conversation. Give a conservative, reversible "
-                    "recommendation using only the verified live values above. "
-                    "Name the relevant ARK setting when known. "
-                    "Present it as a short, friendly guide with one clear next step."
-                ),
+                _brain_response_instruction(response_mode),
                 (
                     "Do not use defaults or generic values. If the supplied live values "
                     "do not support an answer, say you cannot verify the setting."
@@ -490,7 +499,71 @@ async def answer_advisory_question(
     )
     gateway = brain_gateway or build_trog_brain_gateway(config)
     response = await asyncio.to_thread(gateway.respond, request)
+    if response.kind == "grounded_answer" and not _is_concise_brain_answer(response.message):
+        return BotReply(
+            "I couldn’t produce a concise, trustworthy answer for that yet. "
+            "I’ve added it for review.",
+            "trog_brain_answer_quality",
+        )
     return BotReply(response.message, f"trog_brain_{response.kind}")
+
+
+def _classify_brain_intent(request_text):
+    text = str(request_text or "").lower()
+    if re.search(r"\b(how do i|how to|walk me through|tutorial|instructions?)\b", text):
+        return "guide"
+    if re.search(r"\b(recommend|suggest|advice|too easy|too hard|what should)\b", text):
+        return "recommendation"
+    if re.search(r"\b(change|apply|set|update|increase|decrease)\b", text):
+        return "action"
+    if re.search(r"\b(current|show|list|what are|what is)\b", text) and re.search(
+        r"\b(settings?|configuration|values?|multipliers?|rates?)\b", text
+    ):
+        return "factual"
+    return "general"
+
+
+def _format_requested_settings(settings):
+    lines = ["Current settings:"]
+    for setting in settings:
+        name = str(setting.path).split(".")[-1]
+        name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name).replace("_", " ")
+        value = str(setting.value)
+        assignment = re.search(r"(?:^|\s)[A-Za-z][A-Za-z0-9_]*\s*=\s*([^\s,;]+)", value)
+        if assignment:
+            value = assignment.group(1)
+        lines.append(f"• {name}: {value}")
+    return "\n".join(lines)
+
+
+def _brain_response_instruction(response_mode):
+    if response_mode == "recommendation":
+        return (
+            "Response mode: recommendation. Give exactly one recommendation and one "
+            "brief reason. Use no headings, no data dump, no next-step offer, and no "
+            "more than 80 words. Include only live values needed for the answer."
+        )
+    if response_mode == "action":
+        return (
+            "Response mode: action. Return only the requested unexecuted action proposal. "
+            "Do not claim it was executed. Use no headings and no more than 80 words."
+        )
+    return (
+        f"Response mode: {response_mode}. Answer directly in no more than 80 words. "
+        "Include only facts needed to answer the question. Do not offer an action."
+    )
+
+
+def _is_concise_brain_answer(message):
+    text = str(message or "").strip()
+    if not text or text.lower() in {"let's check it out.", "lets check it out."}:
+        return False
+    if len(text.split()) > 80:
+        return False
+    if sum(1 for line in text.splitlines() if line.lstrip().startswith(("•", "-", "*"))) > 4:
+        return False
+    banned = ("what to check", "what i'd try", "what i’d try", "what i see now", "next step")
+    return not any(section in text.lower() for section in banned)
 
 
 def _relevant_provider_settings(request_text, settings, *, limit=12):

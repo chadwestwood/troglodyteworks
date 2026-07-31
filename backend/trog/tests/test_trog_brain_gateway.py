@@ -184,9 +184,9 @@ class TrogBrainContractTests(unittest.TestCase):
         self.assertEqual(call["max_output_tokens"], 321)
         self.assertEqual(call["reasoning"], {"effort": "low"})
         self.assertEqual(call["text"]["format"]["type"], "json_schema")
-        self.assertIn("Let's check it out.", call["instructions"])
-        self.assertIn("What I'd try", call["instructions"])
-        self.assertIn("about 120 words or fewer", call["instructions"])
+        self.assertIn("Follow the response mode", call["instructions"])
+        self.assertIn("factual: return only", call["instructions"])
+        self.assertIn("no more than 80 words", call["instructions"])
         sent_context = json.loads(call["input"])
         self.assertNotIn("openai_api_key", sent_context)
         self.assertEqual(sent_context["world_id"], "world-1")
@@ -329,9 +329,8 @@ class TrogBrainContractTests(unittest.TestCase):
             output_text=json.dumps(
                 response_payload(
                     message=(
-                        "Let's check it out.\n\n**What I see now**\n"
-                        "- HarvestAmountMultiplier: **3.0**\n\n"
-                        "**What I'd try**\nLower it to **2.5** first."
+                        "Reduce HarvestAmountMultiplier from 3.0 to 2.5; this "
+                        "slightly lowers resource yield without making gathering tedious."
                     )
                 )
             ),
@@ -352,7 +351,7 @@ class TrogBrainContractTests(unittest.TestCase):
             )
 
         self.assertEqual(response.kind, "grounded_answer")
-        self.assertIn("What I see now", response.message)
+        self.assertIn("HarvestAmountMultiplier", response.message)
         self.assertEqual(len(responses.calls), 2)
         self.assertIn(
             "previous response was incomplete",

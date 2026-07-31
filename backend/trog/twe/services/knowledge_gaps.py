@@ -88,6 +88,8 @@ def failure_category_for_response(
         return "unknown"
     if code == "trog_brain_knowledge_gap":
         return classify_gap(question)
+    if code == "trog_brain_answer_quality":
+        return "answer_quality"
     if code == "trog_brain_refusal":
         if "unavailable" in message or "try again" in message:
             return "provider_outage"

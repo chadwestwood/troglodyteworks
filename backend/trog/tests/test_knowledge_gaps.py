@@ -52,6 +52,7 @@ class KnowledgeGapTests(unittest.TestCase):
             "provider_write_unavailable": "capability",
             "provider_operation_failed": "provider_outage",
             "interaction_unavailable": "internal_error",
+            "trog_brain_answer_quality": "answer_quality",
         }
         for response_code, category in expected.items():
             with self.subTest(response_code=response_code):

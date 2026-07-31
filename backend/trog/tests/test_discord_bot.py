@@ -629,6 +629,111 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("won’t guess", reply.text)
         self.assertEqual(gateway.requests, [])
 
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
+    async def test_factual_settings_question_returns_only_requested_live_values(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.status.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting("settings.general.HarvestAmountMultiplier", "2.0"),
+                ProviderSetting("settings.general.PlayerHarvestingDamageMultiplier", "3"),
+                ProviderSetting("settings.general.TamingSpeedMultiplier", "5"),
+            ),
+            checked_at="2026-07-31T12:00:00Z",
+        )
+        gateway = FakeBrainGateway(
+            TrogBrainResponse(kind="grounded_answer", message="Should not be used.")
+        )
+
+        reply = await answer_advisory_question(
+            "What are the current harvesting settings?", "222", "333", "111",
+            FakeDatabase(), self.config, brain_gateway=gateway,
+        )
+
+        self.assertEqual(reply.code, "trog_brain_grounded_answer")
+        self.assertIn("Harvest Amount Multiplier: 2.0", reply.text)
+        self.assertIn("Player Harvesting Damage Multiplier: 3", reply.text)
+        self.assertNotIn("Taming", reply.text)
+        self.assertNotIn("Why", reply.text)
+        self.assertEqual(gateway.requests, [])
+
+    @patch("twe.discord_bot.service.authorize")
+    async def test_unverified_tutorial_is_logged_instead_of_guessed(
+        self, authorize_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.status.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        gateway = FakeBrainGateway(
+            TrogBrainResponse(kind="grounded_answer", message="Invented tutorial.")
+        )
+
+        reply = await answer_advisory_question(
+            "How do I tame a Gigantoraptor?", "222", "333", "111",
+            FakeDatabase(), self.config, brain_gateway=gateway,
+        )
+
+        self.assertEqual(reply.code, "trog_brain_knowledge_gap")
+        self.assertIn("won’t guess", reply.text)
+        self.assertEqual(gateway.requests, [])
+
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
+    async def test_verbose_brain_answer_is_rejected_for_review(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.status.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(ProviderSetting("settings.general.HarvestAmountMultiplier", "3"),),
+            checked_at="2026-07-31T12:00:00Z",
+        )
+        gateway = FakeBrainGateway(
+            TrogBrainResponse(
+                kind="grounded_answer",
+                message="What I'd try\n- Change it.\n\nNext step\n- Apply it.",
+            )
+        )
+
+        reply = await answer_advisory_question(
+            "Harvesting is too easy. What would you recommend?",
+            "222", "333", "111", FakeDatabase(), self.config,
+            brain_gateway=gateway,
+        )
+
+        self.assertEqual(reply.code, "trog_brain_answer_quality")
+        self.assertIn("added it for review", reply.text)
+
     @patch("twe.discord_bot.service.authorize")
     async def test_unknown_question_fails_closed_outside_routed_channel(
         self, authorize_mock,
