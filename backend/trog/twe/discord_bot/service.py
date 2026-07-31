@@ -540,14 +540,37 @@ def _classify_brain_intent(request_text):
 def _format_requested_settings(settings):
     lines = ["Current settings:"]
     for setting in settings:
-        name = str(setting.path).split(".")[-1]
+        assignment = _provider_setting_assignment(setting)
+        name = assignment[0] if assignment else str(setting.path).split(".")[-1]
         name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name).replace("_", " ")
-        value = str(setting.value)
-        assignment = re.search(r"(?:^|\s)[A-Za-z][A-Za-z0-9_]*\s*=\s*([^\s,;]+)", value)
-        if assignment:
-            value = assignment.group(1)
+        value = assignment[1] if assignment else str(setting.value)
         lines.append(f"• {name}: {value}")
     return "\n".join(lines)
+
+
+def _provider_setting_assignment(setting):
+    match = re.search(
+        r"(?:^|[\s;])([A-Za-z][A-Za-z0-9_]*)\s*=\s*([^\s,;]+)",
+        str(setting.value or ""),
+    )
+    return (match.group(1), match.group(2)) if match else None
+
+
+def _provider_setting_identity(setting):
+    assignment = _provider_setting_assignment(setting)
+    name = assignment[0] if assignment else str(setting.path).split(".")[-1]
+    return re.sub(r"[^a-z0-9]+", "", name.lower())
+
+
+def _provider_setting_authority(setting):
+    if _provider_setting_assignment(setting):
+        return 4
+    path = str(setting.path or "").lower()
+    if any(marker in path for marker in ("game.ini", "gameusersettings", "config")):
+        return 3
+    if "game_specific" in path:
+        return 2
+    return 1
 
 
 def _brain_response_instruction(response_mode):
@@ -584,38 +607,54 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
     request_tokens = _expanded_setting_tokens(request_text)
     ranked = []
     for setting in settings:
-        path_tokens = _expanded_setting_tokens(setting.path)
-        overlap = request_tokens & path_tokens
+        assignment = _provider_setting_assignment(setting)
+        searchable = f"{setting.path} {assignment[0] if assignment else ''}"
+        setting_tokens = _expanded_setting_tokens(searchable)
+        overlap = request_tokens & setting_tokens
         if not overlap:
             continue
         score = len(overlap)
-        if any(token in setting.path.lower() for token in request_tokens):
+        if any(token in searchable.lower() for token in request_tokens):
             score += 1
-        ranked.append((score, setting.path, setting))
-    ranked.sort(key=lambda item: (-item[0], item[1].lower()))
+        ranked.append((score, _provider_setting_authority(setting), setting))
+
+    # Nitrado may return both a convenient summary value and the explicit value
+    # saved in a config assignment. Keep only the most authoritative version of
+    # each setting so a generic 1.0 cannot mask the World's real configuration.
+    best_by_identity = {}
+    for score, authority, setting in ranked:
+        identity = _provider_setting_identity(setting)
+        current = best_by_identity.get(identity)
+        candidate = (score, authority, setting)
+        if current is None or (score, authority) > (current[0], current[1]):
+            best_by_identity[identity] = candidate
+    ranked = sorted(
+        best_by_identity.values(),
+        key=lambda item: (-item[0], -item[1], str(item[2].path).lower()),
+    )
     ranked_settings = [item[2] for item in ranked]
 
     prioritized = []
-    seen_paths = set()
+    seen_identities = set()
     for topic, preferred_names in _SETTING_TOPIC_PRIORITIES.items():
         if topic not in request_tokens:
             continue
         for preferred_name in preferred_names:
             preferred_compact = re.sub(r"[^a-z0-9]+", "", preferred_name.lower())
             for setting in ranked_settings:
-                path = str(setting.path)
-                path_compact = re.sub(r"[^a-z0-9]+", "", path.lower())
-                if preferred_compact not in path_compact or path in seen_paths:
+                identity = _provider_setting_identity(setting)
+                if preferred_compact != identity or identity in seen_identities:
                     continue
                 prioritized.append(setting)
-                seen_paths.add(path)
+                seen_identities.add(identity)
                 break
 
     for setting in ranked_settings:
-        if setting.path in seen_paths:
+        identity = _provider_setting_identity(setting)
+        if identity in seen_identities:
             continue
         prioritized.append(setting)
-        seen_paths.add(setting.path)
+        seen_identities.add(identity)
     return prioritized[:limit]
 
 

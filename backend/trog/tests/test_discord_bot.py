@@ -718,6 +718,48 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Baby Cuddle Interval Multiplier: 0.25", reply.text)
         self.assertNotIn("Taming", reply.text)
 
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
+    async def test_factual_breeding_prefers_saved_config_over_summary_defaults(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.status.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting("settings.general.MatingIntervalMultiplier", "1.0"),
+                ProviderSetting("settings.general.EggHatchSpeedMultiplier", "1.0"),
+                ProviderSetting("settings.general.BabyMatureSpeedMultiplier", "1.0"),
+                ProviderSetting("game_specific.game.ini.0", "MatingIntervalMultiplier=0.25"),
+                ProviderSetting("game_specific.game.ini.1", "EggHatchSpeedMultiplier=12.0"),
+                ProviderSetting("game_specific.game.ini.2", "BabyMatureSpeedMultiplier=20.0"),
+            ),
+            checked_at="2026-07-31T12:00:00Z",
+        )
+
+        reply = await answer_advisory_question(
+            "What are the current breeding settings on this World?",
+            "222", "333", "111", FakeDatabase(), self.config,
+            brain_gateway=FakeBrainGateway(
+                TrogBrainResponse(kind="grounded_answer", message="Should not be used.")
+            ),
+        )
+
+        self.assertIn("Mating Interval Multiplier: 0.25", reply.text)
+        self.assertIn("Egg Hatch Speed Multiplier: 12.0", reply.text)
+        self.assertIn("Baby Mature Speed Multiplier: 20.0", reply.text)
+        self.assertNotIn("Mating Interval Multiplier: 1.0", reply.text)
+
     @patch("twe.discord_bot.service.authorize")
     async def test_unverified_tutorial_is_logged_instead_of_guessed(
         self, authorize_mock,
