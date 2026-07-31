@@ -740,9 +740,9 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
                 ProviderSetting("settings.general.MatingIntervalMultiplier", "1.0"),
                 ProviderSetting("settings.general.EggHatchSpeedMultiplier", "1.0"),
                 ProviderSetting("settings.general.BabyMatureSpeedMultiplier", "1.0"),
-                ProviderSetting("game_specific.game.ini.0", "MatingIntervalMultiplier=0.25"),
-                ProviderSetting("game_specific.game.ini.1", "EggHatchSpeedMultiplier=12.0"),
-                ProviderSetting("game_specific.game.ini.2", "BabyMatureSpeedMultiplier=20.0"),
+                ProviderSetting("saved.settings.general.MatingIntervalMultiplier", "0.25"),
+                ProviderSetting("saved.settings.general.EggHatchSpeedMultiplier", "12.0"),
+                ProviderSetting("saved.settings.general.BabyMatureSpeedMultiplier", "20.0"),
             ),
             checked_at="2026-07-31T12:00:00Z",
         )

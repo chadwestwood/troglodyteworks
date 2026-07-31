@@ -563,9 +563,11 @@ def _provider_setting_identity(setting):
 
 
 def _provider_setting_authority(setting):
+    path = str(setting.path or "").lower()
+    if path.startswith("saved."):
+        return 5
     if _provider_setting_assignment(setting):
         return 4
-    path = str(setting.path or "").lower()
     if any(marker in path for marker in ("game.ini", "gameusersettings", "config")):
         return 3
     if "game_specific" in path:

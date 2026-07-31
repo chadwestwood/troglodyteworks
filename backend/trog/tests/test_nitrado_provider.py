@@ -279,8 +279,11 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertEqual(mods[0], {"id": "927090", "name": "Awesome SpyGlass"})
         self.assertEqual(mods[1], {"id": "928708", "name": "Dino Depot"})
 
-    def test_reads_sanitized_live_settings_from_world_summary(self):
-        transport = _Transport(_gameserver_settings_response())
+    def test_reads_sanitized_saved_settings_and_supplements_from_summary(self):
+        transport = _Transport([
+            _gameserver_settings_response(),
+            _gameserver_settings_response(nested=False),
+        ])
 
         snapshot = NitradoProvider(self.config, transport).read_settings(self._context())
 
@@ -288,13 +291,17 @@ class NitradoProviderTests(unittest.TestCase):
             transport.calls[0][0],
             "https://api.nitrado.net/services/42/gameservers",
         )
-        self.assertEqual(len(transport.calls), 1)
+        self.assertEqual(len(transport.calls), 2)
+        self.assertEqual(
+            transport.calls[1][0],
+            "https://api.nitrado.net/services/42/gameservers/settings",
+        )
         values = {setting.path: setting.value for setting in snapshot.settings}
         self.assertEqual(
-            values["settings.general.PlayerHarvestingDamageMultiplier"],
+            values["saved.settings.general.PlayerHarvestingDamageMultiplier"],
             "3",
         )
-        self.assertEqual(values["settings.general.HarvestXPMultiplier"], "3.0")
+        self.assertEqual(values["saved.settings.general.HarvestXPMultiplier"], "3.0")
         rendered = repr(snapshot)
         self.assertNotIn("ServerAdminPassword", rendered)
         self.assertNotIn("RCONPort", rendered)
@@ -318,7 +325,7 @@ class NitradoProviderTests(unittest.TestCase):
         )
         values = {setting.path: setting.value for setting in snapshot.settings}
         self.assertEqual(
-            values["settings.general.PlayerHarvestingDamageMultiplier"],
+            values["saved.settings.general.PlayerHarvestingDamageMultiplier"],
             "3",
         )
 

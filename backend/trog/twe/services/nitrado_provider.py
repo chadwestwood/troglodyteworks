@@ -175,21 +175,27 @@ class NitradoClient:
     ) -> ProviderSettingsSnapshot:
         if not service_id.isdigit():
             raise NitradoMalformedResponseError()
-        # The World summary is Nitrado's established read endpoint and is also
-        # the source used for status and mod configuration. Prefer it so an
-        # advisory answer is grounded in the same live World the channel routes
-        # to. Some Nitrado service variants omit settings from that response;
-        # only then try the dedicated settings representation. If neither
-        # contains settings, parsing fails closed and Trog will not guess.
+        # Nitrado's broad World summary may contain UI defaults rather than the
+        # saved configuration. Always read the dedicated settings endpoint and
+        # treat it as authoritative. The summary may only supplement settings
+        # that the dedicated representation does not contain.
+        summary = None
         response = self._get(f"/services/{service_id}/gameservers", credential)
         try:
-            return self._parse_gameserver_settings(response.body)
+            summary = self._parse_gameserver_settings(response.body)
         except NitradoMalformedResponseError:
-            response = self._get(
-                f"/services/{service_id}/gameservers/settings",
-                credential,
-            )
-            return self._parse_gameserver_settings(response.body)
+            pass
+        response = self._get(
+            f"/services/{service_id}/gameservers/settings",
+            credential,
+        )
+        saved = self._parse_gameserver_settings(response.body, source_prefix="saved")
+        if summary is None:
+            return saved
+        return ProviderSettingsSnapshot(
+            settings=tuple((*saved.settings, *summary.settings)[:250]),
+            checked_at=saved.checked_at,
+        )
 
     def get_gameserver_mod_configuration(
         self, service_id: str, credential: bytes,
@@ -200,7 +206,11 @@ class NitradoClient:
         return self._parse_gameserver_mod_configuration(response.body)
 
     @staticmethod
-    def _parse_gameserver_settings(body: bytes) -> ProviderSettingsSnapshot:
+    def _parse_gameserver_settings(
+        body: bytes,
+        *,
+        source_prefix: str | None = None,
+    ) -> ProviderSettingsSnapshot:
         try:
             payload = json.loads(body.decode("utf-8"))
             data = payload["data"]
@@ -222,7 +232,12 @@ class NitradoClient:
             settings = []
             seen_paths = set()
             for container_name, container in containers:
-                for setting in _safe_provider_settings(container_name, container):
+                source_name = (
+                    f"{source_prefix}.{container_name}"
+                    if source_prefix
+                    else container_name
+                )
+                for setting in _safe_provider_settings(source_name, container):
                     if setting.path in seen_paths:
                         continue
                     seen_paths.add(setting.path)
