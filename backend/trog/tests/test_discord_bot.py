@@ -543,11 +543,11 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         settings_mock.return_value = ProviderSettingsSnapshot(
             settings=(
                 ProviderSetting(
-                    "settings.general.PlayerHarvestingDamageMultiplier",
-                    "3",
+                    "settings.config.game.ini.0",
+                    "PlayerHarvestingDamageMultiplier=3",
                 ),
-                ProviderSetting("settings.general.HarvestXPMultiplier", "3.0"),
-                ProviderSetting("settings.general.TamingSpeedMultiplier", "5"),
+                ProviderSetting("settings.config.game.ini.1", "HarvestXPMultiplier=3.0"),
+                ProviderSetting("settings.config.game.ini.2", "TamingSpeedMultiplier=5"),
             ),
             checked_at="2026-07-30T12:00:00Z",
         )
@@ -648,9 +648,12 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         resolve_mock.return_value = object()
         settings_mock.return_value = ProviderSettingsSnapshot(
             settings=(
-                ProviderSetting("settings.general.HarvestAmountMultiplier", "2.0"),
-                ProviderSetting("settings.general.PlayerHarvestingDamageMultiplier", "3"),
-                ProviderSetting("settings.general.TamingSpeedMultiplier", "5"),
+                ProviderSetting("settings.config.game.ini.0", "HarvestAmountMultiplier=2.0"),
+                ProviderSetting(
+                    "settings.config.game.ini.1",
+                    "PlayerHarvestingDamageMultiplier=3",
+                ),
+                ProviderSetting("settings.config.game.ini.2", "TamingSpeedMultiplier=5"),
             ),
             checked_at="2026-07-31T12:00:00Z",
         )
@@ -689,15 +692,15 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         resolve_mock.return_value = object()
         settings_mock.return_value = ProviderSettingsSnapshot(
             settings=(
-                ProviderSetting("settings.general.BabyCuddleGracePeriodMultiplier", "1.0"),
-                ProviderSetting("settings.general.BabyCuddleIntervalMultiplier", "0.25"),
-                ProviderSetting("settings.general.BabyFoodConsumptionSpeedMultiplier", "1.0"),
-                ProviderSetting("settings.general.BabyImprintAmountMultiplier", "2.0"),
-                ProviderSetting("settings.general.BabyMatureSpeedMultiplier", "10.0"),
-                ProviderSetting("settings.general.EggHatchSpeedMultiplier", "8.0"),
-                ProviderSetting("settings.general.MatingIntervalMultiplier", "0.5"),
-                ProviderSetting("settings.general.MatingSpeedMultiplier", "3.0"),
-                ProviderSetting("settings.general.TamingSpeedMultiplier", "5.0"),
+                ProviderSetting("settings.config.game.ini.0", "BabyCuddleGracePeriodMultiplier=1.0"),
+                ProviderSetting("settings.config.game.ini.1", "BabyCuddleIntervalMultiplier=0.25"),
+                ProviderSetting("settings.config.game.ini.2", "BabyFoodConsumptionSpeedMultiplier=1.0"),
+                ProviderSetting("settings.config.game.ini.3", "BabyImprintAmountMultiplier=2.0"),
+                ProviderSetting("settings.config.game.ini.4", "BabyMatureSpeedMultiplier=10.0"),
+                ProviderSetting("settings.config.game.ini.5", "EggHatchSpeedMultiplier=8.0"),
+                ProviderSetting("settings.config.game.ini.6", "MatingIntervalMultiplier=0.5"),
+                ProviderSetting("settings.config.game.ini.7", "MatingSpeedMultiplier=3.0"),
+                ProviderSetting("settings.config.game.ini.8", "TamingSpeedMultiplier=5.0"),
             ),
             checked_at="2026-07-31T12:00:00Z",
         )
@@ -721,7 +724,7 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
     @patch("twe.discord_bot.service.read_game_server_settings")
     @patch("twe.discord_bot.service.resolve_game_server_provider")
     @patch("twe.discord_bot.service.authorize")
-    async def test_factual_breeding_prefers_saved_config_over_summary_defaults(
+    async def test_factual_breeding_ignores_form_defaults_and_uses_explicit_config(
         self, authorize_mock, resolve_mock, settings_mock,
     ):
         authorize_mock.return_value = AuthorizationDecision(
@@ -740,9 +743,9 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
                 ProviderSetting("settings.general.MatingIntervalMultiplier", "1.0"),
                 ProviderSetting("settings.general.EggHatchSpeedMultiplier", "1.0"),
                 ProviderSetting("settings.general.BabyMatureSpeedMultiplier", "1.0"),
-                ProviderSetting("saved.settings.general.MatingIntervalMultiplier", "0.25"),
-                ProviderSetting("saved.settings.general.EggHatchSpeedMultiplier", "12.0"),
-                ProviderSetting("saved.settings.general.BabyMatureSpeedMultiplier", "20.0"),
+                ProviderSetting("settings.config.game.ini.0", "MatingIntervalMultiplier=0.25"),
+                ProviderSetting("settings.config.game.ini.1", "EggHatchSpeedMultiplier=12.0"),
+                ProviderSetting("settings.config.game.ini.2", "BabyMatureSpeedMultiplier=20.0"),
             ),
             checked_at="2026-07-31T12:00:00Z",
         )
@@ -805,7 +808,12 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         )
         resolve_mock.return_value = object()
         settings_mock.return_value = ProviderSettingsSnapshot(
-            settings=(ProviderSetting("settings.general.HarvestAmountMultiplier", "3"),),
+            settings=(
+                ProviderSetting(
+                    "settings.config.game.ini.0",
+                    "HarvestAmountMultiplier=3",
+                ),
+            ),
             checked_at="2026-07-31T12:00:00Z",
         )
         gateway = FakeBrainGateway(

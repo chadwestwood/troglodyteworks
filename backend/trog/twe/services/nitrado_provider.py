@@ -175,27 +175,13 @@ class NitradoClient:
     ) -> ProviderSettingsSnapshot:
         if not service_id.isdigit():
             raise NitradoMalformedResponseError()
-        # Nitrado's broad World summary may contain UI defaults rather than the
-        # saved configuration. Always read the dedicated settings endpoint and
-        # treat it as authoritative. The summary may only supplement settings
-        # that the dedicated representation does not contain.
-        summary = None
+        # The dedicated /settings response describes Nitrado's settings form
+        # and includes default values that are not necessarily saved on this
+        # World. The broad gameserver response includes the explicit config
+        # assignments that Nitrado is actually using, so it is the only safe
+        # source for live setting evidence.
         response = self._get(f"/services/{service_id}/gameservers", credential)
-        try:
-            summary = self._parse_gameserver_settings(response.body)
-        except NitradoMalformedResponseError:
-            pass
-        response = self._get(
-            f"/services/{service_id}/gameservers/settings",
-            credential,
-        )
-        saved = self._parse_gameserver_settings(response.body, source_prefix="saved")
-        if summary is None:
-            return saved
-        return ProviderSettingsSnapshot(
-            settings=tuple((*saved.settings, *summary.settings)[:250]),
-            checked_at=saved.checked_at,
-        )
+        return self._parse_gameserver_settings(response.body)
 
     def get_gameserver_mod_configuration(
         self, service_id: str, credential: bytes,

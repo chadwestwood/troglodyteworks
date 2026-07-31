@@ -13,6 +13,7 @@ from ..services.provider_resolution import (
     read_game_server_settings,
     resolve_game_server_provider,
 )
+from ..services.provider_contracts import ProviderSetting
 from ..services.trog_brain_gateway import build_trog_brain_gateway
 from ..services.knowledge_gaps import (
     failure_category_for_response,
@@ -610,6 +611,11 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
     ranked = []
     for setting in settings:
         assignment = _provider_setting_assignment(setting)
+        # Only explicit config assignments are proof of the value saved for
+        # this World. Nitrado also exposes form defaults as ordinary scalar
+        # values; using those would make Trog confidently report false 1.0s.
+        if assignment is None:
+            continue
         searchable = f"{setting.path} {assignment[0] if assignment else ''}"
         setting_tokens = _expanded_setting_tokens(searchable)
         overlap = request_tokens & setting_tokens
@@ -618,7 +624,11 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
         score = len(overlap)
         if any(token in searchable.lower() for token in request_tokens):
             score += 1
-        ranked.append((score, _provider_setting_authority(setting), setting))
+        # Normalize the verified assignment before it reaches prompts or
+        # factual replies. This removes Nitrado's container path and preserves
+        # only the setting name and the value actually saved in its config.
+        verified_setting = ProviderSetting(path=assignment[0], value=assignment[1])
+        ranked.append((score, _provider_setting_authority(setting), verified_setting))
 
     # Nitrado may return both a convenient summary value and the explicit value
     # saved in a config assignment. Keep only the most authoritative version of
