@@ -301,6 +301,35 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertNotIn("must-not-survive", rendered)
         self.assertNotIn("secret-token", rendered)
 
+    def test_keeps_saved_configuration_after_large_metadata_payload(self):
+        settings = {
+            "form": {
+                f"field_{index}": {"default": 1.0}
+                for index in range(260)
+            },
+            "config": {
+                "game.ini": ["MatingIntervalMultiplier=0.25"],
+            },
+        }
+        response = NitradoHttpResponse(
+            status=200,
+            body=json.dumps({
+                "status": "success",
+                "data": {"gameserver": {"settings": settings}},
+            }).encode("utf-8"),
+        )
+
+        snapshot = NitradoProvider(
+            self.config, _Transport(response)
+        ).read_settings(self._context())
+
+        values = {setting.path: setting.value for setting in snapshot.settings}
+        self.assertEqual(
+            values["settings.config.game.ini.0"],
+            "MatingIntervalMultiplier=0.25",
+        )
+        self.assertGreater(len(snapshot.settings), 250)
+
     def test_live_settings_read_fails_closed_without_a_settings_payload(self):
         provider = NitradoProvider(
             self.config,

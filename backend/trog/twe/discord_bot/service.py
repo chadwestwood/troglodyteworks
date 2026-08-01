@@ -567,13 +567,49 @@ def _provider_setting_authority(setting):
     path = str(setting.path or "").lower()
     if path.startswith("saved."):
         return 5
-    if _provider_setting_assignment(setting):
-        return 4
     if any(marker in path for marker in ("game.ini", "gameusersettings", "config")):
-        return 3
+        return 4
     if "game_specific" in path:
         return 2
     return 1
+
+
+def _is_verified_provider_setting(setting):
+    """Return whether a provider value came from saved World configuration.
+
+    Nitrado's gameserver document also contains form schemas, examples, and
+    defaults. Some of those metadata fields contain strings that look exactly
+    like ``Name=Value`` assignments, so assignment syntax alone is not proof
+    that a value is active on the World.
+    """
+    path = str(setting.path or "").lower()
+    metadata_markers = (
+        "default",
+        "definition",
+        "description",
+        "example",
+        "form",
+        "help",
+        "label",
+        "maximum",
+        "minimum",
+        "option",
+        "schema",
+        "template",
+    )
+    if any(marker in path for marker in metadata_markers):
+        return False
+    return path.startswith("saved.") or any(
+        marker in path
+        for marker in (
+            "config.game.ini",
+            "config.gameusersettings.ini",
+            "config_file",
+            "configfile",
+            "game.ini",
+            "gameusersettings.ini",
+        )
+    )
 
 
 def _brain_response_instruction(response_mode):
@@ -614,7 +650,7 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
         # Only explicit config assignments are proof of the value saved for
         # this World. Nitrado also exposes form defaults as ordinary scalar
         # values; using those would make Trog confidently report false 1.0s.
-        if assignment is None:
+        if assignment is None or not _is_verified_provider_setting(setting):
             continue
         searchable = f"{setting.path} {assignment[0] if assignment else ''}"
         setting_tokens = _expanded_setting_tokens(searchable)

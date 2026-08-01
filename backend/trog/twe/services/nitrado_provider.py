@@ -231,7 +231,11 @@ class NitradoClient:
             if not settings:
                 raise KeyError("settings")
             return ProviderSettingsSnapshot(
-                settings=tuple(settings[:250]),
+                # The gameserver document can contain hundreds of form and
+                # template fields before its saved config lines. Truncating
+                # here can discard the only authoritative World values while
+                # retaining the misleading defaults.
+                settings=tuple(settings),
                 checked_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             )
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
@@ -768,14 +772,15 @@ _SENSITIVE_SETTING_MARKERS = (
 )
 
 
-def _safe_provider_settings(prefix: str, container: dict) -> list[ProviderSetting]:
+def _safe_provider_settings(prefix: str, container: dict | list) -> list[ProviderSetting]:
     settings = []
-    for key, value in container.items():
+    values = container.items() if isinstance(container, dict) else enumerate(container)
+    for key, value in values:
         path = f"{prefix}.{key}"
         normalized_path = re.sub(r"[^a-z0-9]+", "", path.lower())
         if any(marker in normalized_path for marker in _SENSITIVE_SETTING_MARKERS):
             continue
-        if isinstance(value, dict):
+        if isinstance(value, (dict, list)):
             settings.extend(_safe_provider_settings(path, value))
             continue
         if not isinstance(value, (str, int, float, bool)) or value in ("", None):
