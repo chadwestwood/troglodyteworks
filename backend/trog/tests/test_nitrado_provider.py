@@ -104,8 +104,8 @@ def _gameserver_mods_response(mods):
 def _gameserver_settings_response(*, nested=True):
     settings = {
         "general": {
-            "PlayerHarvestingDamageMultiplier": 3,
-            "HarvestXPMultiplier": 3.0,
+            "PlayerHarvestingDamageMultiplier": {"value": 3, "default": 1},
+            "HarvestXPMultiplier": {"current": 3.0, "default": 1.0},
             "ServerAdminPassword": "must-not-survive",
             "RCONPort": 11550,
         },
@@ -221,7 +221,7 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertEqual(status.as_health_payload()["overall_status"], "ready")
         self.assertEqual(
             transport.calls[0][0],
-            "https://api.nitrado.net/services/42/gameservers",
+            "https://api.nitrado.net/services/42/gameservers/settings",
         )
         self.assertEqual(transport.calls[0][1]["Authorization"], "Bearer secret-token")
         rendered = repr(status)
@@ -265,7 +265,7 @@ class NitradoProviderTests(unittest.TestCase):
         ])
         self.assertEqual(
             transport.calls[0][0],
-            "https://api.nitrado.net/services/42/gameservers",
+            "https://api.nitrado.net/services/42/gameservers/settings",
         )
 
     def test_reads_provider_supplied_mod_names(self):
@@ -280,26 +280,46 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertEqual(mods[1], {"id": "928708", "name": "Dino Depot"})
 
     def test_reads_sanitized_explicit_settings_from_gameserver(self):
-        transport = _Transport(_gameserver_settings_response())
+        transport = _Transport(_gameserver_settings_response(nested=False))
 
         snapshot = NitradoProvider(self.config, transport).read_settings(self._context())
 
         self.assertEqual(
             transport.calls[0][0],
-            "https://api.nitrado.net/services/42/gameservers",
+            "https://api.nitrado.net/services/42/gameservers/settings",
         )
         self.assertEqual(len(transport.calls), 1)
         values = {setting.path: setting.value for setting in snapshot.settings}
         self.assertEqual(
-            values["settings.general.PlayerHarvestingDamageMultiplier"],
+            values["saved.settings.general.PlayerHarvestingDamageMultiplier"],
             "3",
         )
-        self.assertEqual(values["settings.general.HarvestXPMultiplier"], "3.0")
+        self.assertEqual(values["saved.settings.general.HarvestXPMultiplier"], "3.0")
         rendered = repr(snapshot)
         self.assertNotIn("ServerAdminPassword", rendered)
         self.assertNotIn("RCONPort", rendered)
         self.assertNotIn("must-not-survive", rendered)
         self.assertNotIn("secret-token", rendered)
+
+    def test_reads_named_setting_rows_without_using_defaults(self):
+        transport = _Transport(NitradoHttpResponse(
+            status=200,
+            body=json.dumps({
+                "status": "success",
+                "data": {"settings": [
+                    {"key": "MatingIntervalMultiplier", "value": "0.125", "default": "1.0"},
+                    {"name": "EggHatchSpeedMultiplier", "current": 25, "default": 1},
+                    {"key": "ServerAdminPassword", "value": "must-not-survive"},
+                ]},
+            }).encode(),
+        ))
+
+        snapshot = NitradoProvider(self.config, transport).read_settings(self._context())
+
+        values = {setting.path: setting.value for setting in snapshot.settings}
+        self.assertEqual(values["saved.settings.MatingIntervalMultiplier"], "0.125")
+        self.assertEqual(values["saved.settings.EggHatchSpeedMultiplier"], "25")
+        self.assertNotIn("ServerAdminPassword", repr(snapshot))
 
     def test_keeps_saved_configuration_after_large_metadata_payload(self):
         settings = {
@@ -315,7 +335,7 @@ class NitradoProviderTests(unittest.TestCase):
             status=200,
             body=json.dumps({
                 "status": "success",
-                "data": {"gameserver": {"settings": settings}},
+                "data": {"settings": settings},
             }).encode("utf-8"),
         )
 
@@ -325,10 +345,30 @@ class NitradoProviderTests(unittest.TestCase):
 
         values = {setting.path: setting.value for setting in snapshot.settings}
         self.assertEqual(
-            values["settings.config.game.ini.0"],
-            "MatingIntervalMultiplier=0.25",
+            values["saved.settings.config.game.ini.MatingIntervalMultiplier"],
+            "0.25",
         )
-        self.assertGreater(len(snapshot.settings), 250)
+        self.assertEqual(len(snapshot.settings), 1)
+        self.assertNotIn("field_", repr(snapshot))
+
+    def test_live_settings_read_rejects_default_only_form_metadata(self):
+        response = NitradoHttpResponse(
+            status=200,
+            body=json.dumps({
+                "status": "success",
+                "data": {"settings": {
+                    "form": {
+                        "MatingIntervalMultiplier": {"default": 1.0},
+                        "EggHatchSpeedMultiplier": {"default": 1.0},
+                    },
+                }},
+            }).encode("utf-8"),
+        )
+
+        with self.assertRaises(NitradoMalformedResponseError):
+            NitradoProvider(
+                self.config, _Transport(response)
+            ).read_settings(self._context())
 
     def test_live_settings_read_fails_closed_without_a_settings_payload(self):
         provider = NitradoProvider(

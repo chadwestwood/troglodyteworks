@@ -175,13 +175,11 @@ class NitradoClient:
     ) -> ProviderSettingsSnapshot:
         if not service_id.isdigit():
             raise NitradoMalformedResponseError()
-        # The dedicated /settings response describes Nitrado's settings form
-        # and includes default values that are not necessarily saved on this
-        # World. The broad gameserver response includes the explicit config
-        # assignments that Nitrado is actually using, so it is the only safe
-        # source for live setting evidence.
-        response = self._get(f"/services/{service_id}/gameservers", credential)
-        return self._parse_gameserver_settings(response.body)
+        # Read the dedicated settings resource. Its response may also contain
+        # form metadata, so the parser below accepts only explicit current or
+        # saved values (including persisted INI assignments), never defaults.
+        response = self._get(f"/services/{service_id}/gameservers/settings", credential)
+        return self._parse_gameserver_settings(response.body, source_prefix="saved")
 
     def get_gameserver_mod_configuration(
         self, service_id: str, credential: bytes,
@@ -207,11 +205,11 @@ class NitradoClient:
             if isinstance(gameserver, dict):
                 for container_name in ("settings", "game_specific"):
                     container = gameserver.get(container_name)
-                    if isinstance(container, dict):
+                    if isinstance(container, (dict, list)):
                         containers.append((container_name, container))
             for container_name in ("settings", "game_specific"):
                 container = data.get(container_name)
-                if isinstance(container, dict):
+                if isinstance(container, (dict, list)):
                     containers.append((container_name, container))
             if not containers:
                 raise KeyError("settings")
@@ -223,7 +221,7 @@ class NitradoClient:
                     if source_prefix
                     else container_name
                 )
-                for setting in _safe_provider_settings(source_name, container):
+                for setting in _saved_provider_settings(source_name, container):
                     if setting.path in seen_paths:
                         continue
                     seen_paths.add(setting.path)
@@ -794,6 +792,84 @@ def _safe_provider_settings(prefix: str, container: dict | list) -> list[Provide
                 ProviderSetting(path=path[:180], value=rendered[:300])
             )
     return settings
+
+
+_SETTING_METADATA_KEYS = {
+    "default", "description", "example", "help", "label", "maximum",
+    "minimum", "options", "placeholder", "schema", "template", "type",
+}
+_SETTING_VALUE_KEYS = ("saved_value", "savedValue", "current", "value")
+_SETTING_NAME_KEYS = ("key", "name", "setting", "setting_name", "settingName", "identifier")
+
+
+def _saved_provider_settings(prefix: str, container: dict | list) -> list[ProviderSetting]:
+    """Return only values Nitrado identifies as saved/current World state."""
+    settings: list[ProviderSetting] = []
+    values = container.items() if isinstance(container, dict) else enumerate(container)
+    for key, value in values:
+        key_text = str(key)
+        if key_text.lower() in _SETTING_METADATA_KEYS:
+            continue
+        path = f"{prefix}.{key_text}"
+        normalized_path = re.sub(r"[^a-z0-9]+", "", path.lower())
+        if any(marker in normalized_path for marker in _SENSITIVE_SETTING_MARKERS):
+            continue
+
+        if isinstance(value, dict):
+            row_name = next(
+                (value[name] for name in _SETTING_NAME_KEYS if name in value),
+                None,
+            )
+            explicit_value = next(
+                (value[name] for name in _SETTING_VALUE_KEYS if name in value),
+                None,
+            )
+            if (
+                isinstance(row_name, str)
+                and row_name.strip()
+                and isinstance(explicit_value, (str, int, float, bool))
+                and explicit_value not in ("", None)
+            ):
+                clean_name = row_name.strip()
+                row_path = f"{prefix}.{clean_name}"
+                normalized_row_path = re.sub(r"[^a-z0-9]+", "", row_path.lower())
+                if not any(
+                    marker in normalized_row_path
+                    for marker in _SENSITIVE_SETTING_MARKERS
+                ):
+                    settings.extend(_render_saved_setting(row_path, explicit_value))
+                continue
+            if isinstance(explicit_value, (str, int, float, bool)) and explicit_value not in ("", None):
+                settings.extend(_render_saved_setting(path, explicit_value))
+                continue
+            settings.extend(_saved_provider_settings(path, value))
+            continue
+        if isinstance(value, list):
+            settings.extend(_saved_provider_settings(path, value))
+            continue
+        if isinstance(value, (str, int, float, bool)) and value not in ("", None):
+            settings.extend(_render_saved_setting(path, value))
+    return settings
+
+
+def _render_saved_setting(path: str, value: str | int | float | bool) -> list[ProviderSetting]:
+    if isinstance(value, bool):
+        rendered = "true" if value else "false"
+    else:
+        rendered = str(value).strip()
+    # Saved config arrays are returned as Key=Value assignments. Expose the
+    # actual key/value, not the array index or the full assignment string.
+    if isinstance(value, str) and "=" in rendered:
+        setting_name, setting_value = rendered.split("=", 1)
+        setting_name = setting_name.strip()
+        setting_value = setting_value.strip()
+        if setting_name and setting_value:
+            base_path = path.rsplit(".", 1)[0] if path.rsplit(".", 1)[-1].isdigit() else path
+            return [ProviderSetting(
+                path=f"{base_path}.{setting_name}"[:180],
+                value=setting_value[:300],
+            )]
+    return [ProviderSetting(path=path[:180], value=rendered[:300])] if rendered else []
 
 
 def _find_mod_values(container: dict) -> list:
