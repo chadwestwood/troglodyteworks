@@ -467,7 +467,10 @@ async def answer_advisory_question(
     try:
         if not provider_resolution:
             raise LookupError("No connected provider was resolved.")
-        settings_snapshot = cached_settings_snapshot
+        # Questions asking for current/factual settings must refresh from the
+        # connected provider. A cached snapshot can contain seeded defaults
+        # that look complete but do not reflect the live World.
+        settings_snapshot = None if response_mode == "factual" else cached_settings_snapshot
         relevant_settings = ()
         if settings_snapshot:
             relevant_settings = _relevant_provider_settings(
