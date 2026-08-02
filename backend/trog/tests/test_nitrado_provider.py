@@ -321,6 +321,43 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertEqual(values["saved.settings.EggHatchSpeedMultiplier"], "25")
         self.assertNotIn("ServerAdminPassword", repr(snapshot))
 
+    def test_ignores_game_specific_form_defaults_when_saved_settings_exist(self):
+        transport = _Transport(NitradoHttpResponse(
+            status=200,
+            body=json.dumps({
+                "status": "success",
+                "data": {
+                    "settings": {
+                        "config": {
+                            "game.ini": [
+                                "MatingIntervalMultiplier=0.125",
+                                "EggHatchSpeedMultiplier=25.0",
+                                "BabyMatureSpeedMultiplier=20.0",
+                            ],
+                        },
+                    },
+                    "game_specific": {
+                        "MatingIntervalMultiplier": {"value": 1.0},
+                        "EggHatchSpeedMultiplier": {"value": 1.0},
+                        "BabyMatureSpeedMultiplier": {"value": 1.0},
+                    },
+                },
+            }).encode(),
+        ))
+
+        snapshot = NitradoProvider(self.config, transport).read_settings(self._context())
+
+        values = {setting.path: setting.value for setting in snapshot.settings}
+        self.assertEqual(
+            values["saved.settings.config.game.ini.MatingIntervalMultiplier"],
+            "0.125",
+        )
+        self.assertEqual(
+            values["saved.settings.config.game.ini.EggHatchSpeedMultiplier"],
+            "25.0",
+        )
+        self.assertNotIn("game_specific", " ".join(values))
+
     def test_keeps_saved_configuration_after_large_metadata_payload(self):
         settings = {
             "form": {

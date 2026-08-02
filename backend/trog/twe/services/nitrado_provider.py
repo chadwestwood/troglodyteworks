@@ -201,16 +201,17 @@ class NitradoClient:
             if not isinstance(data, dict):
                 raise TypeError
             containers = []
+            # The Nitrado ``game_specific`` payload describes its settings
+            # form and can contain default values that are not saved on the
+            # World. Only ``settings`` is authoritative configuration state.
             gameserver = data.get("gameserver")
             if isinstance(gameserver, dict):
-                for container_name in ("settings", "game_specific"):
-                    container = gameserver.get(container_name)
-                    if isinstance(container, (dict, list)):
-                        containers.append((container_name, container))
-            for container_name in ("settings", "game_specific"):
-                container = data.get(container_name)
+                container = gameserver.get("settings")
                 if isinstance(container, (dict, list)):
-                    containers.append((container_name, container))
+                    containers.append(("settings", container))
+            container = data.get("settings")
+            if isinstance(container, (dict, list)):
+                containers.append(("settings", container))
             if not containers:
                 raise KeyError("settings")
             settings = []
