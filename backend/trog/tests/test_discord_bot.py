@@ -774,6 +774,44 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
     @patch("twe.discord_bot.service.read_game_server_settings")
     @patch("twe.discord_bot.service.resolve_game_server_provider")
     @patch("twe.discord_bot.service.authorize")
+    async def test_factual_breeding_accepts_saved_scalar_values(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.status.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting("saved.settings.MatingIntervalMultiplier", "0.125"),
+                ProviderSetting("saved.settings.EggHatchSpeedMultiplier", "15.0"),
+                ProviderSetting("saved.settings.BabyMatureSpeedMultiplier", "25.0"),
+            ),
+            checked_at="2026-08-01T21:00:00Z",
+        )
+
+        reply = await answer_advisory_question(
+            "What are the current breeding settings on this World?",
+            "222", "333", "111", FakeDatabase(), self.config,
+            brain_gateway=FakeBrainGateway(
+                TrogBrainResponse(kind="grounded_answer", message="Should not be used.")
+            ),
+        )
+
+        self.assertIn("Mating Interval Multiplier: 0.125", reply.text)
+        self.assertIn("Egg Hatch Speed Multiplier: 15.0", reply.text)
+        self.assertIn("Baby Mature Speed Multiplier: 25.0", reply.text)
+
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
     async def test_factual_breeding_rejects_metadata_defaults_without_saved_values(
         self, authorize_mock, resolve_mock, settings_mock,
     ):

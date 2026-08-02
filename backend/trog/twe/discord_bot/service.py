@@ -13,7 +13,12 @@ from ..services.provider_resolution import (
     read_game_server_settings,
     resolve_game_server_provider,
 )
-from ..services.provider_contracts import ProviderSetting
+from ..services.provider_contracts import ProviderSetting, ProviderSettingsSnapshot
+from ..services.world_configuration import (
+    load_world_configuration_snapshot,
+    sanitize_world_settings,
+    store_world_configuration_snapshot,
+)
 from ..services.trog_brain_gateway import build_trog_brain_gateway
 from ..services.knowledge_gaps import (
     failure_category_for_response,
@@ -429,6 +434,21 @@ async def answer_advisory_question(
             correlation_id=correlation_id,
         )
         effective_capabilities = []
+        cached_settings_snapshot = None
+        if context.instance_id:
+            try:
+                cached_settings_snapshot = load_world_configuration_snapshot(
+                    conn,
+                    context.instance_id,
+                )
+            except Exception as exc:
+                LOGGER.warning(
+                    "World settings snapshot load failed correlation_id=%s "
+                    "instance_id=%s error=%s",
+                    correlation_id,
+                    context.instance_id,
+                    type(exc).__name__,
+                )
         for capability in sorted(PUBLIC_CAPABILITIES | ADMINISTRATIVE_CAPABILITIES):
             decision = (
                 base_decision
@@ -447,11 +467,43 @@ async def answer_advisory_question(
     try:
         if not provider_resolution:
             raise LookupError("No connected provider was resolved.")
-        settings_snapshot = await asyncio.to_thread(
-            read_game_server_settings,
-            provider_resolution,
-            config,
-        )
+        settings_snapshot = cached_settings_snapshot
+        relevant_settings = ()
+        if settings_snapshot:
+            relevant_settings = _relevant_provider_settings(
+                request_text,
+                settings_snapshot.settings,
+                limit=_factual_setting_limit(request_text) if response_mode == "factual" else 6,
+            )
+        if not relevant_settings:
+            settings_snapshot = await asyncio.to_thread(
+                read_game_server_settings,
+                provider_resolution,
+                config,
+            )
+            settings_snapshot = ProviderSettingsSnapshot(
+                settings=sanitize_world_settings(settings_snapshot.settings),
+                checked_at=settings_snapshot.checked_at,
+            )
+            if context.instance_id:
+                try:
+                    with database.connect() as conn:
+                        stored_settings_snapshot = store_world_configuration_snapshot(
+                            conn,
+                            game_instance_id=context.instance_id,
+                            provider_key=provider_resolution.context.connection.provider_key,
+                            source_kind="provider_pull",
+                            snapshot=settings_snapshot,
+                        )
+                    settings_snapshot = stored_settings_snapshot
+                except Exception as exc:
+                    LOGGER.warning(
+                        "World settings snapshot persistence failed correlation_id=%s "
+                        "instance_id=%s error=%s",
+                        correlation_id,
+                        context.instance_id,
+                        type(exc).__name__,
+                    )
         relevant_settings = _relevant_provider_settings(
             request_text,
             settings_snapshot.settings,
@@ -647,12 +699,20 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
     ranked = []
     for setting in settings:
         assignment = _provider_setting_assignment(setting)
-        # Only explicit config assignments are proof of the value saved for
-        # this World. Nitrado also exposes form defaults as ordinary scalar
-        # values; using those would make Trog confidently report false 1.0s.
-        if assignment is None or not _is_verified_provider_setting(setting):
+        # Only values from a verified provider path are proof of the value
+        # saved for this World. Nitrado returns config-file entries as
+        # ``Name=Value`` but returns saved control-panel settings as a scalar
+        # value whose setting name is the final path segment.
+        if not _is_verified_provider_setting(setting):
             continue
-        searchable = f"{setting.path} {assignment[0] if assignment else ''}"
+        if assignment is not None:
+            verified_name, verified_value = assignment
+        else:
+            verified_name = str(setting.path or "").split(".")[-1].strip()
+            verified_value = str(setting.value or "").strip()
+            if not verified_name or not verified_value:
+                continue
+        searchable = f"{setting.path} {verified_name}"
         setting_tokens = _expanded_setting_tokens(searchable)
         overlap = request_tokens & setting_tokens
         if not overlap:
@@ -663,7 +723,7 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
         # Normalize the verified assignment before it reaches prompts or
         # factual replies. This removes Nitrado's container path and preserves
         # only the setting name and the value actually saved in its config.
-        verified_setting = ProviderSetting(path=assignment[0], value=assignment[1])
+        verified_setting = ProviderSetting(path=verified_name, value=verified_value)
         ranked.append((score, _provider_setting_authority(setting), verified_setting))
 
     # Nitrado may return both a convenient summary value and the explicit value
