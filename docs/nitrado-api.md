@@ -178,6 +178,15 @@ The catalog includes:
 
 Settings are provider- and game-specific. They should be translated through a game/provider schema layer. TWE must not expose arbitrary setting keys as universally safe.
 
+The production read path also uses the authenticated file-server bookmark,
+list, and download-token endpoints to retrieve every saved `.ini` file for the
+already-bound Provider Resource. Download URLs must remain HTTPS on Nitrado
+domains, receive only the short-lived file token, and never receive the provider
+Bearer credential. Files are size-bounded by the transport, hashed, parsed
+without inventing defaults, and discarded after redacted observations are
+stored. The Nitrado service ID is provenance from the bound Provider Resource;
+it is never accepted as request input.
+
 Before a write:
 
 - fetch current settings or maintain a verified snapshot

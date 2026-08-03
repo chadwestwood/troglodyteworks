@@ -250,6 +250,7 @@
           game_instance_id: gameInstanceId,
           requested_capabilities: [
             "instance.status.read",
+            "instance.settings.read",
             "instance.players.count.read",
             "instance.players.names.read",
             "instance.mods.names.read",

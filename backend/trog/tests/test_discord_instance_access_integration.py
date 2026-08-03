@@ -113,6 +113,7 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
             json={
                 "approved_capabilities": [
                     "instance.status.read",
+                    "instance.settings.read",
                     "instance.players.count.read",
                     "instance.players.names.read",
                 ],
@@ -125,6 +126,7 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
 
         with self.db.connect() as conn:
             status = authorize(conn, self.guild_id, "333", "public-user", "instance.status.read")
+            settings = authorize(conn, self.guild_id, "333", "public-user", "instance.settings.read")
             count = authorize(conn, self.guild_id, "333", "public-user", "instance.players.count.read")
             names = authorize(conn, self.guild_id, "333", "public-user", "instance.players.names.read")
             wrong_channel = authorize(conn, self.guild_id, "444", "public-user", "instance.status.read")
@@ -132,6 +134,8 @@ class DiscordInstanceAccessIntegrationTests(unittest.TestCase):
             lizzlive = fetch_one(conn, "SELECT id::text FROM communities WHERE slug = %s", (f"lizzlive-{self.suffix}",))
 
         self.assertTrue(status.allowed)
+        self.assertTrue(settings.allowed)
+        self.assertEqual(settings.context.instance_id, self.instance["id"])
         self.assertIn("Cohorts", status.context.game_server_name)
         self.assertIn("Genesis", status.context.game_server_name)
         self.assertTrue(count.allowed)

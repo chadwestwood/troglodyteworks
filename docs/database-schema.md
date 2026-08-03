@@ -168,7 +168,25 @@ Stores the provider-approved read capability allowlist for one Instance Access G
 
 Fields: `id`, `discord_instance_access_grant_id`, `capability`, `granted_by`, `created_at`, `revoked_at`.
 
-Allowed values are `instance.status.read`, `instance.players.count.read`, `instance.players.names.read`, and `instance.mods.names.read`. A revoked capability no longer authorizes Discord reads. Migration `0009_discord_mod_names_capability.sql` adds the mod-name capability and backfills only grants that had already been provider-approved for the complete original read bundle.
+Allowed read values are `instance.status.read`, `instance.settings.read`, `instance.players.count.read`, `instance.players.names.read`, and `instance.mods.names.read`. A revoked capability no longer authorizes Discord reads. Migration `0030_instance_configuration_registry.sql` adds the settings capability and backfills it only for active grants with an active status-read capability.
+
+### World Configuration Registry
+
+`world_configuration_revisions` stores verified, append-only configuration
+revisions for one exact `game_instance_id`, including the bound Provider
+Resource, Provider Connection, provider key, external resource provenance,
+observation time, parser version, snapshot hash, and validation report.
+
+`world_configuration_artifacts` stores saved-INI and provider-settings artifact
+metadata and content hashes. `world_configuration_observations` stores every
+explicit parsed assignment, including duplicate occurrence and line metadata;
+sensitive values are redacted before insertion. Raw INI bytes are not retained.
+
+`world_configuration_current_revisions` is the only current pointer. Composite
+foreign keys prevent a revision or artifact from crossing instance boundaries.
+Database triggers verify that revision lineage matches the instance's currently
+bound Provider Resource and active Provider Connection, and allow promotion only
+for a verified revision belonging to that same instance.
 
 ### Discord Guild Authority Verification
 

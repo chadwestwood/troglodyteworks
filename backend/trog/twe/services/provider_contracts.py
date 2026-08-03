@@ -135,6 +135,19 @@ class ProviderSettingsSnapshot:
     checked_at: str
 
 
+@dataclass(frozen=True, repr=False)
+class ProviderConfigurationArtifact:
+    source_locator: str
+    content: bytes = field(repr=False)
+    retrieved_at: str
+
+
+@dataclass(frozen=True, repr=False)
+class ProviderConfigurationSnapshot:
+    artifacts: tuple[ProviderConfigurationArtifact, ...] = field(repr=False)
+    checked_at: str
+
+
 class ConnectionDescriber(Protocol):
     def describe_connection(self) -> ConnectionDescription:
         raise NotImplementedError
@@ -172,4 +185,9 @@ class ModReader(Protocol):
 
 class SettingsReader(Protocol):
     def read_settings(self, context: ProviderContext) -> ProviderSettingsSnapshot:
+        raise NotImplementedError
+
+
+class ConfigurationReader(Protocol):
+    def read_configuration(self, context: ProviderContext) -> ProviderConfigurationSnapshot:
         raise NotImplementedError

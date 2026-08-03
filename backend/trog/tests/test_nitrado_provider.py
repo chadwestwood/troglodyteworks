@@ -416,6 +416,58 @@ class NitradoProviderTests(unittest.TestCase):
         with self.assertRaises(NitradoMalformedResponseError):
             provider.read_settings(self._context())
 
+    def test_reads_all_saved_ini_files_for_the_bound_service_without_leaking_credential(self):
+        transport = _Transport([
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success",
+                "data": {"bookmarks": [{"path": "/ark/ShooterGame/Saved/Config/LinuxServer"}]},
+            }).encode()),
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success",
+                "data": {"entries": [
+                    {"name": "Game.ini", "dir": "/ark/ShooterGame/Saved/Config/LinuxServer"},
+                    {"name": "GameUserSettings.ini", "dir": "/ark/ShooterGame/Saved/Config/LinuxServer"},
+                ]},
+            }).encode()),
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success",
+                "data": {"token": {"url": "https://fileserver.nitrado.net/download", "token": "one"}},
+            }).encode()),
+            NitradoHttpResponse(status=200, body=b"[ServerSettings]\nCraftXPMultiplier=5\n"),
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success",
+                "data": {"token": {"url": "https://fileserver.nitrado.net/download", "token": "two"}},
+            }).encode()),
+            NitradoHttpResponse(status=200, body=b"[ServerSettings]\nKillXPMultiplier=5\n"),
+        ])
+
+        snapshot = NitradoProvider(self.config, transport).read_configuration(self._context())
+
+        self.assertEqual(len(snapshot.artifacts), 2)
+        self.assertTrue(snapshot.artifacts[0].source_locator.endswith("Game.ini"))
+        self.assertTrue(snapshot.artifacts[1].source_locator.endswith("GameUserSettings.ini"))
+        download_calls = [call for call in transport.calls if call[0].startswith("https://fileserver")]
+        self.assertEqual(len(download_calls), 2)
+        self.assertTrue(all("Authorization" not in call[1] for call in download_calls))
+        self.assertNotIn("secret-token", repr(snapshot))
+
+    def test_rejects_non_nitrado_download_url(self):
+        transport = _Transport([
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success", "data": {"bookmarks": [{"path": "/config"}]},
+            }).encode()),
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success", "data": {"entries": [{"name": "Game.ini", "dir": "/config"}]},
+            }).encode()),
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success",
+                "data": {"token": {"url": "https://example.com/private", "token": "bad"}},
+            }).encode()),
+        ])
+
+        with self.assertRaises(NitradoMalformedResponseError):
+            NitradoProvider(self.config, transport).read_configuration(self._context())
+
     def test_enriches_ordered_mod_ids_from_nested_provider_metadata(self):
         response = json.dumps({
             "status": "success",
