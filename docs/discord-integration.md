@@ -113,6 +113,21 @@ eligibility gate. Relevance scoring runs only after eligibility. Loose
 substrings and model output cannot admit a setting into a topic response; for
 example, `XP` does not match the letters inside `Expanded`.
 
+After eligibility, Trog also fails safe on a reviewed ambiguous topic instead
+of choosing a likely interpretation or returning an arbitrary truncated list.
+Clarification choices come only from groups present in the verified World
+settings, use fixed member-facing language, and are limited to two focused
+choices plus **all**. The model cannot invent the question or answer while the
+scope is unresolved. The first reviewed policy covers XP groups, producing a
+question such as: **Did you want harvesting XP, crafting XP, or all XP
+multipliers?** A specific request or an explicit **all** proceeds directly.
+When a singular semantic setting name exists, it wins over broader related
+variants, so **Kill XP Multiplier** does not expand into Alpha, Boss, or Cave
+Kill XP settings.
+Each reply is stateless and passes through the complete World resolution and
+authorization path again, so clarification context cannot cross members,
+channels, or Worlds.
+
 The former `local_asa` and RCON implementation is a superseded Genesis deployment
 path. Local mod-catalog behavior may remain useful for self-hosted instances. The
 Nitrado mod workflow uses the configured ASA mod order and a shared JSON

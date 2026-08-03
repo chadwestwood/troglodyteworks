@@ -718,7 +718,7 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
     @patch("twe.discord_bot.service.read_game_server_settings")
     @patch("twe.discord_bot.service.resolve_game_server_provider")
     @patch("twe.discord_bot.service.authorize")
-    async def test_factual_xp_question_rejects_expanded_substring_collision(
+    async def test_broad_factual_xp_question_requires_one_short_clarification(
         self, authorize_mock, resolve_mock, settings_mock,
     ):
         authorize_mock.return_value = AuthorizationDecision(
@@ -755,12 +755,144 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
             ),
         )
 
+        self.assertEqual(reply.code, "trog_brain_clarification_required")
+        self.assertEqual(
+            reply.text,
+            "Did you want harvesting XP, crafting XP, or all XP multipliers?",
+        )
+        self.assertNotIn("1.33", reply.text)
+        self.assertNotIn("Custom Cosmetic", reply.text)
+
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
+    async def test_explicit_all_xp_answer_is_complete_and_rejects_substring_collision(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.settings.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting("settings.config.game.ini.0", "AlphaKillXPMultiplier=1.33"),
+                ProviderSetting("settings.config.game.ini.1", "BossKillXPMultiplier=5"),
+                ProviderSetting("settings.config.game.ini.2", "CaveKillXPMultiplier=1.33"),
+                ProviderSetting("settings.config.game.ini.3", "CraftXPMultiplier=5"),
+                ProviderSetting("settings.config.game.ini.4", "HarvestXPMultiplier=3.0"),
+                ProviderSetting("settings.config.game.ini.5", "KillXPMultiplier=5"),
+                ProviderSetting(
+                    "settings.config.game.ini.6",
+                    "bCustomCosmeticLocalTabExpanded=False",
+                ),
+            ),
+            checked_at="2026-08-03T13:00:00Z",
+        )
+
+        reply = await answer_advisory_question(
+            "<@999> all XP multipliers",
+            "222", "333", "111", FakeDatabase(), self.config,
+            brain_gateway=FakeBrainGateway(
+                TrogBrainResponse(kind="grounded_answer", message="Should not be used.")
+            ),
+        )
+
         self.assertEqual(reply.code, "trog_brain_grounded_answer")
         self.assertIn("Alpha Kill XP Multiplier: 1.33", reply.text)
         self.assertIn("Craft XP Multiplier: 5", reply.text)
         self.assertIn("Harvest XP Multiplier: 3.0", reply.text)
+        self.assertIn("Kill XP Multiplier: 5", reply.text)
+        self.assertEqual(reply.text.count("• "), 6)
         self.assertNotIn("Custom Cosmetic", reply.text)
         self.assertNotIn("Expanded", reply.text)
+
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
+    async def test_short_clarification_choice_answers_only_that_xp_group(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.settings.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting("settings.config.game.ini.0", "CraftXPMultiplier=5"),
+                ProviderSetting("settings.config.game.ini.1", "HarvestXPMultiplier=3.0"),
+                ProviderSetting("settings.config.game.ini.2", "KillXPMultiplier=5"),
+            ),
+            checked_at="2026-08-03T13:00:00Z",
+        )
+
+        reply = await answer_advisory_question(
+            "<@999> crafting XP",
+            "222", "333", "111", FakeDatabase(), self.config,
+            brain_gateway=FakeBrainGateway(
+                TrogBrainResponse(kind="grounded_answer", message="Should not be used.")
+            ),
+        )
+
+        self.assertEqual(reply.code, "trog_brain_grounded_answer")
+        self.assertIn("Craft XP Multiplier: 5", reply.text)
+        self.assertNotIn("Harvest XP", reply.text)
+        self.assertNotIn("Kill XP", reply.text)
+
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
+    async def test_singular_exact_setting_does_not_expand_to_related_variants(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.settings.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting("settings.config.game.ini.0", "KillXPMultiplier=5"),
+                ProviderSetting("settings.config.game.ini.1", "AlphaKillXPMultiplier=1.33"),
+                ProviderSetting("settings.config.game.ini.2", "BossKillXPMultiplier=5"),
+                ProviderSetting("settings.config.game.ini.3", "CaveKillXPMultiplier=1.33"),
+            ),
+            checked_at="2026-08-03T13:00:00Z",
+        )
+
+        reply = await answer_advisory_question(
+            "<@999> What is the Kill XP Multiplier?",
+            "222", "333", "111", FakeDatabase(), self.config,
+            brain_gateway=FakeBrainGateway(
+                TrogBrainResponse(kind="grounded_answer", message="Should not be used.")
+            ),
+        )
+
+        self.assertEqual(reply.code, "trog_brain_grounded_answer")
+        self.assertIn("Kill XP Multiplier: 5", reply.text)
+        self.assertEqual(reply.text.count("• "), 1)
+        self.assertNotIn("Alpha Kill", reply.text)
+        self.assertNotIn("Boss Kill", reply.text)
+        self.assertNotIn("Cave Kill", reply.text)
 
     @patch("twe.discord_bot.service.read_game_server_settings")
     @patch("twe.discord_bot.service.resolve_game_server_provider")

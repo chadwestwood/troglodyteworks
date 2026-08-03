@@ -11,6 +11,8 @@ from ..services.runtime_heartbeat import record_runtime_heartbeat
 from ..services.setting_intent import (
     describe_setting,
     identify_setting_query_intent,
+    is_setting_clarification_selection,
+    setting_clarification_prompt,
     setting_is_eligible,
     setting_match_score,
 )
@@ -389,6 +391,10 @@ async def answer_advisory_question(
 ):
     """Route an addressed, non-command question through the scoped Trog Brain."""
     response_mode = _classify_brain_intent(request_text)
+    setting_intent = identify_setting_query_intent(request_text)
+    setting_limit = (
+        _factual_setting_limit(request_text) if response_mode == "factual" else 6
+    )
     correlation_id = str(uuid.uuid4())
     with database.connect() as conn:
         base_decision = authorize(
@@ -469,7 +475,7 @@ async def answer_advisory_question(
             relevant_settings = _relevant_provider_settings(
                 request_text,
                 settings_snapshot.settings,
-                limit=_factual_setting_limit(request_text) if response_mode == "factual" else 6,
+                limit=setting_limit,
             )
         if not relevant_settings:
             settings_snapshot = await asyncio.to_thread(
@@ -497,12 +503,12 @@ async def answer_advisory_question(
                             settings_snapshot=settings_snapshot,
                             configuration_snapshot=configuration_snapshot,
                         )
-        relevant_settings = _relevant_provider_settings(
+        all_relevant_settings = _relevant_provider_settings(
             request_text,
             settings_snapshot.settings,
-            limit=_factual_setting_limit(request_text) if response_mode == "factual" else 6,
+            limit=None,
         )
-        if not relevant_settings:
+        if not all_relevant_settings:
             raise LookupError("No relevant live settings were returned.")
     except Exception as exc:
         LOGGER.warning(
@@ -516,6 +522,19 @@ async def answer_advisory_question(
             "so I won’t guess. Please try again shortly.",
             "brain_settings_unavailable",
         )
+
+    clarification = setting_clarification_prompt(
+        setting_intent,
+        tuple(describe_setting(setting.path) for setting in all_relevant_settings),
+    )
+    if clarification:
+        return BotReply(clarification, "trog_brain_clarification_required")
+
+    relevant_settings = (
+        all_relevant_settings
+        if setting_limit is None
+        else all_relevant_settings[:setting_limit]
+    )
 
     if response_mode == "factual":
         return BotReply(
@@ -578,6 +597,10 @@ def _classify_brain_intent(request_text):
         return "action"
     if re.search(r"\b(current|show|list|what are|what is)\b", text) and re.search(
         r"\b(settings?|configuration|values?|multipliers?|rates?)\b", text
+    ):
+        return "factual"
+    if is_setting_clarification_selection(
+        identify_setting_query_intent(request_text)
     ):
         return "factual"
     return "general"
@@ -734,6 +757,17 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
     )
     ranked_settings = [item[2] for item in ranked]
 
+    # A singular setting name is narrower than its broader topic. If that
+    # exact semantic name exists, do not expand the answer to related variants
+    # such as Alpha/Boss/Cave Kill XP multipliers.
+    exact_named_settings = [
+        setting
+        for setting in ranked_settings
+        if describe_setting(setting.path).tokens.issubset(query_intent.tokens)
+    ]
+    if exact_named_settings:
+        ranked_settings = exact_named_settings
+
     prioritized = []
     seen_identities = set()
     for topic, preferred_names in _SETTING_TOPIC_PRIORITIES.items():
@@ -755,11 +789,13 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
             continue
         prioritized.append(setting)
         seen_identities.add(identity)
-    return prioritized[:limit]
+    return prioritized if limit is None else prioritized[:limit]
 
 
 def _factual_setting_limit(request_text):
     intent = identify_setting_query_intent(request_text)
+    if intent.wants_all:
+        return None
     return 7 if "breed" in intent.topic_tags else 5
 
 

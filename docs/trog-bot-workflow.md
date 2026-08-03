@@ -80,6 +80,18 @@ structured topic and qualifier intent, and only catalog-eligible settings may
 be ranked for the answer. Substring collisions cannot cross this eligibility
 gate, and the model cannot choose raw INI keys directly.
 
+When one reviewed topic still has multiple independent meanings, Trog asks one
+short deterministic question before answering. The choices must be supported
+by the verified settings for that exact World, show no more than two focused
+options plus **all**, and contain no model-generated expansion or next-step
+offer. XP is the first reviewed ambiguity policy. A member can answer with a
+specific choice such as **crafting XP** or explicitly request **all XP
+multipliers**. That answer is a new request and repeats exact World routing,
+authorization, freshness, and eligibility checks; no shared conversational
+state is trusted across Discord members or channels.
+If the member names one singular setting and that semantic name exists, Trog
+returns only that setting rather than adding related variants.
+
 The `map settings` summary combines server status, online player names, and
 the active mod list. Each section retains its corresponding read capability
 check; the combined command does not broaden the requester's access.

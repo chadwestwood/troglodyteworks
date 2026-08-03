@@ -35,6 +35,8 @@ SETTING_TOPIC_TAXONOMY = {
         }
     ),
     "experience": frozenset({"xp", "experience"}),
+    "craft": frozenset({"craft", "crafting"}),
+    "kill": frozenset({"kill", "killed", "killing"}),
     "difficulty": frozenset({"difficulty"}),
     "damage": frozenset({"damage"}),
     "player": frozenset({"player", "players"}),
@@ -52,6 +54,48 @@ SETTING_TOPIC_TAXONOMY = {
 # never provider paths or values.
 SETTING_TOPIC_OVERRIDES: dict[str, frozenset[str]] = {}
 
+_ALL_SCOPE_TOKENS = frozenset({"all", "complete", "every", "everything", "full"})
+
+
+@dataclass(frozen=True)
+class SettingClarificationFacet:
+    label: str
+    required_topics: frozenset[str]
+    required_tokens: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True)
+class SettingClarificationPolicy:
+    topic: str
+    all_label: str
+    facets: tuple[SettingClarificationFacet, ...]
+
+
+# Clarification choices are reviewed product language, not model output. New
+# topics can be added here after their setting groups and member wording are
+# understood. At most two matching facets are shown; "all" safely covers the
+# remaining verified groups without turning the question into a data dump.
+SETTING_CLARIFICATION_POLICIES = (
+    SettingClarificationPolicy(
+        topic="experience",
+        all_label="all XP multipliers",
+        facets=(
+            SettingClarificationFacet(
+                "harvesting XP",
+                frozenset({"experience", "harvest"}),
+            ),
+            SettingClarificationFacet(
+                "crafting XP",
+                frozenset({"experience", "craft"}),
+            ),
+            SettingClarificationFacet(
+                "killing XP",
+                frozenset({"experience", "kill"}),
+            ),
+        ),
+    ),
+)
+
 _QUERY_STOP_WORDS = frozenset(
     {
         "a",
@@ -61,12 +105,16 @@ _QUERY_STOP_WORDS = frozenset(
         "are",
         "but",
         "change",
+        "complete",
         "current",
         "do",
         "does",
         "easy",
+        "every",
+        "everything",
         "feels",
         "for",
+        "full",
         "how",
         "i",
         "is",
@@ -80,6 +128,7 @@ _QUERY_STOP_WORDS = frozenset(
         "not",
         "of",
         "on",
+        "please",
         "rate",
         "rates",
         "recommend",
@@ -115,6 +164,7 @@ class SettingQueryIntent:
     tokens: frozenset[str]
     topic_tags: frozenset[str]
     qualifier_tokens: frozenset[str]
+    wants_all: bool = False
 
     @property
     def is_actionable(self) -> bool:
@@ -161,7 +211,91 @@ def identify_setting_query_intent(request_text) -> SettingQueryIntent:
         for alias in SETTING_TOPIC_TAXONOMY[topic]
     )
     qualifiers = tokens - topic_aliases - _QUERY_STOP_WORDS
-    return SettingQueryIntent(tokens, topics, qualifiers)
+    return SettingQueryIntent(
+        tokens,
+        topics,
+        qualifiers,
+        wants_all=bool(tokens & _ALL_SCOPE_TOKENS),
+    )
+
+
+def setting_clarification_prompt(
+    intent: SettingQueryIntent,
+    descriptors,
+) -> str | None:
+    """Return one bounded question when verified settings remain ambiguous.
+
+    The policy is deliberately stateless: a member's next message is resolved
+    and authorized as a new request. This prevents clarification state from
+    leaking between people or channels.
+    """
+    if intent.wants_all or intent.qualifier_tokens or len(intent.topic_tags) != 1:
+        return None
+
+    policy = next(
+        (
+            candidate
+            for candidate in SETTING_CLARIFICATION_POLICIES
+            if intent.topic_tags == frozenset({candidate.topic})
+        ),
+        None,
+    )
+    if policy is None:
+        return None
+
+    eligible_descriptors = tuple(
+        descriptor
+        for descriptor in descriptors
+        if setting_is_eligible(intent, descriptor)
+    )
+    if not eligible_descriptors:
+        return None
+
+    matched_identities = set()
+    available_labels = []
+    for facet in policy.facets:
+        matching = tuple(
+            descriptor
+            for descriptor in eligible_descriptors
+            if facet.required_topics.issubset(descriptor.topic_tags)
+            and facet.required_tokens.issubset(descriptor.tokens)
+        )
+        if not matching:
+            continue
+        available_labels.append(facet.label)
+        matched_identities.update(descriptor.identity for descriptor in matching)
+
+    distinct_groups = len(available_labels)
+    if any(
+        descriptor.identity not in matched_identities
+        for descriptor in eligible_descriptors
+    ):
+        distinct_groups += 1
+    if distinct_groups < 2 or not available_labels:
+        return None
+
+    choices = available_labels[:2] + [policy.all_label]
+    if len(choices) == 2:
+        joined = " or ".join(choices)
+    else:
+        joined = f"{choices[0]}, {choices[1]}, or {choices[2]}"
+    return f"Did you want {joined}?"
+
+
+def is_setting_clarification_selection(intent: SettingQueryIntent) -> bool:
+    """Recognize a short, stateless answer to a reviewed clarification."""
+    for policy in SETTING_CLARIFICATION_POLICIES:
+        if policy.topic not in intent.topic_tags:
+            continue
+        if intent.wants_all:
+            return True
+        if any(
+            facet.required_topics.issubset(intent.topic_tags)
+            and facet.required_tokens.issubset(intent.tokens)
+            for facet in policy.facets
+        ):
+            return True
+    return False
 
 
 def setting_is_eligible(
