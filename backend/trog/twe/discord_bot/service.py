@@ -8,6 +8,14 @@ import uuid
 from ..config import load_config
 from ..db import Database, execute, fetch_one
 from ..services.runtime_heartbeat import record_runtime_heartbeat
+from ..services.setting_intent import (
+    describe_setting,
+    identify_setting_query_intent,
+    is_setting_clarification_selection,
+    setting_clarification_prompt,
+    setting_is_eligible,
+    setting_match_score,
+)
 from ..services.provider_resolution import (
     read_game_server_configuration,
     read_game_server_health,
@@ -56,26 +64,6 @@ RESTART_WATCH_POLL_SECONDS = 15
 RESTART_WATCH_TIMEOUT_SECONDS = 15 * 60
 RESTART_READY_CONFIRMATION_SECONDS = 60
 _RESTART_WATCH_TASKS = {}
-_SETTING_STOP_WORDS = {
-    "a", "an", "and", "are", "but", "change", "do", "does", "easy", "feels",
-    "for", "how", "i", "is", "it", "make", "me", "my", "not", "of", "on",
-    "recommend", "server", "setting", "settings", "should", "the", "this", "to",
-    "too", "want", "what", "which", "world", "would", "you",
-}
-_SETTING_TOPIC_ALIASES = {
-    "harvest": {"harvest", "harvesting", "gather", "gathering", "resource", "resources"},
-    "tame": {"tame", "taming"},
-    "breed": {"breed", "breeding", "mating", "hatch", "mature", "baby"},
-    "experience": {"xp", "experience"},
-    "difficulty": {"difficulty"},
-    "damage": {"damage"},
-    "player": {"player", "players"},
-    "dino": {"dino", "dinos", "dinosaur", "creature", "creatures"},
-    "structure": {"structure", "structures", "building"},
-    "food": {"food", "hunger"},
-    "water": {"water", "thirst"},
-    "stamina": {"stamina"},
-}
 _SETTING_TOPIC_PRIORITIES = {
     # A breeding question spans the whole lifecycle. Keep mating, incubation,
     # maturation, and imprinting represented instead of returning whichever
@@ -403,6 +391,10 @@ async def answer_advisory_question(
 ):
     """Route an addressed, non-command question through the scoped Trog Brain."""
     response_mode = _classify_brain_intent(request_text)
+    setting_intent = identify_setting_query_intent(request_text)
+    setting_limit = (
+        _factual_setting_limit(request_text) if response_mode == "factual" else 6
+    )
     correlation_id = str(uuid.uuid4())
     with database.connect() as conn:
         base_decision = authorize(
@@ -483,7 +475,7 @@ async def answer_advisory_question(
             relevant_settings = _relevant_provider_settings(
                 request_text,
                 settings_snapshot.settings,
-                limit=_factual_setting_limit(request_text) if response_mode == "factual" else 6,
+                limit=setting_limit,
             )
         if not relevant_settings:
             settings_snapshot = await asyncio.to_thread(
@@ -511,12 +503,12 @@ async def answer_advisory_question(
                             settings_snapshot=settings_snapshot,
                             configuration_snapshot=configuration_snapshot,
                         )
-        relevant_settings = _relevant_provider_settings(
+        all_relevant_settings = _relevant_provider_settings(
             request_text,
             settings_snapshot.settings,
-            limit=_factual_setting_limit(request_text) if response_mode == "factual" else 6,
+            limit=None,
         )
-        if not relevant_settings:
+        if not all_relevant_settings:
             raise LookupError("No relevant live settings were returned.")
     except Exception as exc:
         LOGGER.warning(
@@ -530,6 +522,19 @@ async def answer_advisory_question(
             "so I won’t guess. Please try again shortly.",
             "brain_settings_unavailable",
         )
+
+    clarification = setting_clarification_prompt(
+        setting_intent,
+        tuple(describe_setting(setting.path) for setting in all_relevant_settings),
+    )
+    if clarification:
+        return BotReply(clarification, "trog_brain_clarification_required")
+
+    relevant_settings = (
+        all_relevant_settings
+        if setting_limit is None
+        else all_relevant_settings[:setting_limit]
+    )
 
     if response_mode == "factual":
         return BotReply(
@@ -594,6 +599,10 @@ def _classify_brain_intent(request_text):
         r"\b(settings?|configuration|values?|multipliers?|rates?)\b", text
     ):
         return "factual"
+    if is_setting_clarification_selection(
+        identify_setting_query_intent(request_text)
+    ):
+        return "factual"
     return "general"
 
 
@@ -602,6 +611,7 @@ def _format_requested_settings(settings):
     for setting in settings:
         assignment = _provider_setting_assignment(setting)
         name = assignment[0] if assignment else str(setting.path).split(".")[-1]
+        name = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", name)
         name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name).replace("_", " ")
         value = assignment[1] if assignment else str(setting.value)
         lines.append(f"• {name}: {value}")
@@ -704,7 +714,7 @@ def _is_concise_brain_answer(message):
 
 
 def _relevant_provider_settings(request_text, settings, *, limit=12):
-    request_tokens = _expanded_setting_tokens(request_text)
+    query_intent = identify_setting_query_intent(request_text)
     ranked = []
     for setting in settings:
         assignment = _provider_setting_assignment(setting)
@@ -721,14 +731,10 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
             verified_value = str(setting.value or "").strip()
             if not verified_name or not verified_value:
                 continue
-        searchable = f"{setting.path} {verified_name}"
-        setting_tokens = _expanded_setting_tokens(searchable)
-        overlap = request_tokens & setting_tokens
-        if not overlap:
+        descriptor = describe_setting(verified_name)
+        if not setting_is_eligible(query_intent, descriptor):
             continue
-        score = len(overlap)
-        if any(token in searchable.lower() for token in request_tokens):
-            score += 1
+        score = setting_match_score(query_intent, descriptor)
         # Normalize the verified assignment before it reaches prompts or
         # factual replies. This removes Nitrado's container path and preserves
         # only the setting name and the value actually saved in its config.
@@ -751,10 +757,21 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
     )
     ranked_settings = [item[2] for item in ranked]
 
+    # A singular setting name is narrower than its broader topic. If that
+    # exact semantic name exists, do not expand the answer to related variants
+    # such as Alpha/Boss/Cave Kill XP multipliers.
+    exact_named_settings = [
+        setting
+        for setting in ranked_settings
+        if describe_setting(setting.path).tokens.issubset(query_intent.tokens)
+    ]
+    if exact_named_settings:
+        ranked_settings = exact_named_settings
+
     prioritized = []
     seen_identities = set()
     for topic, preferred_names in _SETTING_TOPIC_PRIORITIES.items():
-        if topic not in request_tokens:
+        if topic not in query_intent.topic_tags:
             continue
         for preferred_name in preferred_names:
             preferred_compact = re.sub(r"[^a-z0-9]+", "", preferred_name.lower())
@@ -772,26 +789,14 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
             continue
         prioritized.append(setting)
         seen_identities.add(identity)
-    return prioritized[:limit]
+    return prioritized if limit is None else prioritized[:limit]
 
 
 def _factual_setting_limit(request_text):
-    request_tokens = _expanded_setting_tokens(request_text)
-    return 7 if "breed" in request_tokens else 5
-
-
-def _expanded_setting_tokens(value):
-    tokens = {
-        token
-        for token in re.findall(r"[a-z0-9]+", str(value).lower())
-        if len(token) > 1 and token not in _SETTING_STOP_WORDS
-    }
-    expanded = set(tokens)
-    compact = re.sub(r"[^a-z0-9]+", "", str(value).lower())
-    for canonical, aliases in _SETTING_TOPIC_ALIASES.items():
-        if any(alias in tokens or alias in compact for alias in aliases):
-            expanded.add(canonical)
-    return expanded
+    intent = identify_setting_query_intent(request_text)
+    if intent.wants_all:
+        return None
+    return 7 if "breed" in intent.topic_tags else 5
 
 
 async def handle_interaction(
