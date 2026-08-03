@@ -221,7 +221,7 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertEqual(status.as_health_payload()["overall_status"], "ready")
         self.assertEqual(
             transport.calls[0][0],
-            "https://api.nitrado.net/services/42/gameservers/settings",
+            "https://api.nitrado.net/services/42/gameservers",
         )
         self.assertEqual(transport.calls[0][1]["Authorization"], "Bearer secret-token")
         rendered = repr(status)
@@ -265,7 +265,7 @@ class NitradoProviderTests(unittest.TestCase):
         ])
         self.assertEqual(
             transport.calls[0][0],
-            "https://api.nitrado.net/services/42/gameservers/settings",
+            "https://api.nitrado.net/services/42/gameservers",
         )
 
     def test_reads_provider_supplied_mod_names(self):
