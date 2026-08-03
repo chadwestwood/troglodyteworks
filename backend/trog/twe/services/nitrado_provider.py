@@ -203,9 +203,10 @@ class NitradoClient:
             raise NitradoMalformedResponseError()
         paths = set()
         for directory in directories:
-            query = urlencode(
-                {"dir": directory, "search": ".ini", "summarize_folders": 0}
-            )
+            # Nitrado's live endpoint treats ``search=.ini`` as an exact
+            # search and returns no entries. Filter the bounded bookmarked
+            # directory listing locally instead.
+            query = urlencode({"dir": directory, "summarize_folders": 0})
             entries = self._json_data(
                 self._get(
                     f"/services/{service_id}/gameservers/file_server/list?{query}",
@@ -841,10 +842,25 @@ def _walk_strings(value):
 
 
 def _bookmark_directories(bookmarks) -> tuple[str, ...]:
+    candidates = []
+    if isinstance(bookmarks, str):
+        candidates.append(bookmarks)
+    elif isinstance(bookmarks, list):
+        candidates.extend(item for item in bookmarks if isinstance(item, str))
+    candidates.extend(
+        value
+        for key, value in _walk_strings(bookmarks)
+        if key.casefold() in {"path", "dir", "directory"}
+    )
     directories = {
         value.rstrip("/") or "/"
-        for key, value in _walk_strings(bookmarks)
-        if key.casefold() in {"path", "dir", "directory"} and value.startswith("/")
+        for value in candidates
+        if (
+            value.startswith("/")
+            and len(value) <= 1024
+            and posixpath.normpath(value.rstrip("/") or "/")
+            == (value.rstrip("/") or "/")
+        )
     }
     return tuple(sorted(directories))
 

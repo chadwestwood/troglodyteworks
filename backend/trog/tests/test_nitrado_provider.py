@@ -451,6 +451,43 @@ class NitradoProviderTests(unittest.TestCase):
         self.assertTrue(all("Authorization" not in call[1] for call in download_calls))
         self.assertNotIn("secret-token", repr(snapshot))
 
+    def test_reads_string_bookmarks_returned_by_live_nitrado_api(self):
+        transport = _Transport([
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success",
+                "data": {"bookmarks": ["/ark/ShooterGame/Saved/Config/LinuxServer"]},
+            }).encode()),
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success",
+                "data": {"entries": [
+                    {"name": "Game.ini", "dir": "/ark/ShooterGame/Saved/Config/LinuxServer"},
+                ]},
+            }).encode()),
+            NitradoHttpResponse(status=200, body=json.dumps({
+                "status": "success",
+                "data": {"token": {
+                    "url": "https://fileserver.nitrado.net/download",
+                    "token": "one",
+                }},
+            }).encode()),
+            NitradoHttpResponse(
+                status=200,
+                body=b"[ServerSettings]\nCraftXPMultiplier=5\n",
+            ),
+        ])
+
+        snapshot = NitradoProvider(self.config, transport).read_configuration(
+            self._context()
+        )
+
+        self.assertEqual(len(snapshot.artifacts), 1)
+        self.assertTrue(snapshot.artifacts[0].source_locator.endswith("Game.ini"))
+        listing_calls = [
+            call for call in transport.calls if "file_server/list" in call[0]
+        ]
+        self.assertEqual(len(listing_calls), 1)
+        self.assertNotIn("search=", listing_calls[0][0])
+
     def test_rejects_non_nitrado_download_url(self):
         transport = _Transport([
             NitradoHttpResponse(status=200, body=json.dumps({

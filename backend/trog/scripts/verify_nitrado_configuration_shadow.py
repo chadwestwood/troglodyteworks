@@ -143,6 +143,7 @@ def _expected_settings():
 
 
 def main():
+    stage = "validate_input"
     instance_id = os.environ.get("TWE_SHADOW_GAME_INSTANCE_ID", "").strip()
     try:
         instance_id = str(uuid.UUID(instance_id))
@@ -151,9 +152,11 @@ def main():
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 2
 
+    stage = "load_runtime"
     config = load_config()
     database = Database(config.database_url)
     try:
+        stage = "resolve_instance_binding"
         with database.connect() as conn:
             instance = fetch_one(
                 conn,
@@ -179,8 +182,11 @@ def main():
         if resolution.context.connection.provider_key != "nitrado":
             raise LookupError("The bound provider is not Nitrado.")
 
+        stage = "read_provider_settings"
         settings_snapshot = read_game_server_settings(resolution, config)
+        stage = "read_saved_ini_files"
         configuration_snapshot = read_game_server_configuration(resolution, config)
+        stage = "compare_saved_ini_evidence"
         report = build_shadow_report(
             settings_snapshot,
             configuration_snapshot,
@@ -194,6 +200,7 @@ def main():
                 {
                     "ok": False,
                     "mode": "read_only_shadow",
+                    "stage": stage,
                     "error_type": type(exc).__name__,
                 }
             )
