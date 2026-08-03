@@ -129,8 +129,12 @@ Slash commands acknowledge Discord before performing provider work and send the
 result through the interaction follow-up. This prevents normal provider latency
 from exceeding Discord's initial response deadline. Restart-related interaction
 responses are ephemeral; after an accepted restart, Trog polls bounded provider
-evidence and notifies the originating channel when the World is ready again. All
-generated replies disable mentions.
+evidence for the Game Instance stored on the original Server Operation and
+notifies the originating channel when the World is ready again. Provider
+acceptance leaves the operation in `verifying` with a running
+`restart_readiness` check. Readiness completes that same operation; the bounded
+timeout fails it with stage `readiness_timeout`. All generated replies disable
+mentions.
 
 The read-only command set includes `/server help`, `/server status`, `/server count`, `/server players`,
 `/server mods`, and `/server settings`. The settings command combines status,

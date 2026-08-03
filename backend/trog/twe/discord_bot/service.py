@@ -6,7 +6,7 @@ import time
 import uuid
 
 from ..config import load_config
-from ..db import Database
+from ..db import Database, execute, fetch_one
 from ..services.runtime_heartbeat import record_runtime_heartbeat
 from ..services.provider_resolution import (
     read_game_server_health,
@@ -24,6 +24,7 @@ from ..services.knowledge_gaps import (
     failure_category_for_response,
     schedule_failed_response,
 )
+from ..services.railway_minecraft import RailwayMinecraft
 from ..trog_brain import TrogBrainRequest
 from .authorization import (
     ADMINISTRATIVE_CAPABILITIES,
@@ -382,6 +383,7 @@ async def handle_message(
             str(message.channel.id),
             database,
             config,
+            reply.operation_id,
             allowed_mentions=allowed_mentions,
             logger=logger,
         )
@@ -863,6 +865,7 @@ async def handle_interaction(
             channel_id,
             database,
             config,
+            reply.operation_id,
             allowed_mentions=allowed_mentions,
             logger=logger,
         )
@@ -870,12 +873,18 @@ async def handle_interaction(
 
 
 def schedule_restart_watch(
-    channel, guild_id, channel_id, database, config, *, allowed_mentions=None, logger=LOGGER,
+    channel, guild_id, channel_id, database, config, operation_id=None, *,
+    allowed_mentions=None, logger=LOGGER,
 ):
-    key = (str(guild_id), str(channel_id))
+    key = str(operation_id) if operation_id else (str(guild_id), str(channel_id))
     existing = _RESTART_WATCH_TASKS.get(key)
     if existing and not existing.done():
-        logger.info("Restart readiness watch already active guild_id=%s channel_id=%s", *key)
+        logger.info(
+            "Restart readiness watch already active operation_id=%s guild_id=%s channel_id=%s",
+            operation_id or "unrecorded",
+            guild_id,
+            channel_id,
+        )
         return existing
     task = asyncio.create_task(
         monitor_restart_until_ready(
@@ -884,10 +893,11 @@ def schedule_restart_watch(
             str(channel_id),
             database,
             config,
+            operation_id=operation_id,
             allowed_mentions=allowed_mentions,
             logger=logger,
         ),
-        name=f"trog-restart-watch-{guild_id}-{channel_id}",
+        name=f"trog-restart-watch-{operation_id or f'{guild_id}-{channel_id}'}",
     )
     _RESTART_WATCH_TASKS[key] = task
     task.add_done_callback(lambda completed: _RESTART_WATCH_TASKS.pop(key, None))
@@ -901,6 +911,7 @@ async def monitor_restart_until_ready(
     database,
     config,
     *,
+    operation_id=None,
     allowed_mentions=None,
     logger=LOGGER,
     initial_delay=RESTART_WATCH_INITIAL_DELAY_SECONDS,
@@ -927,13 +938,21 @@ async def monitor_restart_until_ready(
     while clock() - started_at < timeout:
         try:
             if health_reader is None:
-                server_name, health = await asyncio.to_thread(
-                    _read_routed_health,
-                    database,
-                    config,
-                    str(guild_id),
-                    str(channel_id),
-                )
+                if operation_id:
+                    server_name, health = await asyncio.to_thread(
+                        _read_operation_health,
+                        database,
+                        config,
+                        str(operation_id),
+                    )
+                else:
+                    server_name, health = await asyncio.to_thread(
+                        _read_routed_health,
+                        database,
+                        config,
+                        str(guild_id),
+                        str(channel_id),
+                    )
             else:
                 server_name, health = health_reader()
             ready = bool(health and health.get("overall_status") == "ready")
@@ -941,6 +960,14 @@ async def monitor_restart_until_ready(
                 consecutive_ready += 1
                 settled = clock() - started_at >= ready_confirmation_seconds
                 if saw_not_ready or (settled and consecutive_ready >= 2):
+                    if operation_id and not await asyncio.to_thread(
+                        _finish_restart_operation,
+                        database,
+                        str(operation_id),
+                        ready=True,
+                        message=f"{server_name} is ready for players.",
+                    ):
+                        raise LookupError("The restart operation is no longer awaiting verification.")
                     await channel.send(
                         f"**{server_name}** is back up and ready for players.",
                         **send_options,
@@ -968,12 +995,109 @@ async def monitor_restart_until_ready(
                 exc_info=True,
             )
         await sleep(poll_interval)
+    if operation_id:
+        await asyncio.to_thread(
+            _finish_restart_operation,
+            database,
+            str(operation_id),
+            ready=False,
+            message=f"{server_name} did not become ready before the verification timeout.",
+        )
     await channel.send(
         f"I am still waiting for **{server_name}** to become ready. The restart may still be in progress; ask `@Trog is the server up?` for the latest status.",
         **send_options,
     )
     logger.warning("Restart readiness watch timed out guild_id=%s channel_id=%s", guild_id, channel_id)
     return False
+
+
+def _finish_restart_operation(database, operation_id: str, *, ready: bool, message: str) -> bool:
+    operation_status = "completed" if ready else "failed"
+    operation_stage = "ready" if ready else "readiness_timeout"
+    check_status = "passed" if ready else "failed"
+    audit_action = (
+        "discord.server_operation.completed"
+        if ready
+        else "discord.server_operation.failed"
+    )
+    with database.connect() as conn:
+        operation = fetch_one(
+            conn,
+            """
+            UPDATE server_operations
+            SET status = %s, current_stage = %s, completed_at = now(), result_message = %s
+            WHERE id = %s
+              AND capability = 'instance.restart.execute'
+              AND status = 'verifying'
+            RETURNING id::text, requested_by::text, game_instance_id::text, capability
+            """,
+            (operation_status, operation_stage, message, operation_id),
+        )
+        if not operation:
+            return False
+        execute(
+            conn,
+            """
+            UPDATE server_operation_checks
+            SET status = %s, completed_at = now(), result_message = %s
+            WHERE server_operation_id = %s
+              AND name = 'restart_readiness'
+              AND status IN ('pending', 'running')
+            """,
+            (check_status, message, operation_id),
+        )
+        execute(
+            conn,
+            """
+            INSERT INTO audit_logs
+                (user_id, community_id, action, target_type, target_id, details)
+            SELECT so.requested_by, gs.community_id, %s, 'server_operation', so.id,
+                   jsonb_build_object('capability', so.capability, 'stage', %s::text)
+            FROM server_operations so
+            JOIN game_instances gi ON gi.id = so.game_instance_id
+            JOIN game_servers gs ON gs.id = gi.game_server_id
+            WHERE so.id = %s
+            """,
+            (audit_action, operation_stage, operation_id),
+        )
+    return True
+
+
+def _read_operation_health(database, config, operation_id):
+    with database.connect() as conn:
+        operation = fetch_one(
+            conn,
+            """
+            SELECT gi.name AS instance_name,
+                   gi.provider_instance_id,
+                   gs.id::text AS game_server_id,
+                   gs.name AS game_server_name,
+                   gs.management_adapter
+            FROM server_operations so
+            JOIN game_instances gi ON gi.id = so.game_instance_id
+            JOIN game_servers gs ON gs.id = gi.game_server_id
+            WHERE so.id = %s
+              AND so.capability = 'instance.restart.execute'
+              AND so.status = 'verifying'
+            """,
+            (operation_id,),
+        )
+        if not operation:
+            raise LookupError("The restart operation is no longer awaiting verification.")
+        server_name = operation["instance_name"] or operation["game_server_name"]
+        if operation["management_adapter"] == "railway":
+            service_id = operation["provider_instance_id"]
+            if not service_id:
+                raise LookupError("The restart operation has no Railway service target.")
+            return server_name, RailwayMinecraft(config).health(service_id)
+        resolution = resolve_game_server_provider(
+            conn,
+            operation["game_server_id"],
+            correlation_id=operation_id,
+        )
+        if not resolution:
+            raise LookupError("The restart operation target no longer exists.")
+        return server_name, read_game_server_health(resolution, config)
 
 
 def _read_routed_health(database, config, guild_id, channel_id):
