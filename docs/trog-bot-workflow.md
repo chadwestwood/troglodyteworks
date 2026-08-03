@@ -75,6 +75,10 @@ refreshes that World's bound Nitrado settings and saved INI files, and answers
 only from the promoted verified revision for the same `game_instance_id`.
 Provider form defaults, stale revisions, ambiguous duplicate values, and IDs
 mentioned by a user or model cannot select or substitute configuration.
+Setting-name retrieval also fails closed: exact word/acronym tokens produce a
+structured topic and qualifier intent, and only catalog-eligible settings may
+be ranked for the answer. Substring collisions cannot cross this eligibility
+gate, and the model cannot choose raw INI keys directly.
 
 The `map settings` summary combines server status, online player names, and
 the active mod list. Each section retains its corresponding read capability

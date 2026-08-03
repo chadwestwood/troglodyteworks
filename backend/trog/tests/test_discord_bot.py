@@ -718,6 +718,53 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
     @patch("twe.discord_bot.service.read_game_server_settings")
     @patch("twe.discord_bot.service.resolve_game_server_provider")
     @patch("twe.discord_bot.service.authorize")
+    async def test_factual_xp_question_rejects_expanded_substring_collision(
+        self, authorize_mock, resolve_mock, settings_mock,
+    ):
+        authorize_mock.return_value = AuthorizationDecision(
+            True,
+            "authorized",
+            "instance.settings.read",
+            DiscordContext(
+                "installation", "222", "community", "server", "Genesis",
+                "ark-survival-ascended", "nitrado", instance_id="world",
+                instance_name="Genesis",
+            ),
+        )
+        resolve_mock.return_value = object()
+        settings_mock.return_value = ProviderSettingsSnapshot(
+            settings=(
+                ProviderSetting("settings.config.game.ini.0", "AlphaKillXPMultiplier=1.33"),
+                ProviderSetting(
+                    "settings.config.game.ini.1",
+                    "bCustomCosmeticLocalTabExpanded=False",
+                ),
+                ProviderSetting("settings.config.game.ini.2", "BossKillXPMultiplier=5"),
+                ProviderSetting("settings.config.game.ini.3", "CaveKillXPMultiplier=1.33"),
+                ProviderSetting("settings.config.game.ini.4", "CraftXPMultiplier=5"),
+                ProviderSetting("settings.config.game.ini.5", "HarvestXPMultiplier=3.0"),
+            ),
+            checked_at="2026-08-03T13:00:00Z",
+        )
+
+        reply = await answer_advisory_question(
+            "<@999> What are the XP multipliers?",
+            "222", "333", "111", FakeDatabase(), self.config,
+            brain_gateway=FakeBrainGateway(
+                TrogBrainResponse(kind="grounded_answer", message="Should not be used.")
+            ),
+        )
+
+        self.assertEqual(reply.code, "trog_brain_grounded_answer")
+        self.assertIn("Alpha Kill XP Multiplier: 1.33", reply.text)
+        self.assertIn("Craft XP Multiplier: 5", reply.text)
+        self.assertIn("Harvest XP Multiplier: 3.0", reply.text)
+        self.assertNotIn("Custom Cosmetic", reply.text)
+        self.assertNotIn("Expanded", reply.text)
+
+    @patch("twe.discord_bot.service.read_game_server_settings")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.authorize")
     async def test_factual_breeding_question_covers_the_full_breeding_lifecycle(
         self, authorize_mock, resolve_mock, settings_mock,
     ):

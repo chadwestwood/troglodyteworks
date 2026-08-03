@@ -105,6 +105,14 @@ fresh, promoted, verified revision for that same instance. A factual question
 refreshes the explicit provider settings and every saved INI file first; failure
 to retrieve or verify that evidence returns a non-guessing response.
 
+Setting relevance is a separate deterministic boundary. Trog tokenizes INI
+identifiers at word and acronym boundaries, maps exact tokens into a reviewed
+topic taxonomy, converts the member's question into structured topic and
+qualifier intent, and excludes every setting that does not pass that semantic
+eligibility gate. Relevance scoring runs only after eligibility. Loose
+substrings and model output cannot admit a setting into a topic response; for
+example, `XP` does not match the letters inside `Expanded`.
+
 The former `local_asa` and RCON implementation is a superseded Genesis deployment
 path. Local mod-catalog behavior may remain useful for self-hosted instances. The
 Nitrado mod workflow uses the configured ASA mod order and a shared JSON

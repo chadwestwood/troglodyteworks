@@ -8,6 +8,12 @@ import uuid
 from ..config import load_config
 from ..db import Database, execute, fetch_one
 from ..services.runtime_heartbeat import record_runtime_heartbeat
+from ..services.setting_intent import (
+    describe_setting,
+    identify_setting_query_intent,
+    setting_is_eligible,
+    setting_match_score,
+)
 from ..services.provider_resolution import (
     read_game_server_configuration,
     read_game_server_health,
@@ -56,26 +62,6 @@ RESTART_WATCH_POLL_SECONDS = 15
 RESTART_WATCH_TIMEOUT_SECONDS = 15 * 60
 RESTART_READY_CONFIRMATION_SECONDS = 60
 _RESTART_WATCH_TASKS = {}
-_SETTING_STOP_WORDS = {
-    "a", "an", "and", "are", "but", "change", "do", "does", "easy", "feels",
-    "for", "how", "i", "is", "it", "make", "me", "my", "not", "of", "on",
-    "recommend", "server", "setting", "settings", "should", "the", "this", "to",
-    "too", "want", "what", "which", "world", "would", "you",
-}
-_SETTING_TOPIC_ALIASES = {
-    "harvest": {"harvest", "harvesting", "gather", "gathering", "resource", "resources"},
-    "tame": {"tame", "taming"},
-    "breed": {"breed", "breeding", "mating", "hatch", "mature", "baby"},
-    "experience": {"xp", "experience"},
-    "difficulty": {"difficulty"},
-    "damage": {"damage"},
-    "player": {"player", "players"},
-    "dino": {"dino", "dinos", "dinosaur", "creature", "creatures"},
-    "structure": {"structure", "structures", "building"},
-    "food": {"food", "hunger"},
-    "water": {"water", "thirst"},
-    "stamina": {"stamina"},
-}
 _SETTING_TOPIC_PRIORITIES = {
     # A breeding question spans the whole lifecycle. Keep mating, incubation,
     # maturation, and imprinting represented instead of returning whichever
@@ -602,6 +588,7 @@ def _format_requested_settings(settings):
     for setting in settings:
         assignment = _provider_setting_assignment(setting)
         name = assignment[0] if assignment else str(setting.path).split(".")[-1]
+        name = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", name)
         name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name).replace("_", " ")
         value = assignment[1] if assignment else str(setting.value)
         lines.append(f"• {name}: {value}")
@@ -704,7 +691,7 @@ def _is_concise_brain_answer(message):
 
 
 def _relevant_provider_settings(request_text, settings, *, limit=12):
-    request_tokens = _expanded_setting_tokens(request_text)
+    query_intent = identify_setting_query_intent(request_text)
     ranked = []
     for setting in settings:
         assignment = _provider_setting_assignment(setting)
@@ -721,14 +708,10 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
             verified_value = str(setting.value or "").strip()
             if not verified_name or not verified_value:
                 continue
-        searchable = f"{setting.path} {verified_name}"
-        setting_tokens = _expanded_setting_tokens(searchable)
-        overlap = request_tokens & setting_tokens
-        if not overlap:
+        descriptor = describe_setting(verified_name)
+        if not setting_is_eligible(query_intent, descriptor):
             continue
-        score = len(overlap)
-        if any(token in searchable.lower() for token in request_tokens):
-            score += 1
+        score = setting_match_score(query_intent, descriptor)
         # Normalize the verified assignment before it reaches prompts or
         # factual replies. This removes Nitrado's container path and preserves
         # only the setting name and the value actually saved in its config.
@@ -754,7 +737,7 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
     prioritized = []
     seen_identities = set()
     for topic, preferred_names in _SETTING_TOPIC_PRIORITIES.items():
-        if topic not in request_tokens:
+        if topic not in query_intent.topic_tags:
             continue
         for preferred_name in preferred_names:
             preferred_compact = re.sub(r"[^a-z0-9]+", "", preferred_name.lower())
@@ -776,22 +759,8 @@ def _relevant_provider_settings(request_text, settings, *, limit=12):
 
 
 def _factual_setting_limit(request_text):
-    request_tokens = _expanded_setting_tokens(request_text)
-    return 7 if "breed" in request_tokens else 5
-
-
-def _expanded_setting_tokens(value):
-    tokens = {
-        token
-        for token in re.findall(r"[a-z0-9]+", str(value).lower())
-        if len(token) > 1 and token not in _SETTING_STOP_WORDS
-    }
-    expanded = set(tokens)
-    compact = re.sub(r"[^a-z0-9]+", "", str(value).lower())
-    for canonical, aliases in _SETTING_TOPIC_ALIASES.items():
-        if any(alias in tokens or alias in compact for alias in aliases):
-            expanded.add(canonical)
-    return expanded
+    intent = identify_setting_query_intent(request_text)
+    return 7 if "breed" in intent.topic_tags else 5
 
 
 async def handle_interaction(
