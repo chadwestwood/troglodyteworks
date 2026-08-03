@@ -1,6 +1,6 @@
 # Troglodyte Works Current State
 
-**Last updated:** 2026-07-29
+**Last updated:** 2026-08-03
 
 **Status:** Current production baseline
 
@@ -34,6 +34,13 @@ See `docs/production-architecture.md` for boundaries and request flow.
 - A service-scoped Nitrado long-life token can be validated and stored encrypted.
 - Nitrado services can be discovered and bound to an existing Game Server.
 - Genesis reports online through the Nitrado provider path.
+- Trog settings reads use a dedicated `instance.settings.read` capability and an
+  instance-scoped configuration registry. Saved Nitrado INI files and explicit
+  provider settings are hashed, parsed, redacted, verified against the bound
+  provider lineage, and promoted only for the exact authorized World.
+- Factual settings questions refresh the bound provider first. Missing, stale,
+  conflicted, or unverified values fail closed instead of using provider form
+  defaults.
 - `@Trog is the server up?` returns deterministic status information.
 - `@Trog who's on?` returns the available player names from Nitrado.
 - Installed ASA mods are read from Nitrado and enriched through the shared

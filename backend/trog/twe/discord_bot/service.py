@@ -9,15 +9,15 @@ from ..config import load_config
 from ..db import Database, execute, fetch_one
 from ..services.runtime_heartbeat import record_runtime_heartbeat
 from ..services.provider_resolution import (
+    read_game_server_configuration,
     read_game_server_health,
     read_game_server_settings,
     resolve_game_server_provider,
 )
 from ..services.provider_contracts import ProviderSetting, ProviderSettingsSnapshot
-from ..services.world_configuration import (
-    load_world_configuration_snapshot,
-    sanitize_world_settings,
-    store_world_configuration_snapshot,
+from ..services.world_configuration_registry import (
+    load_verified_world_configuration,
+    store_verified_world_configuration,
 )
 from ..services.trog_brain_gateway import build_trog_brain_gateway
 from ..services.knowledge_gaps import (
@@ -410,7 +410,7 @@ async def answer_advisory_question(
             guild_id,
             channel_id,
             discord_user_id,
-            "instance.status.read",
+            "instance.settings.read",
         )
         if not base_decision.allowed or not base_decision.context:
             if base_decision.reason == "channel_unmapped":
@@ -424,6 +424,11 @@ async def answer_advisory_question(
             )
 
         context = base_decision.context
+        if not context.instance_id:
+            return BotReply(
+                "This Discord channel is not routed to one specific World yet.",
+                "brain_world_not_connected",
+            )
         if response_mode == "guide":
             return BotReply(
                 "I don’t have a verified guide for that yet, so I won’t guess. "
@@ -439,7 +444,7 @@ async def answer_advisory_question(
         cached_settings_snapshot = None
         if context.instance_id:
             try:
-                cached_settings_snapshot = load_world_configuration_snapshot(
+                cached_settings_snapshot = load_verified_world_configuration(
                     conn,
                     context.instance_id,
                 )
@@ -454,7 +459,7 @@ async def answer_advisory_question(
         for capability in sorted(PUBLIC_CAPABILITIES | ADMINISTRATIVE_CAPABILITIES):
             decision = (
                 base_decision
-                if capability == "instance.status.read"
+                if capability == "instance.settings.read"
                 else authorize(
                     conn,
                     guild_id,
@@ -487,28 +492,25 @@ async def answer_advisory_question(
                 config,
             )
             settings_snapshot = ProviderSettingsSnapshot(
-                settings=sanitize_world_settings(settings_snapshot.settings),
+                settings=settings_snapshot.settings,
                 checked_at=settings_snapshot.checked_at,
             )
             if context.instance_id:
-                try:
+                provider_context = getattr(provider_resolution, "context", None)
+                if provider_context is not None:
+                    configuration_snapshot = await asyncio.to_thread(
+                        read_game_server_configuration,
+                        provider_resolution,
+                        config,
+                    )
                     with database.connect() as conn:
-                        stored_settings_snapshot = store_world_configuration_snapshot(
+                        settings_snapshot = store_verified_world_configuration(
                             conn,
                             game_instance_id=context.instance_id,
-                            provider_key=provider_resolution.context.connection.provider_key,
-                            source_kind="provider_pull",
-                            snapshot=settings_snapshot,
+                            provider_context=provider_context,
+                            settings_snapshot=settings_snapshot,
+                            configuration_snapshot=configuration_snapshot,
                         )
-                    settings_snapshot = stored_settings_snapshot
-                except Exception as exc:
-                    LOGGER.warning(
-                        "World settings snapshot persistence failed correlation_id=%s "
-                        "instance_id=%s error=%s",
-                        correlation_id,
-                        context.instance_id,
-                        type(exc).__name__,
-                    )
         relevant_settings = _relevant_provider_settings(
             request_text,
             settings_snapshot.settings,
@@ -622,6 +624,8 @@ def _provider_setting_identity(setting):
 
 def _provider_setting_authority(setting):
     path = str(setting.path or "").lower()
+    if path.startswith("saved.ini."):
+        return 6
     if path.startswith("saved."):
         return 5
     if any(marker in path for marker in ("game.ini", "gameusersettings", "config")):

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 import socket
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -16,6 +17,8 @@ from .provider_contracts import (
     CredentialValidation,
     DiscoveredResource,
     ProviderContext,
+    ProviderConfigurationArtifact,
+    ProviderConfigurationSnapshot,
     ProviderSetting,
     ProviderSettingsSnapshot,
     ProviderStatus,
@@ -26,6 +29,8 @@ from .mod_catalog import AsaModCatalog, CurseForgeModLookup
 
 
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_CONFIGURATION_FILES = 32
+MAX_CONFIGURATION_TOTAL_BYTES = 8 * 1024 * 1024
 MOD_VERIFICATION_ATTEMPTS_PER_PHASE = 6
 MOD_VERIFICATION_DELAY_SECONDS = 3
 
@@ -180,6 +185,99 @@ class NitradoClient:
         # saved values (including persisted INI assignments), never defaults.
         response = self._get(f"/services/{service_id}/gameservers/settings", credential)
         return self._parse_gameserver_settings(response.body, source_prefix="saved")
+
+    def get_gameserver_configuration(
+        self, service_id: str, credential: bytes,
+    ) -> ProviderConfigurationSnapshot:
+        """Download every saved INI file exposed by the bound Nitrado service."""
+        if not service_id.isdigit():
+            raise NitradoMalformedResponseError()
+        bookmarks = self._json_data(
+            self._get(
+                f"/services/{service_id}/gameservers/file_server/bookmarks",
+                credential,
+            ).body
+        ).get("bookmarks", [])
+        directories = _bookmark_directories(bookmarks)
+        if not directories:
+            raise NitradoMalformedResponseError()
+        paths = set()
+        for directory in directories:
+            # Nitrado's live endpoint treats ``search=.ini`` as an exact
+            # search and returns no entries. Filter the bounded bookmarked
+            # directory listing locally instead.
+            query = urlencode({"dir": directory, "summarize_folders": 0})
+            entries = self._json_data(
+                self._get(
+                    f"/services/{service_id}/gameservers/file_server/list?{query}",
+                    credential,
+                ).body
+            ).get("entries", [])
+            paths.update(_ini_paths(entries))
+        if not paths:
+            raise NitradoMalformedResponseError()
+        if len(paths) > MAX_CONFIGURATION_FILES:
+            raise NitradoMalformedResponseError()
+        retrieved_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        artifacts = []
+        total_bytes = 0
+        for remote_path in sorted(paths):
+            if (
+                len(remote_path) > 1024
+                or not remote_path.startswith("/")
+                or not remote_path.casefold().endswith(".ini")
+                or posixpath.normpath(remote_path) != remote_path
+            ):
+                raise NitradoMalformedResponseError()
+            query = urlencode({"file": remote_path})
+            token_payload = self._json_data(
+                self._get(
+                    f"/services/{service_id}/gameservers/file_server/download?{query}",
+                    credential,
+                ).body
+            ).get("token")
+            if not isinstance(token_payload, dict):
+                raise NitradoMalformedResponseError()
+            download_url = _safe_nitrado_download_url(
+                token_payload.get("url"), token_payload.get("token")
+            )
+            # The provider credential must never be sent to the file host. The
+            # short-lived download token is carried only in the URL returned by
+            # Nitrado's authenticated API.
+            response = self._transport.get(
+                download_url,
+                {"User-Agent": "Troglodyte-Works/1.0 read-only"},
+                self._timeout_seconds,
+            )
+            if response.status != 200:
+                raise NitradoUnavailableError()
+            total_bytes += len(response.body)
+            if total_bytes > MAX_CONFIGURATION_TOTAL_BYTES:
+                raise NitradoMalformedResponseError()
+            artifacts.append(
+                ProviderConfigurationArtifact(
+                    source_locator=remote_path,
+                    content=response.body,
+                    retrieved_at=retrieved_at,
+                )
+            )
+        return ProviderConfigurationSnapshot(
+            artifacts=tuple(artifacts),
+            checked_at=retrieved_at,
+        )
+
+    @staticmethod
+    def _json_data(body: bytes) -> dict:
+        try:
+            payload = json.loads(body.decode("utf-8"))
+            if payload.get("status") not in {None, "success"}:
+                raise ValueError
+            data = payload.get("data", payload)
+            if not isinstance(data, dict):
+                raise ValueError
+            return data
+        except (AttributeError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            raise NitradoMalformedResponseError() from None
 
     def get_gameserver_mod_configuration(
         self, service_id: str, credential: bytes,
@@ -594,6 +692,14 @@ class NitradoProvider:
             credential,
         )
 
+    def read_configuration(self, context: ProviderContext) -> ProviderConfigurationSnapshot:
+        if context.connection.provider_key != "nitrado":
+            raise ValueError("Nitrado adapter received the wrong Provider Connection.")
+        return self._client.get_gameserver_configuration(
+            context.resource.external_resource_id,
+            self._credential(context),
+        )
+
     def resolve_mod(self, reference: str) -> dict[str, str]:
         if not self._mod_catalog:
             raise ValueError("The shared ASA mod catalog is not configured.")
@@ -721,6 +827,87 @@ def _safe_text(value) -> str | None:
         return None
     rendered = str(value).strip()
     return rendered[:500] if rendered else None
+
+
+def _walk_strings(value):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if isinstance(child, str):
+                yield str(key), child
+            else:
+                yield from _walk_strings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_strings(child)
+
+
+def _bookmark_directories(bookmarks) -> tuple[str, ...]:
+    candidates = []
+    if isinstance(bookmarks, str):
+        candidates.append(bookmarks)
+    elif isinstance(bookmarks, list):
+        candidates.extend(item for item in bookmarks if isinstance(item, str))
+    candidates.extend(
+        value
+        for key, value in _walk_strings(bookmarks)
+        if key.casefold() in {"path", "dir", "directory"}
+    )
+    directories = {
+        value.rstrip("/") or "/"
+        for value in candidates
+        if (
+            value.startswith("/")
+            and len(value) <= 1024
+            and posixpath.normpath(value.rstrip("/") or "/")
+            == (value.rstrip("/") or "/")
+        )
+    }
+    return tuple(sorted(directories))
+
+
+def _ini_paths(entries) -> tuple[str, ...]:
+    paths = set()
+    if isinstance(entries, dict):
+        name = entries.get("name")
+        if isinstance(name, str) and name.casefold().endswith(".ini"):
+            for base_key in ("dir", "directory", "path"):
+                base = entries.get(base_key)
+                if isinstance(base, str) and base.startswith("/"):
+                    paths.add(base if base.casefold().endswith(".ini") else posixpath.join(base, name))
+                    break
+        for child in entries.values():
+            paths.update(_ini_paths(child))
+    elif isinstance(entries, list):
+        for child in entries:
+            paths.update(_ini_paths(child))
+    for key, value in _walk_strings(entries):
+        if key.casefold() in {"path", "file", "full_path"}:
+            if value.startswith("/") and value.casefold().endswith(".ini"):
+                paths.add(value)
+    return tuple(sorted(paths))
+
+
+def _safe_nitrado_download_url(url, token) -> str:
+    if not isinstance(url, str) or not isinstance(token, str) or not token:
+        raise NitradoMalformedResponseError()
+    parsed = urlparse(url)
+    hostname = (parsed.hostname or "").casefold().rstrip(".")
+    try:
+        port = parsed.port
+    except ValueError:
+        raise NitradoMalformedResponseError() from None
+    if (
+        parsed.scheme != "https"
+        or not hostname
+        or not (hostname == "nitrado.net" or hostname.endswith(".nitrado.net"))
+        or port not in {None, 443}
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        raise NitradoMalformedResponseError()
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["token"] = token
+    return urlunparse(parsed._replace(query=urlencode(query), fragment=""))
 
 
 def _player_is_online(value) -> bool:

@@ -13,6 +13,7 @@ Trog is one Discord application installed across multiple guilds. PostgreSQL rec
 Mention-based natural language remains available for public, read-only capabilities:
 
 - `instance.status.read`
+- `instance.settings.read`
 - `instance.players.count.read`
 - `instance.players.names.read`
 
@@ -95,6 +96,14 @@ Provider Resource before making a provider call. Player replies expose
 only the display names returned through the normalized player service; provider
 payloads, platform account identifiers, credentials, and service internals are not
 included in Discord output.
+
+Settings questions require `instance.settings.read`. The worker never accepts a
+service ID, Provider Resource, Provider Connection, revision ID, or alternate
+World from message text or model output. The authorized `game_instance_id`
+selects the bound provider lineage and the configuration registry loads only a
+fresh, promoted, verified revision for that same instance. A factual question
+refreshes the explicit provider settings and every saved INI file first; failure
+to retrieve or verify that evidence returns a non-guessing response.
 
 The former `local_asa` and RCON implementation is a superseded Genesis deployment
 path. Local mod-catalog behavior may remain useful for self-hosted instances. The

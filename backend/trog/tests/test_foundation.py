@@ -424,6 +424,9 @@ class FoundationTests(unittest.TestCase):
         mod_names_migration = (ROOT / "migrations" / "0009_discord_mod_names_capability.sql").read_text()
         provisioning_migration = (ROOT / "migrations" / "0010_hosting_instance_provisioning.sql").read_text()
         provider_migration = (ROOT / "migrations" / "0011_provider_foundation.sql").read_text()
+        configuration_registry_migration = (
+            ROOT / "migrations" / "0030_instance_configuration_registry.sql"
+        ).read_text()
         nitrado_migration = (ROOT / "migrations" / "0012_nitrado_connection_uniqueness.sql").read_text()
         for table in [
             "users",
@@ -462,6 +465,19 @@ class FoundationTests(unittest.TestCase):
         ]:
             self.assertIn(f"CREATE TABLE IF NOT EXISTS {table}", provider_migration)
         self.assertIn("ADD COLUMN IF NOT EXISTS provider_resource_id", provider_migration)
+        self.assertIn("instance.settings.read", configuration_registry_migration)
+        self.assertIn(
+            "FOREIGN KEY (revision_id, game_instance_id)",
+            configuration_registry_migration,
+        )
+        self.assertIn(
+            "enforce_world_configuration_lineage",
+            configuration_registry_migration,
+        )
+        self.assertIn(
+            "Only a verified revision for this game instance may be promoted",
+            configuration_registry_migration,
+        )
         self.assertIn("ADD COLUMN IF NOT EXISTS game_key", provider_migration)
         self.assertIn("enforce_game_server_provider_community", provider_migration)
         self.assertIn("idx_provider_connections_one_nitrado_per_community", nitrado_migration)

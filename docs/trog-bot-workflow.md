@@ -69,6 +69,13 @@ fail safely rather than guessing. Other providers remain provider-dependent.
 Reading the catalog does not itself grant mod management; mod addition requires
 its separate delegated capability and operation lifecycle.
 
+Natural-language questions about current configuration require
+`instance.settings.read`. Trog resolves the Discord channel to one exact World,
+refreshes that World's bound Nitrado settings and saved INI files, and answers
+only from the promoted verified revision for the same `game_instance_id`.
+Provider form defaults, stale revisions, ambiguous duplicate values, and IDs
+mentioned by a user or model cannot select or substitute configuration.
+
 The `map settings` summary combines server status, online player names, and
 the active mod list. Each section retains its corresponding read capability
 check; the combined command does not broaden the requester's access.

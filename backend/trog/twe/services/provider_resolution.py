@@ -65,6 +65,15 @@ def read_game_server_settings(resolution: ResolvedGameServerProvider, config):
     return reader.read_settings(resolution.context)
 
 
+def read_game_server_configuration(resolution: ResolvedGameServerProvider, config):
+    if resolution.mode != "provider" or not resolution.context:
+        raise LookupError("The connected World does not expose verified configuration files.")
+    reader = build_provider_registry(config).configuration_reader(
+        resolution.context.connection.provider_key
+    )
+    return reader.read_configuration(resolution.context)
+
+
 def resolve_game_server_provider(
     conn,
     game_server_id: str,

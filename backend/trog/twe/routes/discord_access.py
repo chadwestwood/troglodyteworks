@@ -23,6 +23,7 @@ discord_access_bp = Blueprint("twe_discord_access", __name__)
 READ_CAPABILITIES = frozenset(
     {
         "instance.status.read",
+        "instance.settings.read",
         "instance.players.count.read",
         "instance.players.names.read",
         "instance.mods.names.read",
