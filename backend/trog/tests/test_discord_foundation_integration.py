@@ -8,6 +8,7 @@ sys.path.insert(0, str(ROOT))
 
 from twe.db import Database, execute, fetch_one
 from twe.discord_bot.authorization import authorize, resolve_guild, resolve_identity
+from twe.discord_bot.service import _finish_restart_operation
 from twe.security import hash_password
 from tests.integration_database import load_integration_config
 
@@ -106,11 +107,116 @@ class DiscordFoundationIntegrationTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, "channel_disabled")
 
+    def test_restart_readiness_completes_the_original_operation_once(self):
+        with self.db.connect() as conn:
+            operation_id = self._restart_operation(conn)
+
+        updated = _finish_restart_operation(
+            self.db,
+            operation_id,
+            ready=True,
+            message="Discord Server is ready for players.",
+        )
+        repeated = _finish_restart_operation(
+            self.db,
+            operation_id,
+            ready=True,
+            message="Discord Server is ready for players.",
+        )
+
+        with self.db.connect() as conn:
+            state = fetch_one(
+                conn,
+                """
+                SELECT so.status, so.current_stage, so.completed_at IS NOT NULL AS completed,
+                       soc.status AS check_status,
+                       (SELECT count(*)::int FROM audit_logs al
+                        WHERE al.target_id = so.id
+                          AND al.action = 'discord.server_operation.completed') AS audits
+                FROM server_operations so
+                JOIN server_operation_checks soc ON soc.server_operation_id = so.id
+                WHERE so.id = %s AND soc.name = 'restart_readiness'
+                """,
+                (operation_id,),
+            )
+        self.assertTrue(updated)
+        self.assertFalse(repeated)
+        self.assertEqual(state["status"], "completed")
+        self.assertEqual(state["current_stage"], "ready")
+        self.assertTrue(state["completed"])
+        self.assertEqual(state["check_status"], "passed")
+        self.assertEqual(state["audits"], 1)
+
+    def test_restart_readiness_timeout_fails_the_original_operation(self):
+        with self.db.connect() as conn:
+            operation_id = self._restart_operation(conn)
+
+        updated = _finish_restart_operation(
+            self.db,
+            operation_id,
+            ready=False,
+            message="Discord Server did not become ready before the verification timeout.",
+        )
+
+        with self.db.connect() as conn:
+            state = fetch_one(
+                conn,
+                """
+                SELECT so.status, so.current_stage, so.completed_at IS NOT NULL AS completed,
+                       soc.status AS check_status,
+                       (SELECT count(*)::int FROM audit_logs al
+                        WHERE al.target_id = so.id
+                          AND al.action = 'discord.server_operation.failed') AS audits
+                FROM server_operations so
+                JOIN server_operation_checks soc ON soc.server_operation_id = so.id
+                WHERE so.id = %s AND soc.name = 'restart_readiness'
+                """,
+                (operation_id,),
+            )
+        self.assertTrue(updated)
+        self.assertEqual(state["status"], "failed")
+        self.assertEqual(state["current_stage"], "readiness_timeout")
+        self.assertTrue(state["completed"])
+        self.assertEqual(state["check_status"], "failed")
+        self.assertEqual(state["audits"], 1)
+
     def _user(self, conn, label):
         return fetch_one(conn, "INSERT INTO users (email,password_hash,display_name) VALUES (%s,%s,%s) RETURNING id::text", (f"{label}-{self.suffix}@example.test", hash_password("password123"), label))
 
     def _membership(self, conn, user_id, role):
         return fetch_one(conn, "INSERT INTO community_memberships (user_id,community_id,role) VALUES (%s,%s,%s) RETURNING id::text", (user_id, self.community["id"], role))
+
+    def _restart_operation(self, conn):
+        instance = fetch_one(
+            conn,
+            """
+            INSERT INTO game_instances
+                (game_server_id, name, slug, instance_type, game_identifier)
+            VALUES (%s, 'Discord Server', %s, 'ark_map', 'Genesis_WP')
+            RETURNING id::text
+            """,
+            (self.server["id"], f"restart-{secrets.token_hex(4)}"),
+        )
+        operation = fetch_one(
+            conn,
+            """
+            INSERT INTO server_operations
+                (game_instance_id, requested_by, capability, status, current_stage, started_at)
+            VALUES (%s, %s, 'instance.restart.execute', 'verifying', 'readiness_check', now())
+            RETURNING id::text
+            """,
+            (instance["id"], self.owner["id"]),
+        )
+        execute(
+            conn,
+            """
+            INSERT INTO server_operation_checks
+                (server_operation_id, name, status, started_at, result_message, sort_order)
+            VALUES (%s, 'restart_readiness', 'running', now(), 'Waiting for readiness.', 1)
+            """,
+            (operation["id"],),
+        )
+        return operation["id"]
 
 
 if __name__ == "__main__":

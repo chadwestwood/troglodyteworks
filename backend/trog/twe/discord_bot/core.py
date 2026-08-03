@@ -33,6 +33,7 @@ class GameServerRef:
 class BotReply:
     text: str
     code: str
+    operation_id: str | None = None
 
 
 HELP_REPLY = BotReply(
@@ -543,20 +544,49 @@ def _execute_provider_operation(conn, decision, config: Config, capability: str,
                 "It may take several minutes to return. I will let this channel know when it is ready for players."
             )
             code = "restart_requested"
-        execute(
-            conn,
-            "UPDATE server_operations SET status = 'completed', current_stage = 'provider_accepted', completed_at = now(), result_message = %s WHERE id = %s",
-            (message, operation["id"]),
-        )
+        is_restart = capability == "instance.restart.execute"
+        if is_restart:
+            execute(
+                conn,
+                """
+                UPDATE server_operations
+                SET status = 'verifying', current_stage = 'readiness_check',
+                    completed_at = NULL, result_message = %s
+                WHERE id = %s
+                """,
+                (message, operation["id"]),
+            )
+            execute(
+                conn,
+                """
+                INSERT INTO server_operation_checks
+                    (server_operation_id, name, status, started_at, result_message, sort_order)
+                VALUES (%s, 'restart_readiness', 'running', now(), %s, 1)
+                """,
+                (operation["id"], "Waiting for the restarted World to become ready."),
+            )
+            audit_action = "discord.server_operation.verifying"
+        else:
+            execute(
+                conn,
+                """
+                UPDATE server_operations
+                SET status = 'completed', current_stage = 'provider_accepted',
+                    completed_at = now(), result_message = %s
+                WHERE id = %s
+                """,
+                (message, operation["id"]),
+            )
+            audit_action = "discord.server_operation.completed"
         execute(
             conn,
             """
             INSERT INTO audit_logs (user_id, community_id, action, target_type, target_id, details)
             VALUES (%s, %s, %s, 'server_operation', %s, jsonb_build_object('capability', %s::text, 'argument', %s::text))
             """,
-            (decision.identity.user_id, context.community_id, "discord.server_operation.completed", operation["id"], capability, argument),
+            (decision.identity.user_id, context.community_id, audit_action, operation["id"], capability, argument),
         )
-        return BotReply(message, code)
+        return BotReply(message, code, operation["id"] if is_restart else None)
     except (NitradoProviderError, ValueError) as exc:
         safe_message = str(exc)[:400]
         execute(
@@ -595,19 +625,32 @@ def _execute_railway_restart(conn, decision, config: Config) -> BotReply:
         )
         execute(
             conn,
-            "UPDATE server_operations SET status='completed',current_stage='provider_accepted',completed_at=now(),result_message=%s WHERE id=%s",
+            """
+            UPDATE server_operations
+            SET status='verifying',current_stage='readiness_check',completed_at=NULL,result_message=%s
+            WHERE id=%s
+            """,
             (message, operation["id"]),
         )
         execute(
             conn,
             """
+            INSERT INTO server_operation_checks
+                (server_operation_id,name,status,started_at,result_message,sort_order)
+            VALUES (%s,'restart_readiness','running',now(),%s,1)
+            """,
+            (operation["id"], "Waiting for the restarted World to become ready."),
+        )
+        execute(
+            conn,
+            """
             INSERT INTO audit_logs (user_id,community_id,action,target_type,target_id,details)
-            VALUES (%s,%s,'discord.server_operation.completed','server_operation',%s,
+            VALUES (%s,%s,'discord.server_operation.verifying','server_operation',%s,
                     jsonb_build_object('capability','instance.restart.execute'))
             """,
             (decision.identity.user_id, context.community_id, operation["id"]),
         )
-        return BotReply(message, "restart_requested")
+        return BotReply(message, "restart_requested", operation["id"])
     except RailwayMinecraftError as error:
         safe_message = str(error)[:400]
         execute(

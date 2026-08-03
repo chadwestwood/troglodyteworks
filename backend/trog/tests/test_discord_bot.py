@@ -1,6 +1,7 @@
 import sys
 import unittest
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import ANY, patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ from twe.discord_bot.core import (
     parse_guild_game_server_map,
     respond_to_message,
     respond_to_request,
+    _execute_nitrado_operation,
     player_count_reply,
     player_list_reply,
     mod_list_reply,
@@ -40,6 +42,7 @@ from twe.discord_bot.service import (
     handle_interaction,
     handle_message,
     monitor_restart_until_ready,
+    _read_operation_health,
     split_discord_message,
 )
 from twe.services.provider_contracts import ProviderSetting, ProviderSettingsSnapshot
@@ -365,6 +368,45 @@ class DiscordBotCoreTests(unittest.TestCase):
         )
         self.assertEqual(reply.code, "restart_requested")
         execute_mock.assert_called_once()
+
+    @patch("twe.discord_bot.core.NitradoProvider")
+    @patch("twe.discord_bot.core.execute")
+    @patch("twe.discord_bot.core.fetch_one", return_value={"id": "operation-1"})
+    @patch("twe.discord_bot.core.resolve_game_server_provider")
+    def test_accepted_restart_remains_verifying_and_returns_operation_id(
+        self, resolve_mock, _fetch_mock, execute_mock, provider_mock,
+    ):
+        context = SimpleNamespace(
+            game_server_id=self.server.id,
+            game_server_name=self.server.name,
+            management_adapter="nitrado",
+            instance_id="instance-1",
+            community_id="community-1",
+        )
+        decision = SimpleNamespace(
+            context=context,
+            identity=SimpleNamespace(user_id="user-1"),
+        )
+        resolve_mock.return_value = SimpleNamespace(
+            mode="provider",
+            context=SimpleNamespace(
+                connection=SimpleNamespace(provider_key="nitrado"),
+            ),
+        )
+
+        reply = _execute_nitrado_operation(
+            object(), decision, self.config, "instance.restart.execute",
+        )
+
+        self.assertEqual(reply.code, "restart_requested")
+        self.assertEqual(reply.operation_id, "operation-1")
+        provider_mock.return_value.restart.assert_called_once()
+        queries = [" ".join(call.args[1].split()) for call in execute_mock.call_args_list]
+        self.assertTrue(any("status = 'verifying'" in query for query in queries))
+        self.assertTrue(any("restart_readiness" in query and "'running'" in query for query in queries))
+        self.assertFalse(any("status = 'completed'" in query for query in queries))
+        audit_params = execute_mock.call_args_list[-1].args[2]
+        self.assertEqual(audit_params[2], "discord.server_operation.verifying")
 
     @patch("twe.discord_bot.core._execute_nitrado_operation")
     @patch("twe.discord_bot.core.authorize")
@@ -1126,8 +1168,10 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(interaction.events[0], ("defer", True, True))
         self.assertTrue(interaction.events[1][2])
 
-    async def test_restart_watch_announces_when_server_returns(self):
+    @patch("twe.discord_bot.service._finish_restart_operation", return_value=True)
+    async def test_restart_watch_announces_when_server_returns(self, finish_mock):
         channel = FakeChannel(333)
+        database = FakeDatabase()
         readings = iter([
             ("Genesis", {"overall_status": "starting"}),
             ("Genesis", {"overall_status": "ready"}),
@@ -1137,8 +1181,9 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
             channel,
             "222",
             "333",
-            FakeDatabase(),
+            database,
             self.config,
+            operation_id="operation-1",
             initial_delay=0,
             poll_interval=0,
             timeout=30,
@@ -1149,6 +1194,12 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result)
         self.assertEqual(channel.sent, ["**Genesis** is back up and ready for players."])
+        finish_mock.assert_called_once_with(
+            database,
+            "operation-1",
+            ready=True,
+            message="Genesis is ready for players.",
+        )
 
     async def test_restart_watch_does_not_report_pre_restart_ready_state(self):
         channel = FakeChannel(333)
@@ -1174,6 +1225,68 @@ class DiscordBotMessageHandlerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result)
         self.assertEqual(len(channel.sent), 1)
+
+    @patch("twe.discord_bot.service._finish_restart_operation", return_value=True)
+    async def test_restart_watch_marks_original_operation_failed_on_timeout(
+        self, finish_mock,
+    ):
+        channel = FakeChannel(333)
+        database = FakeDatabase()
+        ticks = iter((0, 0, 2))
+
+        result = await monitor_restart_until_ready(
+            channel,
+            "222",
+            "333",
+            database,
+            self.config,
+            operation_id="operation-timeout",
+            initial_delay=0,
+            poll_interval=0,
+            timeout=1,
+            ready_confirmation_seconds=0,
+            sleep=_no_sleep,
+            clock=lambda: next(ticks),
+            health_reader=lambda: ("Genesis", {"overall_status": "starting"}),
+        )
+
+        self.assertFalse(result)
+        finish_mock.assert_called_once_with(
+            database,
+            "operation-timeout",
+            ready=False,
+            message="Genesis did not become ready before the verification timeout.",
+        )
+        self.assertIn("still waiting", channel.sent[0])
+
+    @patch("twe.discord_bot.service.read_game_server_health")
+    @patch("twe.discord_bot.service.resolve_game_server_provider")
+    @patch("twe.discord_bot.service.fetch_one")
+    def test_restart_watch_reads_the_operation_target_not_the_current_channel(
+        self, fetch_mock, resolve_mock, health_mock,
+    ):
+        fetch_mock.return_value = {
+            "instance_name": "Original Genesis",
+            "provider_instance_id": None,
+            "game_server_id": "server-1",
+            "game_server_name": "Original Server",
+            "management_adapter": "nitrado",
+        }
+        resolution = object()
+        resolve_mock.return_value = resolution
+        health_mock.return_value = {"overall_status": "ready"}
+
+        name, health = _read_operation_health(
+            FakeDatabase(), self.config, "operation-1",
+        )
+
+        self.assertEqual(name, "Original Genesis")
+        self.assertEqual(health, {"overall_status": "ready"})
+        resolve_mock.assert_called_once_with(
+            ANY,
+            "server-1",
+            correlation_id="operation-1",
+        )
 
 
 class FakeUser:
