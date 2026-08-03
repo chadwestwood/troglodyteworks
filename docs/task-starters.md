@@ -4,6 +4,22 @@ These prompts let a fresh Codex task begin with a narrow goal while using the
 same repository context. Start the task from the TWE repository so `AGENTS.md`
 is loaded automatically.
 
+## Required bootstrap for any task
+
+Use this at the beginning of implementation and production-diagnosis requests,
+especially when starting from a ChatGPT Project or another workspace:
+
+```text
+Work in chadwestwood/troglodyteworks.
+
+Before acting, report the repository, access method, branch/ref and commit when
+available, exact AGENTS.md loaded, and whether the current workspace is the
+production source repository. Read the repository-root AGENTS.md,
+docs/project-context.md, and docs/README.md. If the production repository is
+not accessible, stop. Do not create a substitute implementation or infer live
+configuration values from defaults, prompts, screenshots, or model memory.
+```
+
 ## New provider connector
 
 ```text
