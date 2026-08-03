@@ -4,6 +4,30 @@ This file is the required starting point for every Codex task in this
 repository. It exists so goal-specific tasks can share the same durable project
 context without depending on another chat transcript.
 
+## Required source verification
+
+Before planning, editing, creating files, or making an external change, complete
+and report this bootstrap confirmation:
+
+- repository: `chadwestwood/troglodyteworks`;
+- access method: the active local checkout or the connected GitHub repository;
+- active branch/ref and commit SHA, when available;
+- instruction source: this repository-root `AGENTS.md`;
+- whether the current workspace is the production source repository.
+
+Read-only checks needed to establish that context are allowed before the
+confirmation. A ChatGPT Project mirror, scratch directory, browser tab, or
+unrelated workspace is not the production source repository. If a task starts
+outside this repository, use the connected GitHub repository or move the task
+to an actual checkout before implementing. If neither is available, stop and
+report the limitation.
+
+Never create a substitute implementation, disconnected prototype, or replacement
+configuration store merely because the production repository is unavailable.
+Do not treat a visible, signed-in browser page as proof of repository, API,
+secret, database, or deployment access. Previous task transcripts can provide
+continuity but do not replace current source verification.
+
 ## Read first
 
 Before planning or changing code, read:
@@ -17,6 +41,22 @@ When documentation and code disagree, inspect the current implementation and
 recent commits, then reconcile the applicable current document in the same
 change. Do not silently rely on a historical meeting note or superseded
 vertical slice.
+
+## Evidence and provenance for live information
+
+For configuration, status, deployment, or other operational answers, identify
+the source and freshness of every value used. Distinguish explicitly between:
+
+- a current provider/API response;
+- TWE's persisted snapshot and its capture time;
+- a configured default;
+- an inferred or unavailable value.
+
+Never present a default, inference, stale snapshot, prompt example, or model
+memory as a verified current value. If the authoritative source cannot be read,
+say that the value cannot be verified. Provider-derived configuration should be
+stored with provider identity, resource/World scope, raw source location,
+capture time, and synchronization result so Trog can answer with evidence.
 
 ## Non-negotiable project facts
 
