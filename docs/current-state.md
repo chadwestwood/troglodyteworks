@@ -31,6 +31,10 @@ See `docs/production-architecture.md` for boundaries and request flow.
 - Google and Discord identities link to a canonical TWE User.
 - Cohorts in the Wild has Community Membership and capability-based access.
 - Trog is connected to the Cohorts Discord guild through the Railway worker.
+- Trog supports installation-scoped Friendly, Direct, Sarcastic, Professional,
+  and Enthusiastic voices. Simple social mentions use rotating curated replies,
+  and the live Discord guild owner can change the voice through private slash
+  commands. Voice changes are audited and do not alter World authority or facts.
 - A service-scoped Nitrado long-life token can be validated and stored encrypted.
 - Nitrado services can be discovered and bound to an existing Game Server.
 - Genesis reports online through the Nitrado provider path.

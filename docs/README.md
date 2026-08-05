@@ -35,6 +35,7 @@ on another chat's transcript.
 - `authentication.md`
 - `api-design.md`
 - `discord-integration.md`
+- `trog-personality.md`
 - `server-operation-lifecycle.md`
 - `services.md`
 - `products-and-entitlements.md`

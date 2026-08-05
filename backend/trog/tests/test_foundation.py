@@ -22,6 +22,12 @@ from twe.services import local_asa
 
 
 class FoundationTests(unittest.TestCase):
+    def test_trog_personality_migration_uses_the_approved_presets(self):
+        migration = (ROOT / "migrations" / "0031_trog_personality_presets.sql").read_text()
+        self.assertIn("ADD COLUMN IF NOT EXISTS personality_preset", migration)
+        for preset in ("friendly", "direct", "sarcastic", "professional", "enthusiastic"):
+            self.assertIn(f"'{preset}'", migration)
+
     def test_readiness_marks_missing_worker_as_degraded(self):
         database = MagicMock()
         database.connect.return_value.__enter__.return_value = object()

@@ -150,6 +150,11 @@ class DiscordBotCoreTests(unittest.TestCase):
         self.assertIn('@server_group.command(name="count"', service_source)
         self.assertIn('@server_group.command(name="help"', service_source)
         self.assertIn('@server_group.command(name="add-mod"', service_source)
+        self.assertIn('name="personality"', service_source)
+        self.assertIn('@personality_group.command(name="show"', service_source)
+        self.assertIn('@personality_group.command(name="preview"', service_source)
+        self.assertIn('@personality_group.command(name="set"', service_source)
+        self.assertIn('@personality_group.command(name="reset"', service_source)
 
     def test_long_discord_responses_are_split_within_platform_limit(self):
         text = "\n".join(f"- Mod {index}: " + ("x" * 300) for index in range(20))

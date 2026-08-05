@@ -51,6 +51,16 @@ from .core import (
     parse_guild_game_server_map,
     respond_to_request,
 )
+from .personality import (
+    DEFAULT_PERSONALITY,
+    PERSONALITY_DESCRIPTIONS,
+    PERSONALITY_LABELS,
+    SocialResponseRotator,
+    classify_social_intent,
+    personality_for_guild,
+    personality_preview,
+    update_guild_personality,
+)
 
 LOGGER = logging.getLogger("twe.discord_bot")
 
@@ -64,6 +74,7 @@ RESTART_WATCH_POLL_SECONDS = 15
 RESTART_WATCH_TIMEOUT_SECONDS = 15 * 60
 RESTART_READY_CONFIRMATION_SECONDS = 60
 _RESTART_WATCH_TASKS = {}
+_SOCIAL_RESPONSE_ROTATOR = SocialResponseRotator()
 _SETTING_TOPIC_PRIORITIES = {
     # A breeding question spans the whole lifecycle. Keep mating, incubation,
     # maturation, and imprinting represented instead of returning whichever
@@ -201,6 +212,69 @@ def main():
 
     tree.add_command(server_group)
 
+    trog_group = discord.app_commands.Group(
+        name="trog",
+        description="Configure or learn about Trog",
+    )
+    personality_group = discord.app_commands.Group(
+        name="personality",
+        description="View or change Trog's voice",
+    )
+    personality_choices = [
+        discord.app_commands.Choice(name="Friendly — warm and conversational", value="friendly"),
+        discord.app_commands.Choice(name="Direct — brief and literal", value="direct"),
+        discord.app_commands.Choice(name="Sarcastic — restrained dry humor", value="sarcastic"),
+        discord.app_commands.Choice(name="Professional — polished and formal", value="professional"),
+        discord.app_commands.Choice(name="Enthusiastic — upbeat and energetic", value="enthusiastic"),
+    ]
+
+    @personality_group.command(name="show", description="Show Trog's current voice")
+    async def personality_show(interaction):
+        await handle_personality_interaction(
+            interaction,
+            "show",
+            database,
+            allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
+        )
+
+    @personality_group.command(name="preview", description="Preview one of Trog's voices")
+    @discord.app_commands.choices(preset=personality_choices)
+    async def personality_preview_command(interaction, preset: str):
+        await handle_personality_interaction(
+            interaction,
+            "preview",
+            database,
+            preset=preset,
+            allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
+        )
+
+    @personality_group.command(name="set", description="Set Trog's voice for this Discord server")
+    @discord.app_commands.choices(preset=personality_choices)
+    async def personality_set(interaction, preset: str):
+        await handle_personality_interaction(
+            interaction,
+            "set",
+            database,
+            preset=preset,
+            allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
+        )
+
+    @personality_group.command(name="reset", description="Reset Trog to the default Friendly voice")
+    async def personality_reset(interaction):
+        await handle_personality_interaction(
+            interaction,
+            "reset",
+            database,
+            allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
+        )
+
+    trog_group.add_command(personality_group)
+    tree.add_command(trog_group)
+
     @client.event
     async def on_ready():
         guilds = [(str(guild.id), guild.name) for guild in client.guilds]
@@ -243,7 +317,7 @@ async def worker_heartbeat_loop(client, database, interval_seconds=30, logger=LO
 
 async def handle_message(
     message, bot_user, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
-    request_limiter=None, brain_gateway=None,
+    request_limiter=None, brain_gateway=None, social_response_rotator=None,
 ):
     if not bot_user:
         logger.warning("Discord message ignored because bot user is not ready.")
@@ -274,6 +348,7 @@ async def handle_message(
     )
     operation_request = operation_request_from_message(content)
     intent = operation_request.intent if operation_request else classify_intent(content)
+    social_intent = classify_social_intent(content) if not intent else None
 
     logger.info(
         "Discord message received guild_id=%s channel_id=%s author_id=%s mentions_trog=%s intent=%s content_length=%s",
@@ -281,7 +356,7 @@ async def handle_message(
         message.channel.id,
         message.author.id,
         mentioned,
-        intent or "none",
+        intent or social_intent or "none",
         len(content),
     )
 
@@ -305,7 +380,23 @@ async def handle_message(
         return True
 
     try:
-        if not intent:
+        if social_intent:
+            preset = DEFAULT_PERSONALITY
+            try:
+                with database.connect() as conn:
+                    preset = personality_for_guild(conn, str(message.guild.id)) or DEFAULT_PERSONALITY
+            except Exception:
+                logger.warning(
+                    "Trog personality lookup failed; using friendly guild_id=%s",
+                    message.guild.id,
+                    exc_info=True,
+                )
+            rotator = social_response_rotator or _SOCIAL_RESPONSE_ROTATOR
+            reply = BotReply(
+                rotator.choose(str(message.guild.id), preset, social_intent),
+                f"trog_social_{social_intent}",
+            )
+        elif not intent:
             reply = await answer_advisory_question(
                 content,
                 str(message.guild.id),
@@ -317,16 +408,24 @@ async def handle_message(
             )
         else:
             with database.connect() as conn:
-                reply = respond_to_request(
-                    intent, str(message.guild.id), str(message.channel.id), str(message.author.id),
-                    conn, config, guild_map,
-                    command_argument=(
-                        operation_request.argument
-                        if operation_request
-                        else extract_mod_reference(content)
-                    ),
-                    confirmed=bool(operation_request and operation_request.confirmed),
-                )
+                if intent == "server_help":
+                    reply = capability_help_reply(
+                        conn,
+                        str(message.guild.id),
+                        str(message.channel.id),
+                        str(message.author.id),
+                    )
+                else:
+                    reply = respond_to_request(
+                        intent, str(message.guild.id), str(message.channel.id), str(message.author.id),
+                        conn, config, guild_map,
+                        command_argument=(
+                            operation_request.argument
+                            if operation_request
+                            else extract_mod_reference(content)
+                        ),
+                        confirmed=bool(operation_request and operation_request.confirmed),
+                    )
     except DiscordBotConfigurationError:
         logger.warning("Discord guild is not connected to a valid TWE game server guild_id=%s", message.guild.id)
         reply = BotReply("This Discord server is not connected to a Troglodyte Works game server yet.", "guild_not_connected")
@@ -799,6 +898,159 @@ def _factual_setting_limit(request_text):
     return 7 if "breed" in intent.topic_tags else 5
 
 
+def capability_help_reply(conn, guild_id: str, channel_id: str, discord_user_id: str) -> BotReply:
+    """Describe only the capabilities available in the resolved Discord scope."""
+    context = resolve_guild(conn, guild_id, channel_id)
+    if not context:
+        return HELP_REPLY
+    preset = personality_for_guild(conn, guild_id) or DEFAULT_PERSONALITY
+    introductions = {
+        "friendly": f"I'm your guide for **{context.game_server_name}**. Here's what I can help you with:",
+        "direct": f"Available for **{context.game_server_name}**:",
+        "sarcastic": f"Against all odds, I do have useful skills for **{context.game_server_name}**:",
+        "professional": f"I can provide the following assistance for **{context.game_server_name}**:",
+        "enthusiastic": f"Here's what we can explore for **{context.game_server_name}**:",
+    }
+    capability_commands = (
+        ("instance.status.read", "- `/server status` — check whether the World is ready"),
+        ("instance.players.count.read", "- `/server count` — count active players"),
+        ("instance.players.names.read", "- `/server players` — list active players"),
+        ("instance.mods.names.read", "- `/server mods` — list active mods by name"),
+        (
+            "instance.settings.read",
+            "- Mention me and ask about current verified World settings, such as breeding or XP",
+        ),
+        ("instance.mods.write", "- `/server add-mod <name or ID>` — add a verified ASA mod"),
+        ("instance.restart.execute", "- `/server restart` — restart the routed World"),
+    )
+    allowed = {
+        capability: authorize(conn, guild_id, channel_id, discord_user_id, capability).allowed
+        for capability, _line in capability_commands
+    }
+    lines = [line for capability, line in capability_commands if allowed[capability]]
+    if all(
+        allowed.get(capability)
+        for capability in (
+            "instance.status.read",
+            "instance.players.names.read",
+            "instance.mods.names.read",
+        )
+    ):
+        lines.append("- `/server settings` — show the combined World overview")
+    if not lines:
+        lines.append("- No World capabilities are currently approved in this channel")
+    lines.append("- `/trog personality show` — see which voice Trog is using")
+    return BotReply(
+        introductions[preset] + "\n" + "\n".join(lines),
+        "server_help",
+    )
+
+
+async def handle_personality_interaction(
+    interaction,
+    action,
+    database,
+    *,
+    preset=None,
+    logger=LOGGER,
+    allowed_mentions=None,
+    request_limiter=None,
+):
+    """Handle private, installation-scoped Trog personality commands."""
+    guild_id = str(interaction.guild_id) if interaction.guild_id else ""
+    author_id = str(interaction.user.id)
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not guild_id:
+        reply = BotReply(
+            "Trog's personality can only be managed inside a Discord server.",
+            "trog_personality_guild_required",
+        )
+    elif request_limiter and not request_limiter.allow(guild_id, author_id):
+        reply = BotReply(
+            "You are using Trog commands too quickly. Please wait a few seconds and try again.",
+            "discord_rate_limited",
+        )
+    else:
+        try:
+            with database.connect() as conn:
+                current = personality_for_guild(conn, guild_id)
+                if current is None:
+                    reply = BotReply(
+                        "This Discord server does not have an active Troglodyte Works installation.",
+                        "trog_personality_installation_missing",
+                    )
+                elif action == "show":
+                    reply = BotReply(
+                        f"Trog is using **{PERSONALITY_LABELS[current]}** — "
+                        f"{PERSONALITY_DESCRIPTIONS[current]}. "
+                        "Only the Discord server owner can change it.",
+                        "trog_personality_shown",
+                    )
+                elif action == "preview":
+                    reply = BotReply(
+                        personality_preview(str(preset)),
+                        "trog_personality_previewed",
+                    )
+                elif action in {"set", "reset"}:
+                    guild = getattr(interaction, "guild", None)
+                    owner_id = str(getattr(guild, "owner_id", "") or "")
+                    if not owner_id or owner_id != author_id:
+                        reply = BotReply(
+                            "Only the Discord server owner can change Trog's personality.",
+                            "trog_personality_denied",
+                        )
+                    else:
+                        selected = DEFAULT_PERSONALITY if action == "reset" else str(preset)
+                        updated = update_guild_personality(
+                            conn,
+                            guild_id,
+                            selected,
+                            author_id,
+                        )
+                        if not updated:
+                            reply = BotReply(
+                                "This Discord server does not have an active Troglodyte Works installation.",
+                                "trog_personality_installation_missing",
+                            )
+                        else:
+                            label = PERSONALITY_LABELS[selected]
+                            reply = BotReply(
+                                f"Trog's personality is now **{label}** for this Discord server. "
+                                "Only the voice changed; permissions and World behavior did not.",
+                                "trog_personality_updated",
+                            )
+                else:
+                    reply = BotReply(
+                        "I could not recognize that personality command.",
+                        "trog_personality_invalid_action",
+                    )
+        except (KeyError, ValueError):
+            reply = BotReply(
+                "Choose Friendly, Direct, Sarcastic, Professional, or Enthusiastic.",
+                "trog_personality_invalid_preset",
+            )
+        except Exception:
+            logger.exception(
+                "Trog personality command failed guild_id=%s action=%s",
+                guild_id,
+                action,
+            )
+            reply = BotReply(
+                "I could not update Trog's personality right now.",
+                "trog_personality_unavailable",
+            )
+    logger.info(
+        "Trog personality command guild_id=%s author_id=%s action=%s response_code=%s",
+        guild_id,
+        author_id,
+        action,
+        reply.code,
+    )
+    send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
+    await interaction.followup.send(reply.text, ephemeral=True, **send_options)
+    return reply
+
+
 async def handle_interaction(
     interaction, intent, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
     request_limiter=None, command_argument=None, confirmed=False,
@@ -831,7 +1083,13 @@ async def handle_interaction(
         return reply
     try:
         if intent == "server_help":
-            reply = HELP_REPLY
+            with database.connect() as conn:
+                reply = capability_help_reply(
+                    conn,
+                    guild_id,
+                    channel_id,
+                    author_id,
+                )
         else:
             with database.connect() as conn:
                 reply = respond_to_request(

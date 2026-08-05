@@ -130,9 +130,14 @@ Rules:
 
 Connects one immutable Discord guild ID to an existing Community and Game Server.
 
-Fields: `id`, `discord_guild_id`, `community_id`, `game_server_id`, `installed_by`, `created_at`, `updated_at`.
+Fields: `id`, `discord_guild_id`, `community_id`, `game_server_id`, `installed_by`, `personality_preset`, `created_at`, `updated_at`.
 
 The guild ID is unique numeric text so its external representation is not subject to platform integer limits. The Game Server must belong to the same Community; application resolution enforces this relationship.
+
+`personality_preset` is installation-scoped, defaults to `friendly`, and is
+constrained to `friendly`, `direct`, `sarcastic`, `professional`, or
+`enthusiastic`. It changes Trog's conversational presentation only and grants
+no World capability.
 
 ### Discord Identity
 
