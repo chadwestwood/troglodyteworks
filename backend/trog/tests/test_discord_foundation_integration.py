@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT))
 from twe.db import Database, execute, fetch_one
 from twe.discord_bot.authorization import authorize, resolve_guild, resolve_identity
 from twe.discord_bot.service import _finish_restart_operation
+from twe.discord_bot.personality import personality_for_guild, update_guild_personality
 from twe.security import hash_password
 from tests.integration_database import load_integration_config
 
@@ -35,12 +36,13 @@ class DiscordFoundationIntegrationTests(unittest.TestCase):
             self.server = fetch_one(conn, "INSERT INTO game_servers (community_id,name,slug,game_type,management_adapter) VALUES (%s,'Discord Server','discord-server','ARK Survival Ascended','local_asa') RETURNING id::text", (self.community["id"],))
             self.owner_membership = self._membership(conn, self.owner["id"], "owner")
             self.member_membership = self._membership(conn, self.member["id"], "member")
-            fetch_one(conn, "INSERT INTO discord_guild_installations (discord_guild_id,community_id,game_server_id,installed_by) VALUES (%s,%s,%s,%s) RETURNING id", (self.guild_id, self.community["id"], self.server["id"], self.owner["id"]))
+            self.installation = fetch_one(conn, "INSERT INTO discord_guild_installations (discord_guild_id,community_id,game_server_id,installed_by) VALUES (%s,%s,%s,%s) RETURNING id::text", (self.guild_id, self.community["id"], self.server["id"], self.owner["id"]))
             fetch_one(conn, "INSERT INTO discord_identities (discord_user_id,user_id,linked_at) VALUES (%s,%s,now()) RETURNING id", (self.owner_discord_id, self.owner["id"]))
             fetch_one(conn, "INSERT INTO discord_identities (discord_user_id,user_id,linked_at) VALUES (%s,%s,now()) RETURNING id", (self.member_discord_id, self.member["id"]))
 
     def tearDown(self):
         with self.db.connect() as conn:
+            execute(conn, "DELETE FROM audit_logs WHERE target_id = %s", (self.installation["id"],))
             execute(conn, "DELETE FROM communities WHERE id = %s", (self.community["id"],))
             execute(conn, "DELETE FROM users WHERE id IN (%s,%s)", (self.owner["id"], self.member["id"]))
 
@@ -60,6 +62,32 @@ class DiscordFoundationIntegrationTests(unittest.TestCase):
         self.assertTrue(public.allowed)
         self.assertTrue(owner.allowed)
         self.assertFalse(member.allowed)
+
+    def test_personality_defaults_to_friendly_and_updates_with_an_audit(self):
+        with self.db.connect() as conn:
+            self.assertEqual(personality_for_guild(conn, self.guild_id), "friendly")
+            update_guild_personality(
+                conn,
+                self.guild_id,
+                "professional",
+                self.owner_discord_id,
+            )
+            self.assertEqual(personality_for_guild(conn, self.guild_id), "professional")
+            audit = fetch_one(
+                conn,
+                """
+                SELECT user_id::text, details
+                FROM audit_logs
+                WHERE target_id = %s
+                  AND action = 'discord.trog_personality.updated'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (self.installation["id"],),
+            )
+        self.assertEqual(audit["user_id"], self.owner["id"])
+        self.assertEqual(audit["details"]["previous_preset"], "friendly")
+        self.assertEqual(audit["details"]["new_preset"], "professional")
 
     def test_ordinary_member_with_server_capability_grant_is_authorized(self):
         with self.db.connect() as conn:

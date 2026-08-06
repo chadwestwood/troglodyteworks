@@ -22,6 +22,17 @@ Structured commands provide the durable command surface:
 - `/server status`
 - `/server players`
 - `/server restart`
+- `/trog personality show`
+- `/trog personality preview <preset>`
+- `/trog personality set <preset>`
+- `/trog personality reset`
+
+Trog supports five installation-scoped voices: **Friendly** (default),
+**Direct**, **Sarcastic**, **Professional**, and **Enthusiastic**. Reviewed
+social questions such as presence, wellbeing, name origin, and identity use
+curated rotating replies without OpenAI, knowledge retrieval, provider calls,
+or Server Operations. The voice does not rewrite factual or operational
+results. See `trog-personality.md`.
 
 Discord command visibility never grants authority. The backend resolves the guild, channel policy, immutable Discord user ID, TWE identity link, Community Membership, and Capability Grant for every administrative request.
 
@@ -34,7 +45,12 @@ provider mutations remain unavailable.
 
 ## Persistence and authorization
 
-`discord_guild_installations` connects an immutable Discord guild ID to Trog. For provider-owned external access, `discord_instance_access_grants` is the authority: it connects one Discord installation to one provider Community, one provider-owned Game Server, one exact Game Instance, and a provider-approved read capability allowlist. `user_external_identities(provider='discord')` is the provider-neutral authentication link for a TWE User. `discord_identities` stores the immutable Discord user ID for Discord/Trog authorization and is synchronized from Discord OAuth login/linking. `discord_channel_policies` enables or disables `read` or `administrative` capabilities in a channel.
+`discord_guild_installations` connects an immutable Discord guild ID to Trog and stores its constrained `personality_preset`. For provider-owned external access, `discord_instance_access_grants` is the authority: it connects one Discord installation to one provider Community, one provider-owned Game Server, one exact Game Instance, and a provider-approved read capability allowlist. `user_external_identities(provider='discord')` is the provider-neutral authentication link for a TWE User. `discord_identities` stores the immutable Discord user ID for Discord/Trog authorization and is synchronized from Discord OAuth login/linking. `discord_channel_policies` enables or disables `read` or `administrative` capabilities in a channel.
+
+Any member can privately show or preview Trog's voice. Only the live Discord
+guild owner identified by the command interaction may set or reset it in v1.
+Each update is audited. Discord roles, browser claims, entitlements, model
+output, and World capability grants cannot authorize a personality change.
 
 No channel policy means enabled for grants with `channel_scope = all`, preserving existing guild-wide behavior. Grants with `channel_scope = allowlist` require an explicit enabled `read` policy for the channel. An explicit disabled policy denies that category in the channel. Public read capabilities do not require an identity link once the provider-approved grant is active. Administrative capabilities require a linked TWE user and Community Membership. Community owners are implicitly authorized; other members require an active, appropriately scoped `server_operation_capability_grants` record.
 

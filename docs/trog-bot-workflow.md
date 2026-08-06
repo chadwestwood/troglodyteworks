@@ -48,7 +48,22 @@ Examples:
 @Trog restart
 @Trog add 930381 to the map
 @Trog add Silent Structures to the world
+@Trog are you there?
+@Trog how are you today?
+@Trog where does your name come from?
 ```
+
+Presence, wellbeing, name-origin, identity, greeting, thanks, farewell, and
+praise questions are matched against reviewed whole-message forms and answered
+from the installation's rotating curated response bank. This social path does
+not call a provider, OpenAI, MCP, RAG, or a Server Operation. A message that
+also asks a World question is not consumed as small talk.
+
+The active voice is Friendly, Direct, Sarcastic, Professional, or Enthusiastic.
+The live Discord guild owner can manage it through `/trog personality`; other
+members may privately show or preview the choices. Personality never grants a
+capability or alters the deterministic response body for verified facts and
+operations.
 
 For external provider-owned access, replies identify the provider-owned instance:
 
