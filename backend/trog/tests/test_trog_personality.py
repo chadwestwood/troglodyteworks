@@ -81,11 +81,14 @@ class TrogPersonalityTests(unittest.TestCase):
 
         self.assertEqual(reply.code, "server_help")
         self.assertIn("**Genesis**", reply.text)
-        self.assertIn("`/server status`", reply.text)
-        self.assertIn("`/server count`", reply.text)
-        self.assertNotIn("`/server players`", reply.text)
-        self.assertNotIn("`/server restart`", reply.text)
-        self.assertNotIn("`/server settings`", reply.text)
+        self.assertIn("Check whether the World is online and ready", reply.text)
+        self.assertIn("Tell you how many players are online", reply.text)
+        self.assertNotIn("Tell you who's playing", reply.text)
+        self.assertNotIn("Restart the World", reply.text)
+        self.assertNotIn("combined overview", reply.text)
+        self.assertIn("ask in your own words", reply.text)
+        self.assertNotIn("/server", reply.text)
+        self.assertNotIn("/trog", reply.text)
 
 
 class TrogPersonalityInteractionTests(unittest.IsolatedAsyncioTestCase):

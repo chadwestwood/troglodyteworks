@@ -184,7 +184,9 @@ class DiscordBotCoreTests(unittest.TestCase):
     def test_unsupported_question_gets_help_response(self):
         reply = respond_to_message("<@123> hello", "111", object(), self.config, {})
         self.assertEqual(reply.code, "server_help")
-        self.assertIn("/server status", reply.text)
+        self.assertIn("I'm Trog", reply.text)
+        self.assertIn("ask in your own words", reply.text)
+        self.assertNotIn("/server", reply.text)
 
     def test_server_offline_response(self):
         reply = server_status_reply(

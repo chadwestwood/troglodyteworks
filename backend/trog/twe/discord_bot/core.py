@@ -37,15 +37,10 @@ class BotReply:
 
 
 HELP_REPLY = BotReply(
-    "**Here is what I can do**\n"
-    "- `/server status` — check whether the connected server is ready\n"
-    "- `/server players` — list active players\n"
-    "- `/server count` — count active players\n"
-    "- `/server mods` — list active mods by name\n"
-    "- `/server add-mod <name or ID>` — add an ASA mod from CurseForge (owner/admin)\n"
-    "- `/server restart` — restart the routed server (owner/admin)\n"
-    "- `/server settings` — show the combined server overview\n"
-    "You can also mention me and ask the same questions naturally. Read access follows your Community's approved Trog permissions.",
+    "I'm Trog, your Troglodyte Works guide. Once this Discord server is connected to a "
+    "World, I can help check its status, players, mods, and verified settings. I can also "
+    "help with approved changes when you have permission.\n\n"
+    "Just mention me and ask in your own words.",
     "server_help",
 )
 

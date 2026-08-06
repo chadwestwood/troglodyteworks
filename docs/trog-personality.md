@@ -41,8 +41,9 @@ players, mods, restarts, and mod additions continue through their existing
 deterministic intent, World-routing, capability, confirmation, provider, and
 audit paths.
 
-`@Trog what can you do?` and `/server help` produce a scoped list from the
-capabilities currently available to that member in that channel. The active
+`@Trog what can you do?` and `/server help` produce a scoped, conversational
+description of what Trog can do for that member in that channel. The reply
+does not expose slash commands or implementation-oriented language. The active
 voice changes the short introduction, not the capability result.
 
 ## Commands and authority
