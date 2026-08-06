@@ -55,7 +55,9 @@ from .personality import (
     DEFAULT_PERSONALITY,
     PERSONALITY_DESCRIPTIONS,
     PERSONALITY_LABELS,
+    PERSONALITY_PRESETS,
     SocialResponseRotator,
+    classify_personality_request,
     classify_social_intent,
     personality_for_guild,
     personality_preview,
@@ -347,7 +349,10 @@ async def handle_message(
         bot_role_ids=bot_role_ids,
     )
     operation_request = operation_request_from_message(content)
-    intent = operation_request.intent if operation_request else classify_intent(content)
+    personality_request = classify_personality_request(content)
+    intent = None if personality_request else (
+        operation_request.intent if operation_request else classify_intent(content)
+    )
     social_intent = classify_social_intent(content) if not intent else None
 
     logger.info(
@@ -356,7 +361,11 @@ async def handle_message(
         message.channel.id,
         message.author.id,
         mentioned,
-        intent or social_intent or "none",
+        (
+            f"trog_personality_{personality_request[0]}"
+            if personality_request
+            else intent or social_intent or "none"
+        ),
         len(content),
     )
 
@@ -380,7 +389,17 @@ async def handle_message(
         return True
 
     try:
-        if social_intent:
+        if personality_request:
+            with database.connect() as conn:
+                reply = personality_message_reply(
+                    conn,
+                    str(message.guild.id),
+                    str(message.author.id),
+                    str(getattr(message.guild, "owner_id", "") or ""),
+                    personality_request[0],
+                    personality_request[1],
+                )
+        elif social_intent:
             preset = DEFAULT_PERSONALITY
             try:
                 with database.connect() as conn:
@@ -950,6 +969,72 @@ def capability_help_reply(conn, guild_id: str, channel_id: str, discord_user_id:
     )
 
 
+def personality_message_reply(
+    conn,
+    guild_id: str,
+    discord_user_id: str,
+    discord_owner_id: str,
+    action: str,
+    preset: str | None,
+) -> BotReply:
+    """Answer or apply a reviewed conversational personality request."""
+    current = personality_for_guild(conn, guild_id)
+    if current is None:
+        return BotReply(
+            "This Discord server does not have an active Troglodyte Works installation.",
+            "trog_personality_installation_missing",
+        )
+    if action == "list":
+        options = "\n".join(
+            f"- **{PERSONALITY_LABELS[value]}** — {PERSONALITY_DESCRIPTIONS[value]}"
+            for value in PERSONALITY_PRESETS
+        )
+        if discord_owner_id and discord_owner_id == discord_user_id:
+            guidance = (
+                "Tell me which one to use—for example, **@Trog use Enthusiastic**."
+            )
+        else:
+            guidance = (
+                "Ask the Discord server owner if you'd like me to change my personality. "
+                "You can still ask me to preview any option."
+            )
+        return BotReply(
+            f"I'm currently using **{PERSONALITY_LABELS[current]}**. "
+            f"Here are the personalities I can use:\n{options}\n\n{guidance}",
+            "trog_personality_listed",
+        )
+    if action == "show":
+        return BotReply(
+            f"I'm currently using **{PERSONALITY_LABELS[current]}** — "
+            f"{PERSONALITY_DESCRIPTIONS[current]}.",
+            "trog_personality_shown",
+        )
+    if action == "preview" and preset:
+        return BotReply(personality_preview(preset), "trog_personality_previewed")
+    if action in {"set", "reset"} and preset:
+        if not discord_owner_id or discord_owner_id != discord_user_id:
+            return BotReply(
+                "Only the Discord server owner can change my personality. Ask the owner if "
+                "you'd like me to change it; you can still ask me to preview any option.",
+                "trog_personality_denied",
+            )
+        updated = update_guild_personality(conn, guild_id, preset, discord_user_id)
+        if not updated:
+            return BotReply(
+                "This Discord server does not have an active Troglodyte Works installation.",
+                "trog_personality_installation_missing",
+            )
+        return BotReply(
+            f"Done—I'm now using **{PERSONALITY_LABELS[preset]}** for this Discord server. "
+            "Only my voice changed; permissions and World behavior stayed the same.",
+            "trog_personality_updated",
+        )
+    return BotReply(
+        "I recognize Friendly, Direct, Sarcastic, Professional, and Enthusiastic.",
+        "trog_personality_invalid_action",
+    )
+
+
 async def handle_personality_interaction(
     interaction,
     action,
@@ -1000,7 +1085,8 @@ async def handle_personality_interaction(
                     owner_id = str(getattr(guild, "owner_id", "") or "")
                     if not owner_id or owner_id != author_id:
                         reply = BotReply(
-                            "Only the Discord server owner can change Trog's personality.",
+                            "Only the Discord server owner can change Trog's personality. "
+                            "Ask the owner if you'd like it changed.",
                             "trog_personality_denied",
                         )
                     else:

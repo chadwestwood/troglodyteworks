@@ -55,11 +55,21 @@ The command surface is:
 - `/trog personality set <preset>`;
 - `/trog personality reset`.
 
-All replies are private to the command user. Any member may show or preview a
-voice. Only the live Discord guild owner, verified from the Discord interaction
-guild and immutable user ID at command time, may set or reset it. A cached
-browser permission, Discord role, TWE entitlement, or model output cannot
-authorize the change.
+The same actions have a conversational surface. Reviewed forms include
+`@Trog personality change`, `@Trog what personalities do you have?`,
+`@Trog preview Direct`, `@Trog use Enthusiastic`, and
+`@Trog reset personality`. These requests are handled locally before World
+settings retrieval, so they cannot fall through to a provider or knowledge
+answer. Conversational changes use the same live guild-owner check and audit
+path as the structured commands.
+
+Structured command replies are private to the command user; conversational
+replies appear in the mentioned channel. Any member may show or preview a
+voice. Members without change permission are told to ask the Discord server
+owner; the owner is not shown that reminder. Only the live Discord guild owner,
+verified from the Discord guild and immutable user ID at request time, may set
+or reset it. A cached browser permission, Discord role, TWE entitlement, or
+model output cannot authorize the change.
 
 V1 does not delegate personality management. Delegation requires a reviewed
 installation-scoped capability design; it must not reuse a World operation

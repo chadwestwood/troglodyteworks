@@ -275,7 +275,7 @@ def normalize_social_message(message: str) -> str:
     normalized = re.sub(r"<@!?\d+>|<@&\d+>", " ", normalized)
     normalized = re.sub(r"(^|\s)@trog\b", " ", normalized, flags=re.IGNORECASE)
     normalized = re.sub(r"\s+", " ", normalized).strip().casefold()
-    return normalized.strip(" .,!?:;-_")
+    return normalized.strip(" .,!?:;-_/")
 
 
 def classify_social_intent(message: str) -> str | None:
@@ -304,6 +304,46 @@ def classify_social_intent(message: str) -> str | None:
         return "farewell"
     if re.fullmatch(r"(?:good bot|nice work|well done|great job|good job)", normalized):
         return "praise"
+    return None
+
+
+def classify_personality_request(message: str) -> tuple[str, str | None] | None:
+    """Recognize reviewed conversational personality requests."""
+    normalized = normalize_social_message(message)
+    if re.fullmatch(
+        r"(?:personality change|change personality|personality options|"
+        r"what personalities do you have|what personality options do you have|"
+        r"what are your personalities|show(?: me)? your personalities|"
+        r"list(?: your)? personalities)",
+        normalized,
+    ):
+        return ("list", None)
+    if re.fullmatch(
+        r"(?:current personality|what(?:'s| is) your personality|"
+        r"what personality are you using|which personality are you using)",
+        normalized,
+    ):
+        return ("show", None)
+    if re.fullmatch(r"(?:personality reset|reset personality)", normalized):
+        return ("reset", DEFAULT_PERSONALITY)
+
+    preset_pattern = "|".join(PERSONALITY_PRESETS)
+    preview_match = re.fullmatch(
+        rf"(?:preview|show me) ({preset_pattern})(?: personality)?|"
+        rf"what does ({preset_pattern})(?: personality)? sound like",
+        normalized,
+    )
+    if preview_match:
+        return ("preview", next(value for value in preview_match.groups() if value))
+
+    set_match = re.fullmatch(
+        rf"(?:personality(?: change)?|change personality(?: to)?|"
+        rf"set personality(?: to)?|use|switch to|be) "
+        rf"({preset_pattern})(?: personality)?",
+        normalized,
+    )
+    if set_match:
+        return ("set", set_match.group(1))
     return None
 
 

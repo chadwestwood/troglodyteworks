@@ -12,6 +12,7 @@ from twe.discord_bot.personality import (
     PERSONALITY_LABELS,
     PERSONALITY_PRESETS,
     SocialResponseRotator,
+    classify_personality_request,
     classify_social_intent,
     personality_preview,
 )
@@ -55,6 +56,22 @@ class TrogPersonalityTests(unittest.TestCase):
         replies = [rotator.choose("guild", "direct", "presence") for _ in range(5)]
         self.assertEqual(len(set(replies[:4])), 4)
         self.assertEqual(replies[4], replies[0])
+
+    def test_classifies_conversational_personality_requests(self):
+        examples = {
+            "@Trog personality change": ("list", None),
+            "@Trog what personalities do you have/": ("list", None),
+            "@Trog personality enthusiastic": ("set", "enthusiastic"),
+            "@Trog personality change sarcastic": ("set", "sarcastic"),
+            "@Trog use Professional": ("set", "professional"),
+            "@Trog what personality are you using?": ("show", None),
+            "@Trog preview direct personality": ("preview", "direct"),
+            "@Trog reset personality": ("reset", "friendly"),
+        }
+        for message, expected in examples.items():
+            with self.subTest(message=message):
+                self.assertEqual(classify_personality_request(message), expected)
+        self.assertIsNone(classify_personality_request("@Trog what are the breeding settings?"))
 
     def test_preview_uses_plain_language_label_and_examples(self):
         preview = personality_preview("professional")
@@ -121,6 +138,87 @@ class TrogPersonalityInteractionTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(handled)
         self.assertEqual(message.channel.sent, ["Sure am. What can I help you with?"])
+
+    @patch("twe.discord_bot.service.personality_for_guild", return_value="friendly")
+    async def test_conversational_request_lists_personalities_without_world_lookup(
+        self, _personality_mock,
+    ):
+        message = FakeMessage(
+            "<@999> what personalities do you have/",
+            self.author,
+            FakeGuild(222, owner_id=111),
+            FakeChannel(333),
+            [self.bot],
+        )
+
+        handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
+
+        self.assertTrue(handled)
+        self.assertIn("I'm currently using **Friendly**", message.channel.sent[0])
+        self.assertIn("**Sarcastic**", message.channel.sent[0])
+        self.assertNotIn("Discord server owner", message.channel.sent[0])
+        self.assertNotIn("live settings", message.channel.sent[0])
+
+    @patch("twe.discord_bot.service.personality_for_guild", return_value="friendly")
+    async def test_conversational_list_tells_non_owner_to_ask_owner(
+        self, _personality_mock,
+    ):
+        message = FakeMessage(
+            "<@999> personality change",
+            self.author,
+            FakeGuild(222, owner_id=444),
+            FakeChannel(333),
+            [self.bot],
+        )
+
+        handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
+
+        self.assertTrue(handled)
+        self.assertIn("Ask the Discord server owner", message.channel.sent[0])
+
+    @patch("twe.discord_bot.service.update_guild_personality")
+    @patch("twe.discord_bot.service.personality_for_guild", return_value="friendly")
+    async def test_conversational_request_lets_live_owner_change_personality(
+        self, _personality_mock, update_mock,
+    ):
+        update_mock.return_value = {
+            "id": "installation",
+            "community_id": "community",
+            "personality_preset": "sarcastic",
+        }
+        message = FakeMessage(
+            "<@999> personality change sarcastic",
+            self.author,
+            FakeGuild(222, owner_id=111),
+            FakeChannel(333),
+            [self.bot],
+        )
+
+        handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
+
+        self.assertTrue(handled)
+        self.assertIn("now using **Sarcastic**", message.channel.sent[0])
+        update_mock.assert_called_once_with(ANY, "222", "sarcastic", "111")
+
+    @patch("twe.discord_bot.service.update_guild_personality")
+    @patch("twe.discord_bot.service.personality_for_guild", return_value="friendly")
+    async def test_conversational_request_denies_non_owner_change(
+        self, _personality_mock, update_mock,
+    ):
+        message = FakeMessage(
+            "<@999> personality enthusiastic",
+            self.author,
+            FakeGuild(222, owner_id=444),
+            FakeChannel(333),
+            [self.bot],
+        )
+
+        handled = await handle_message(message, self.bot, FakeDatabase(), self.config, {})
+
+        self.assertTrue(handled)
+        self.assertIn("Only the Discord server owner", message.channel.sent[0])
+        self.assertIn("Ask the owner", message.channel.sent[0])
+        update_mock.assert_not_called()
 
     @patch("twe.discord_bot.service.update_guild_personality")
     @patch("twe.discord_bot.service.personality_for_guild", return_value="friendly")
