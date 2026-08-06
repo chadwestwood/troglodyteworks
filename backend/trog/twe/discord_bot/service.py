@@ -911,23 +911,23 @@ def capability_help_reply(conn, guild_id: str, channel_id: str, discord_user_id:
         "professional": f"I can provide the following assistance for **{context.game_server_name}**:",
         "enthusiastic": f"Here's what we can explore for **{context.game_server_name}**:",
     }
-    capability_commands = (
-        ("instance.status.read", "- `/server status` — check whether the World is ready"),
-        ("instance.players.count.read", "- `/server count` — count active players"),
-        ("instance.players.names.read", "- `/server players` — list active players"),
-        ("instance.mods.names.read", "- `/server mods` — list active mods by name"),
+    capability_descriptions = (
+        ("instance.status.read", "- Check whether the World is online and ready"),
+        ("instance.players.count.read", "- Tell you how many players are online"),
+        ("instance.players.names.read", "- Tell you who's playing"),
+        ("instance.mods.names.read", "- List the active mods"),
         (
             "instance.settings.read",
-            "- Mention me and ask about current verified World settings, such as breeding or XP",
+            "- Answer questions about verified World settings, including breeding and XP",
         ),
-        ("instance.mods.write", "- `/server add-mod <name or ID>` — add a verified ASA mod"),
-        ("instance.restart.execute", "- `/server restart` — restart the routed World"),
+        ("instance.mods.write", "- Add a verified ASA mod when you give me its name or number"),
+        ("instance.restart.execute", "- Restart the World when you ask me to"),
     )
     allowed = {
         capability: authorize(conn, guild_id, channel_id, discord_user_id, capability).allowed
-        for capability, _line in capability_commands
+        for capability, _line in capability_descriptions
     }
-    lines = [line for capability, line in capability_commands if allowed[capability]]
+    lines = [line for capability, line in capability_descriptions if allowed[capability]]
     if all(
         allowed.get(capability)
         for capability in (
@@ -936,12 +936,16 @@ def capability_help_reply(conn, guild_id: str, channel_id: str, discord_user_id:
             "instance.mods.names.read",
         )
     ):
-        lines.append("- `/server settings` — show the combined World overview")
+        lines.append("- Give you a combined overview of the World")
     if not lines:
-        lines.append("- No World capabilities are currently approved in this channel")
-    lines.append("- `/trog personality show` — see which voice Trog is using")
+        lines.append("- I don't have any World abilities approved in this channel yet")
+    lines.append(
+        "- Your Discord server owner can choose whether I sound Friendly, Direct, "
+        "Sarcastic, Professional, or Enthusiastic"
+    )
     return BotReply(
-        introductions[preset] + "\n" + "\n".join(lines),
+        introductions[preset] + "\n" + "\n".join(lines)
+        + "\n\nJust mention me and ask in your own words.",
         "server_help",
     )
 
