@@ -143,6 +143,14 @@ def main():
     database = Database(config.database_url)
     request_limiter = DiscordRequestLimiter()
 
+    def personality_view_factory(current=None):
+        return build_personality_selection_view(
+            discord,
+            database,
+            current=current,
+            allowed_mentions=allowed_mentions,
+        )
+
     server_group = discord.app_commands.Group(name="server", description="Inspect or administer the connected game server")
 
     @server_group.command(name="status", description="Show the connected server status")
@@ -288,6 +296,9 @@ def main():
                 worker_heartbeat_loop(client, database),
                 name="trog-runtime-heartbeat",
             )
+        if not getattr(client, "_twe_personality_view_registered", False):
+            client.add_view(personality_view_factory())
+            client._twe_personality_view_registered = True
         await tree.sync()
 
     @client.event
@@ -296,6 +307,7 @@ def main():
             message, client.user, database, config, guild_map,
             allowed_mentions=allowed_mentions,
             request_limiter=request_limiter,
+            personality_view_factory=personality_view_factory,
         )
 
     client.run(token)
@@ -320,6 +332,7 @@ async def worker_heartbeat_loop(client, database, interval_seconds=30, logger=LO
 async def handle_message(
     message, bot_user, database, config, guild_map, logger=LOGGER, allowed_mentions=None,
     request_limiter=None, brain_gateway=None, social_response_rotator=None,
+    personality_view_factory=None,
 ):
     if not bot_user:
         logger.warning("Discord message ignored because bot user is not ready.")
@@ -388,6 +401,7 @@ async def handle_message(
         )
         return True
 
+    personality_card_current = None
     try:
         if personality_request:
             with database.connect() as conn:
@@ -399,6 +413,11 @@ async def handle_message(
                     personality_request[0],
                     personality_request[1],
                 )
+                if reply.code == "trog_personality_listed":
+                    personality_card_current = personality_for_guild(
+                        conn,
+                        str(message.guild.id),
+                    )
         elif social_intent:
             preset = DEFAULT_PERSONALITY
             try:
@@ -480,8 +499,16 @@ async def handle_message(
         )
 
     send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
-    for chunk in split_discord_message(reply.text):
-        await message.channel.send(chunk, **send_options)
+    chunks = split_discord_message(reply.text)
+    for index, chunk in enumerate(chunks):
+        chunk_options = dict(send_options)
+        if (
+            index == 0
+            and personality_view_factory is not None
+            and personality_card_current in PERSONALITY_PRESETS
+        ):
+            chunk_options["view"] = personality_view_factory(personality_card_current)
+        await message.channel.send(chunk, **chunk_options)
     if reply.code == "restart_requested":
         schedule_restart_watch(
             message.channel,
@@ -969,6 +996,167 @@ def capability_help_reply(conn, guild_id: str, channel_id: str, discord_user_id:
     )
 
 
+def personality_selection_text(
+    current: str,
+    *,
+    can_change: bool,
+    changed: bool = False,
+) -> str:
+    """Build the readable text that accompanies Trog's personality buttons."""
+    options = "\n".join(
+        f"- **{PERSONALITY_LABELS[value]}** — {PERSONALITY_DESCRIPTIONS[value]}"
+        for value in PERSONALITY_PRESETS
+    )
+    if changed:
+        introduction = (
+            f"Done—I'm now using **{PERSONALITY_LABELS[current]}** for this Discord server. "
+            "Only my voice changed; permissions and World behavior stayed the same."
+        )
+    else:
+        introduction = (
+            f"I'm currently using **{PERSONALITY_LABELS[current]}**. "
+            "Here are the personalities I can use:"
+        )
+    if can_change:
+        guidance = "Choose one below, or tell me which one to use."
+    else:
+        guidance = (
+            "Ask the Discord server owner if you'd like me to change my personality. "
+            "You can still ask me to preview any option."
+        )
+    return f"{introduction}\n{options}\n\n{guidance}"
+
+
+def build_personality_selection_view(
+    discord,
+    database,
+    *,
+    current=None,
+    allowed_mentions=None,
+    logger=LOGGER,
+):
+    """Create a persistent five-button Discord personality selector."""
+    view = discord.ui.View(timeout=None)
+
+    def refreshed_view(selected):
+        return build_personality_selection_view(
+            discord,
+            database,
+            current=selected,
+            allowed_mentions=allowed_mentions,
+            logger=logger,
+        )
+
+    for preset in PERSONALITY_PRESETS:
+        selected = preset == current
+        button = discord.ui.Button(
+            label=PERSONALITY_LABELS[preset],
+            style=(
+                discord.ButtonStyle.success
+                if selected
+                else discord.ButtonStyle.secondary
+            ),
+            custom_id=f"trog:personality:{preset}",
+            disabled=selected,
+        )
+
+        async def choose_personality(interaction, selected_preset=preset):
+            await handle_personality_button_interaction(
+                interaction,
+                selected_preset,
+                database,
+                view_factory=refreshed_view,
+                allowed_mentions=allowed_mentions,
+                logger=logger,
+            )
+
+        button.callback = choose_personality
+        view.add_item(button)
+    return view
+
+
+async def handle_personality_button_interaction(
+    interaction,
+    preset,
+    database,
+    *,
+    view_factory,
+    allowed_mentions=None,
+    logger=LOGGER,
+):
+    """Apply a button choice after rechecking the live Discord owner."""
+    guild = getattr(interaction, "guild", None)
+    guild_id = str(getattr(interaction, "guild_id", "") or "")
+    author_id = str(getattr(getattr(interaction, "user", None), "id", "") or "")
+    owner_id = str(getattr(guild, "owner_id", "") or "")
+    send_options = {"allowed_mentions": allowed_mentions} if allowed_mentions is not None else {}
+
+    if preset not in PERSONALITY_PRESETS:
+        await interaction.response.send_message(
+            "Choose Friendly, Direct, Sarcastic, Professional, or Enthusiastic.",
+            ephemeral=True,
+            **send_options,
+        )
+        return BotReply(
+            "Choose Friendly, Direct, Sarcastic, Professional, or Enthusiastic.",
+            "trog_personality_invalid_preset",
+        )
+    if not guild_id:
+        reply = BotReply(
+            "Trog's personality can only be managed inside a Discord server.",
+            "trog_personality_guild_required",
+        )
+        await interaction.response.send_message(reply.text, ephemeral=True, **send_options)
+        return reply
+    if not owner_id or owner_id != author_id:
+        reply = BotReply(
+            "Only the Discord server owner can change my personality. Ask the owner if "
+            "you'd like me to change it; you can still ask me to preview any option.",
+            "trog_personality_denied",
+        )
+        await interaction.response.send_message(reply.text, ephemeral=True, **send_options)
+        return reply
+
+    try:
+        with database.connect() as conn:
+            updated = update_guild_personality(conn, guild_id, preset, author_id)
+        if not updated:
+            reply = BotReply(
+                "This Discord server does not have an active Troglodyte Works installation.",
+                "trog_personality_installation_missing",
+            )
+            await interaction.response.send_message(reply.text, ephemeral=True, **send_options)
+            return reply
+        reply = BotReply(
+            personality_selection_text(preset, can_change=True, changed=True),
+            "trog_personality_updated",
+        )
+        await interaction.response.edit_message(
+            content=reply.text,
+            view=view_factory(preset),
+        )
+        logger.info(
+            "Trog personality button applied guild_id=%s author_id=%s preset=%s",
+            guild_id,
+            author_id,
+            preset,
+        )
+        return reply
+    except Exception:
+        logger.exception(
+            "Trog personality button failed guild_id=%s author_id=%s preset=%s",
+            guild_id,
+            author_id,
+            preset,
+        )
+        reply = BotReply(
+            "I could not update my personality right now. Please try again shortly.",
+            "trog_personality_unavailable",
+        )
+        await interaction.response.send_message(reply.text, ephemeral=True, **send_options)
+        return reply
+
+
 def personality_message_reply(
     conn,
     guild_id: str,
@@ -985,22 +1173,11 @@ def personality_message_reply(
             "trog_personality_installation_missing",
         )
     if action == "list":
-        options = "\n".join(
-            f"- **{PERSONALITY_LABELS[value]}** — {PERSONALITY_DESCRIPTIONS[value]}"
-            for value in PERSONALITY_PRESETS
-        )
-        if discord_owner_id and discord_owner_id == discord_user_id:
-            guidance = (
-                "Tell me which one to use—for example, **@Trog use Enthusiastic**."
-            )
-        else:
-            guidance = (
-                "Ask the Discord server owner if you'd like me to change my personality. "
-                "You can still ask me to preview any option."
-            )
         return BotReply(
-            f"I'm currently using **{PERSONALITY_LABELS[current]}**. "
-            f"Here are the personalities I can use:\n{options}\n\n{guidance}",
+            personality_selection_text(
+                current,
+                can_change=bool(discord_owner_id and discord_owner_id == discord_user_id),
+            ),
             "trog_personality_listed",
         )
     if action == "show":
