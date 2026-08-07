@@ -17,8 +17,10 @@ from twe.discord_bot.personality import (
     personality_preview,
 )
 from twe.discord_bot.service import (
+    build_personality_selection_view,
     capability_help_reply,
     handle_message,
+    handle_personality_button_interaction,
     handle_personality_interaction,
 )
 
@@ -160,6 +162,33 @@ class TrogPersonalityInteractionTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("live settings", message.channel.sent[0])
 
     @patch("twe.discord_bot.service.personality_for_guild", return_value="friendly")
+    async def test_conversational_list_includes_the_personality_button_card(
+        self, _personality_mock,
+    ):
+        message = FakeMessage(
+            "<@999> personality change",
+            self.author,
+            FakeGuild(222, owner_id=111),
+            FakeChannel(333),
+            [self.bot],
+        )
+
+        handled = await handle_message(
+            message,
+            self.bot,
+            FakeDatabase(),
+            self.config,
+            {},
+            personality_view_factory=lambda current: f"personality-card:{current}",
+        )
+
+        self.assertTrue(handled)
+        self.assertEqual(
+            message.channel.sent_options[0]["view"],
+            "personality-card:friendly",
+        )
+
+    @patch("twe.discord_bot.service.personality_for_guild", return_value="friendly")
     async def test_conversational_list_tells_non_owner_to_ask_owner(
         self, _personality_mock,
     ):
@@ -272,6 +301,58 @@ class TrogPersonalityInteractionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("**Sarcastic**", reply.text)
         self.assertTrue(interaction.events[-1][2])
 
+    def test_personality_card_has_five_persistent_buttons_and_marks_current(self):
+        view = build_personality_selection_view(
+            FakeDiscord,
+            FakeDatabase(),
+            current="direct",
+        )
+
+        self.assertIsNone(view.timeout)
+        self.assertEqual(
+            [button.custom_id for button in view.children],
+            [f"trog:personality:{preset}" for preset in PERSONALITY_PRESETS],
+        )
+        current = next(button for button in view.children if button.label == "Direct")
+        self.assertTrue(current.disabled)
+        self.assertEqual(current.style, FakeDiscord.ButtonStyle.success)
+        self.assertTrue(all(callable(button.callback) for button in view.children))
+
+    @patch("twe.discord_bot.service.update_guild_personality")
+    async def test_owner_button_click_updates_public_card(self, update_mock):
+        update_mock.return_value = {"personality_preset": "enthusiastic"}
+        interaction = FakeInteraction(user_id=111, owner_id=111)
+
+        reply = await handle_personality_button_interaction(
+            interaction,
+            "enthusiastic",
+            FakeDatabase(),
+            view_factory=lambda current: f"personality-card:{current}",
+        )
+
+        self.assertEqual(reply.code, "trog_personality_updated")
+        self.assertIn("now using **Enthusiastic**", reply.text)
+        self.assertEqual(interaction.events[-1][0], "edit_message")
+        self.assertEqual(interaction.events[-1][2], "personality-card:enthusiastic")
+        update_mock.assert_called_once_with(ANY, "222", "enthusiastic", "111")
+
+    @patch("twe.discord_bot.service.update_guild_personality")
+    async def test_non_owner_button_click_gets_private_owner_guidance(self, update_mock):
+        interaction = FakeInteraction(user_id=444, owner_id=111)
+
+        reply = await handle_personality_button_interaction(
+            interaction,
+            "sarcastic",
+            FakeDatabase(),
+            view_factory=lambda current: f"personality-card:{current}",
+        )
+
+        self.assertEqual(reply.code, "trog_personality_denied")
+        self.assertIn("Ask the owner", reply.text)
+        self.assertEqual(interaction.events[-1][0], "response")
+        self.assertTrue(interaction.events[-1][2])
+        update_mock.assert_not_called()
+
 
 class FakeUser:
     def __init__(self, user_id):
@@ -289,9 +370,11 @@ class FakeChannel:
     def __init__(self, channel_id):
         self.id = channel_id
         self.sent = []
+        self.sent_options = []
 
-    async def send(self, text, **_options):
+    async def send(self, text, **options):
         self.sent.append(text)
+        self.sent_options.append(options)
 
 
 class FakeMessage:
@@ -310,6 +393,12 @@ class FakeResponse:
 
     async def defer(self, *, thinking, ephemeral):
         self.events.append(("defer", thinking, ephemeral))
+
+    async def send_message(self, text, *, ephemeral, allowed_mentions=None):
+        self.events.append(("response", text, ephemeral, allowed_mentions))
+
+    async def edit_message(self, *, content, view):
+        self.events.append(("edit_message", content, view))
 
 
 class FakeFollowup:
@@ -342,6 +431,29 @@ class FakeConnection:
 class FakeDatabase:
     def connect(self):
         return FakeConnection()
+
+
+class FakeButton:
+    def __init__(self, *, label, style, custom_id, disabled):
+        self.label = label
+        self.style = style
+        self.custom_id = custom_id
+        self.disabled = disabled
+        self.callback = None
+
+
+class FakeView:
+    def __init__(self, *, timeout):
+        self.timeout = timeout
+        self.children = []
+
+    def add_item(self, item):
+        self.children.append(item)
+
+
+class FakeDiscord:
+    ui = SimpleNamespace(View=FakeView, Button=FakeButton)
+    ButtonStyle = SimpleNamespace(success="success", secondary="secondary")
 
 
 if __name__ == "__main__":
