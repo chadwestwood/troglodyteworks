@@ -34,6 +34,11 @@ curated rotating replies without OpenAI, knowledge retrieval, provider calls,
 or Server Operations. The voice does not rewrite factual or operational
 results. See `trog-personality.md`.
 
+Conversational personality-list requests include five native Discord buttons.
+The active choice is marked, button identifiers persist across worker restarts,
+and every click rechecks the live guild owner. Unauthorized clicks receive a
+private owner-guidance response and do not change installation state.
+
 Discord command visibility never grants authority. The backend resolves the guild, channel policy, immutable Discord user ID, TWE identity link, Community Membership, and Capability Grant for every administrative request.
 
 The production Nitrado adapter supports two bounded write workflows:

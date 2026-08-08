@@ -60,10 +60,13 @@ not call a provider, OpenAI, MCP, RAG, or a Server Operation. A message that
 also asks a World question is not consumed as small talk.
 
 The active voice is Friendly, Direct, Sarcastic, Professional, or Enthusiastic.
-The live Discord guild owner can manage it through `/trog personality`; other
-members may privately show or preview the choices. Personality never grants a
-capability or alters the deterministic response body for verified facts and
-operations.
+Asking Trog which personalities it has, or asking to change without naming a
+choice, displays those five choices as a native Discord button card, with the
+active choice marked. The live Discord guild owner can use the card,
+conversational requests, or `/trog personality`; other members may show or
+preview the choices and receive private owner guidance if they click a change
+button. Personality never grants a capability or alters the deterministic
+response body for verified facts and operations.
 
 For external provider-owned access, replies identify the provider-owned instance:
 

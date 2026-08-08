@@ -71,6 +71,14 @@ verified from the Discord guild and immutable user ID at request time, may set
 or reset it. A cached browser permission, Discord role, TWE entitlement, or
 model output cannot authorize the change.
 
+The conversational list reply also displays one native Discord button for each
+of the five choices. The active choice is visibly selected and cannot be clicked
+again. A button click rechecks the live guild owner before writing anything:
+the owner updates the shared card, while a non-owner receives private guidance
+to ask the owner. The readable choice list and natural-language change forms
+remain available as fallbacks. Stable component identifiers and a persistent
+view registration keep previously posted cards usable after a Trog restart.
+
 V1 does not delegate personality management. Delegation requires a reviewed
 installation-scoped capability design; it must not reuse a World operation
 grant or create an informal Discord-role bypass.
