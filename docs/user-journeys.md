@@ -335,6 +335,35 @@ The product must remain excellent without them.
 
 ---
 
+# Journey 8: Connect A World I Play In
+
+## Starting Point
+
+A Community Member wants Trog to know whether they are playing on a Minecraft
+World that someone else hosts.
+
+## First Question
+
+What do you call this World?
+
+## Goal
+
+Pair the Member's Trog Client and, only if they choose, share narrow gameplay
+presence through a Discord server where Trog is already installed.
+
+## Success State
+
+Trog can accurately say whether the Member's client currently observes that
+World without implying that the Member hosts it or that Trog can manage it.
+
+## Design Notes
+
+Ask for the pairing code only in the local mod configuration. Keep the server
+address local. Explain consent and the non-authoritative boundary before Discord
+sharing is enabled.
+
+---
+
 # Journey Design Rules
 
 Every Journey should:

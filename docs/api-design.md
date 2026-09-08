@@ -222,6 +222,31 @@ GET  /api/v1/discord/installations
 
 `GET /discord/managed-guilds` exposes only unexpired server-side verification snapshots created during Discord account linking or refresh. Guild verification and installation remain separate OAuth redirect flows: the callback obtains the immutable Discord user and managed-guild permissions directly from Discord and re-verifies the selected guild. Bot installation is persisted only after the bot API confirms Trog is present in that guild. Direct browser endpoints for asserting Discord identity, permissions, or installation do not exist.
 
+## Player-Owned Minecraft Connections
+
+```text
+POST   /api/v1/communities/{community_id}/player-world-connections
+GET    /api/v1/communities/{community_id}/player-world-connections
+POST   /api/v1/player-world-connections/{id}/pairing-token
+DELETE /api/v1/player-world-connections/{id}
+GET    /api/v1/player-world-connections/{id}/discord-bindings
+POST   /api/v1/player-world-connections/{id}/discord-bindings
+DELETE /api/v1/player-world-connections/{id}/discord-bindings/{binding_id}
+POST   /api/v1/minecraft-client/pair
+POST   /api/v1/minecraft-client/events
+```
+
+The browser routes require a TWE session; state-changing browser requests also
+require `X-TWE-CSRF: 1`. Pairing consumes a one-time code and returns a revocable
+device credential once. Event ingestion accepts that device bearer credential,
+bounded batches, and only the documented presence event and metadata allowlist.
+The API never accepts raw logs, chat, coordinates, or a server address.
+
+Creating a connection proves only that a Community Member chose to report their
+own client presence. Discord binding requires current verified administrator
+authority and an existing Trog installation in the same Community. Neither path
+creates hosting, provider, Game Instance, or Server Operation authority.
+
 ---
 
 ## Platform Admin

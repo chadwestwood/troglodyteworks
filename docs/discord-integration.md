@@ -22,6 +22,7 @@ Structured commands provide the durable command surface:
 - `/server status`
 - `/server players`
 - `/server restart`
+- `/minecraft presence`
 - `/trog personality show`
 - `/trog personality preview <preset>`
 - `/trog personality set <preset>`
@@ -41,6 +42,12 @@ private owner-guidance response and do not change installation state.
 
 Discord command visibility never grants authority. The backend resolves the guild, channel policy, immutable Discord user ID, TWE identity link, Community Membership, and Capability Grant for every administrative request.
 
+`/minecraft presence` and matching direct mentions use a separate player-owned
+observation path. They may report only active connections whose owners enabled
+sharing to that verified installation. Replies explicitly identify Trog Client
+as the source and never claim authoritative Minecraft server status, hosting
+ownership, or management access.
+
 The production Nitrado adapter supports two bounded write workflows:
 `instance.restart.execute` and authorized ASA mod addition. Each operation is
 locked to the exact World resolved from the Discord grant, follows the Server
@@ -51,6 +58,12 @@ provider mutations remain unavailable.
 ## Persistence and authorization
 
 `discord_guild_installations` connects an immutable Discord guild ID to Trog and stores its constrained `personality_preset`. For provider-owned external access, `discord_instance_access_grants` is the authority: it connects one Discord installation to one provider Community, one provider-owned Game Server, one exact Game Instance, and a provider-approved read capability allowlist. `user_external_identities(provider='discord')` is the provider-neutral authentication link for a TWE User. `discord_identities` stores the immutable Discord user ID for Discord/Trog authorization and is synchronized from Discord OAuth login/linking. `discord_channel_policies` enables or disables `read` or `administrative` capabilities in a channel.
+
+`discord_player_world_bindings` is parallel, narrower consent for a Member's
+client-observed presence. It requires the same Community on the connection and
+installation, connection-owner consent, an unexpired Discord authority
+verification for that owner, and existing verified Trog installation. It does
+not modify or substitute for an Instance Access Grant.
 
 Any member can privately show or preview Trog's voice. Only the live Discord
 guild owner identified by the command interaction may set or reset it in v1.

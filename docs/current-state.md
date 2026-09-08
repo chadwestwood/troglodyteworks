@@ -1,6 +1,6 @@
 # Troglodyte Works Current State
 
-**Last updated:** 2026-08-03
+**Last updated:** 2026-09-08
 
 **Status:** Current production baseline
 
@@ -72,6 +72,12 @@ See `docs/production-architecture.md` for boundaries and request flow.
   configuration and beta gates.
 - The outbound-only self-hosted Host Agent foundation reports bounded,
   normalized status, player, and mod information.
+- A Community Member can pair the outbound-only Trog Client Fabric mod to a
+  player-owned Minecraft connection. TWE accepts only allowlisted presence
+  events and never receives raw logs, chat, coordinates, or the server address.
+  The Member may share that non-authoritative presence with an existing,
+  verified Trog Discord installation; `/minecraft presence` and supported
+  mentions identify the observation as client-reported, not server status.
 - Nitrado rate limits, outages, and credential failures use stable secret-free API errors rather than generic application failures.
 - Sensitive public writes use a hashed-identifier, database-backed limiter shared by Railway replicas.
 - Trog natural-language requests require a direct mention and are burst-limited per Discord user and guild.
@@ -103,6 +109,8 @@ See `docs/production-architecture.md` for boundaries and request flow.
   not enable model responses.
 - Paid managed-Minecraft resource creation remains platform-configuration and
   beta gated.
+- Player-owned Minecraft connections provide presence only. They grant no
+  hosting rights, server access, provider capability, or Server Operation.
 - Local `local_asa` documentation describes a superseded Genesis deployment and is not the production provider path.
 - Provider credentials must be revocable, encrypted at rest, and never returned to the browser after storage.
 - Linear remains the work-planning system of record but is updated only when explicitly requested.

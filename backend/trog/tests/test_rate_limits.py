@@ -21,6 +21,14 @@ class RequestRateLimitTests(unittest.TestCase):
             rule_for_request("DELETE", "/api/v1/hosting-connections/abc").scope,
             "hosting.connections.ip",
         )
+        self.assertEqual(
+            rule_for_request("POST", "/api/v1/minecraft-client/pair").scope,
+            "minecraft.pair.ip",
+        )
+        self.assertEqual(
+            rule_for_request("POST", "/api/v1/minecraft-client/events").scope,
+            "minecraft.events.ip",
+        )
         self.assertIsNone(rule_for_request("GET", "/api/v1/communities"))
 
     @patch("twe.rate_limits.execute")

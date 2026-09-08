@@ -46,6 +46,20 @@ Discord Guild Installation
 
 Discord installation, Discord identity, Community Membership, provider approval, and capability grants are separate authorities. A Discord role or browser-supplied identifier is not sufficient authority.
 
+## Player-owned observation boundary
+
+```text
+Community Member
+  -> Player World Connection
+       -> paired Trog Client device
+       -> allowlisted presence events
+       -> optional Discord Player World Binding
+```
+
+A Player World Connection describes only what that Member's client observes. It
+does not create a Game Server or Game Instance, claim ownership of the host, or
+grant a provider or Server Operation capability.
+
 ## Operations
 
 Server Operations record requested capabilities, authorization, execution,
