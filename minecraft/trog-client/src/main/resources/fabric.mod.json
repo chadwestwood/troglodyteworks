@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "trog-client",
+	"version": "${version}",
+	"name": "Trog Client",
+	"description": "Connects your own Minecraft play session to Trog using a private, read-only event feed.",
+	"authors": [
+		"Troglodyte Works"
+	],
+	"contact": {
+		"homepage": "https://troglodyteworks.com/"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/trog-client/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.troglodyteworks.trogclient.client.TrogClientClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

@@ -204,6 +204,38 @@ Authority sources are `owner`, `administrator`, and `manage_guild`. Discord acco
 ### Discord Installation OAuth State
 
 Stores one-time, expiring state for guild verification or bot installation. The state is bound to the authenticated TWE User, Instance Access Grant, purpose, PKCE verifier, and selected immutable Discord guild ID. It is consumed before an authorization result is applied and cannot be reused.
+
+### Player World Connection
+
+Represents one Community Member's non-authoritative observation of a Minecraft
+World they play in. It is deliberately separate from Game Server, Game Instance,
+Provider Connection, and Server Operation.
+
+Fields: `id`, `community_id`, `owner_user_id`, `display_name`, `game_type`,
+`source_kind`, `status`, `discord_sharing_enabled`, `last_seen_at`, timestamps,
+and `revoked_at`. Statuses are `unpaired`, `offline`, `ready`, `in_world`, and
+`revoked`.
+
+`player_world_pairing_tokens` stores only a single-use token hash and expiry.
+`player_world_devices` stores the hashed revocable device credential and safe
+client version metadata. `player_world_events` stores idempotent, allowlisted
+presence events. Event payloads may contain only a Member-selected World label,
+a one-way server fingerprint, and connection kind; raw logs, chat, coordinates,
+credentials, and server addresses are prohibited.
+
+### Discord Player World Binding
+
+Connects one player-owned World connection to one existing Trog Discord
+installation in the same Community. The connection owner must have current
+verified Discord administration authority. The binding grants only permission
+to answer client-observed presence questions and remains subject to Discord
+read-channel policy. It does not alter the installation's hosted-World access
+grant or create Minecraft server authority.
+
+Fields: `id`, `discord_guild_installation_id`,
+`player_world_connection_id`, `community_id`, `authorized_by_user_id`, `status`,
+timestamps, and `revoked_at`.
+
 ### Provider Connection and Provider Resource
 
 A Provider Connection represents one Community-owned relationship with a hosting

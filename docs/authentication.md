@@ -205,3 +205,18 @@ Community role and refuses the request before membership insertion when that rol
 cannot grant the invitation's target role.
 
 Accepting an invitation creates only Community Membership. It does not grant Game Instance access, Discord installation approval, Server Operations, restart, save, mods, or ownership.
+
+# Player-Owned World Connection Authorization
+
+Any current Community Member may create a connection representing a Minecraft
+World they personally play in. The connection remains owned by that TWE User
+and does not establish that the User owns, hosts, or administers the Minecraft
+server.
+
+Browser mutations require the authenticated TWE session and CSRF header. Pairing
+codes are single-use, expire after fifteen minutes, and are stored only as
+hashes. The exchanged device credential is also stored only as a hash and is
+revocable. Discord sharing additionally requires current server-side proof that
+the same TWE User administers the destination Discord guild and that Trog is
+installed there for the same Community. These checks grant presence sharing
+only; no provider or Server Operation capability is inferred.

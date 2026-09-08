@@ -161,6 +161,14 @@ Examples:
 - Palworld world
 - Rust server
 
+### Player World Connection
+
+A Member-owned connection representing a World that Member plays in but does
+not necessarily own, host, or administer. Its initial source is the outbound-only
+Trog Client Fabric mod, and its facts are client-observed rather than
+authoritative server state. It grants no Game Server, provider, or Server
+Operation authority.
+
 ### Instance Type
 
 The game-specific category of a game instance.

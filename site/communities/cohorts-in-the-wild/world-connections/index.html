@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>World Connections | Troglodyte Works</title>
+  <link rel="stylesheet" href="/css/style.css?v=layout-tightening-v5">
+</head>
+
+<body class="app-page" data-page="player-world-connections">
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/communities/"><span class="brand-mark">TW</span><span>Troglodyte Works</span></a>
+      <nav class="header-actions" aria-label="User navigation">
+        <a class="header-link" href="/communities/">Operations</a>
+        <a class="header-link" data-community-members-link href="#">Members</a>
+        <a class="header-link" data-community-link href="#">Community</a>
+        <a class="header-link" href="/account/">Settings</a>
+        <button class="text-button" type="button" data-sign-out>Sign out</button>
+      </nav>
+    </header>
+    <nav class="breadcrumbs">Home &gt; <a data-community-link href="#"><span data-community-name>Community</span></a> &gt; World Connections</nav>
+
+    <main class="app-grid">
+      <section class="app-panel">
+        <p class="eyebrow">Player-owned connection</p>
+        <h1>Connect a world you play in</h1>
+        <p class="muted">This connects your own Minecraft session to Trog. It does not claim that you host or
+          administer the world, and it cannot control the Minecraft server.</p>
+        <p class="muted">Community: <strong data-community-name>Cohorts in the Wild</strong></p>
+        <p class="form-error" data-error role="alert" hidden></p>
+        <p class="status-line" data-status role="status" aria-live="polite" hidden></p>
+      </section>
+
+      <section class="app-panel">
+        <div>
+          <p class="eyebrow">First connection</p>
+          <h2>Add your Minecraft world</h2>
+          <p class="muted">Trog will know only whether your paired client is connected to this chosen world. Raw
+            logs, chat, coordinates, and the server address are not uploaded.</p>
+        </div>
+        <form class="content-stack" data-connection-form>
+          <label>
+            What do you call this world?
+            <input name="display_name" data-display-name required maxlength="120" value="Minecraft City"
+              autocomplete="off">
+          </label>
+          <div class="button-row">
+            <button class="primary-button" type="submit" data-create-button>Create my connection</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="app-panel" data-pairing-panel hidden>
+        <div>
+          <p class="eyebrow">Shown once</p>
+          <h2>Pair Trog Client</h2>
+          <p class="muted">This code expires in 15 minutes. Paste it into <code>pairingToken</code> in your local
+            <code>config/trog-client.json</code>. The server address belongs only in that local file.</p>
+        </div>
+        <div class="resource-row">
+          <span><strong>Pairing code</strong><small data-pairing-expiry></small></span>
+          <code data-pairing-token></code>
+        </div>
+        <div class="button-row">
+          <button class="primary-button secondary" type="button" data-copy-token>Copy pairing code</button>
+        </div>
+      </section>
+
+      <section class="app-panel" data-discord-panel hidden>
+        <div>
+          <p class="eyebrow">Two-sided approval</p>
+          <h2>Allow Trog to answer in Discord</h2>
+          <p class="muted">You are approving your own gameplay feed. The destination is limited to Discord servers
+            where Trog is already installed for this Community and Discord currently verifies you as an
+            administrator.</p>
+        </div>
+        <div class="content-stack">
+          <label>
+            Discord server
+            <select data-discord-guild></select>
+          </label>
+          <div class="button-row">
+            <button class="primary-button" type="button" data-enable-discord>Enable presence questions</button>
+          </div>
+        </div>
+        <div class="resource-list" data-discord-bindings></div>
+      </section>
+
+      <section class="app-panel">
+        <div>
+          <p class="eyebrow">Community connections</p>
+          <h2>Worlds members play in</h2>
+          <p class="muted">Presence is observational and belongs to the named member. Discord sharing remains off
+            until both the connection owner and a Discord administrator approve it.</p>
+        </div>
+        <div class="resource-list" data-connections-list></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/js/navigation.js?v=responsive-layout-v2" defer></script>
+  <script src="/js/twe-api.js?v=site-admin-v2"></script>
+  <script src="/js/player-world-connections.js?v=poc-v1"></script>
+</body>
+
+</html>

@@ -546,6 +546,10 @@ async function initCommunity() {
   const basePath = communityPath(communityData.community);
   document.querySelector("[data-members-link]").href = `${basePath}invitations/`;
   document.querySelector("[data-community-admin]").href = `${basePath}hosting/`;
+  const worldConnectionsLink = document.querySelector("[data-community-world-connections]");
+  if (worldConnectionsLink) {
+    worldConnectionsLink.href = `${basePath}world-connections/`;
+  }
   const trogLink = document.querySelector("[data-community-trog]");
   if (trogLink) {
     const first = (instancesData.instances || [])[0];

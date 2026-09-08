@@ -18,6 +18,8 @@ class RateLimitRule:
 SENSITIVE_RULES = {
     ("POST", "/api/v1/auth/login"): RateLimitRule("auth.login.ip", 30, 15 * 60),
     ("POST", "/api/v1/auth/register"): RateLimitRule("auth.register.ip", 10, 60 * 60),
+    ("POST", "/api/v1/minecraft-client/pair"): RateLimitRule("minecraft.pair.ip", 30, 15 * 60),
+    ("POST", "/api/v1/minecraft-client/events"): RateLimitRule("minecraft.events.ip", 300, 60),
 }
 
 

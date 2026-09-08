@@ -29,6 +29,7 @@ from .routes.instances import instances_bp
 from .routes.operations import operations_bp
 from .routes.managed_hosting import managed_hosting_bp
 from .routes.mcp_access import mcp_access_bp
+from .routes.player_world_connections import player_world_connections_bp
 from .services.provider_registry import build_provider_registry
 from .services.runtime_heartbeat import runtime_heartbeat_response
 
@@ -58,6 +59,7 @@ def create_app(config=None, database=None, provider_registry=None):
     app.register_blueprint(operations_bp, url_prefix="/api/v1")
     app.register_blueprint(managed_hosting_bp, url_prefix="/api/v1")
     app.register_blueprint(mcp_access_bp, url_prefix="/api/v1")
+    app.register_blueprint(player_world_connections_bp, url_prefix="/api/v1")
 
     site_root = Path(__file__).resolve().parents[3] / "site"
 
@@ -139,6 +141,10 @@ def create_app(config=None, database=None, provider_registry=None):
     @app.get("/communities/<community_slug>/invitations/")
     def community_invitations_page(community_slug):
         return send_from_directory(site_root, "communities/cohorts-in-the-wild/invitations/index.html")
+
+    @app.get("/communities/<community_slug>/world-connections/")
+    def community_world_connections_page(community_slug):
+        return send_from_directory(site_root, "communities/cohorts-in-the-wild/world-connections/index.html")
 
     @app.get("/communities/<community_slug>/game-servers/<game_slug>/")
     def community_game_server_page(community_slug, game_slug):

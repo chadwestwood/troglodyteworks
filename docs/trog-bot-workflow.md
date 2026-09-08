@@ -51,6 +51,7 @@ Examples:
 @Trog are you there?
 @Trog how are you today?
 @Trog where does your name come from?
+@Trog is Chad playing Minecraft City?
 ```
 
 Presence, wellbeing, name-origin, identity, greeting, thanks, farewell, and
@@ -121,3 +122,14 @@ RCON row numbers, immutable platform account IDs, and Nitrado service identifier
 must be removed before composing a Discord reply.
 
 Discord account linking is handled through the provider-neutral external identity model. A User who signed up with Google or local credentials must connect Discord to the same TWE User before Discord guild authority can be verified. Linking Discord only proves the Discord user identity; Community Membership, provider approval, Instance Access Grants, and capability allowlists remain separate authorization steps.
+
+## Player-observed Minecraft presence
+
+A Community Member may pair Trog Client to a named Minecraft World they play in
+without claiming ownership or administrative access. The client sends only
+allowlisted start, stop, join, leave, and heartbeat events. Trog may answer a
+matching direct mention or `/minecraft presence` only after the connection owner
+enables sharing to an existing verified Trog installation. The answer always
+states that it is observed by the Member's client rather than by the Minecraft
+server. This path cannot authorize restart, settings, mods, files, console, or
+any other Server Operation.

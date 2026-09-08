@@ -140,6 +140,13 @@ Examples:
 
 Services may be free or subscription-based.
 
+# Player World Connection
+
+A Member-owned, non-authoritative observation of a Minecraft World the Member
+plays in. It belongs to the Member within one Community and may be shared with
+an existing Trog Discord installation by explicit consent. It is not a hosted
+Server, does not imply ownership of the World, and grants no management Tool.
+
 ---
 
 # Guide

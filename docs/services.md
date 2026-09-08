@@ -123,7 +123,12 @@ The bot must use deterministic intent matching.
 
 The bot must not require AI to answer these first questions.
 
-Guild installation, immutable Discord identity, identity linking, instance access grants, capability allowlists, and channel policy are persisted in PostgreSQL. Provider-neutral authentication links live in `user_external_identities`; Discord-specific Trog authorization metadata remains in `discord_identities`. Public reads remain available without identity linking only after a provider-approved active grant exists for the exact instance. Administrative capabilities require server-side TWE membership and capability authorization. Restart authorization is implemented, but execution remains disabled and no destructive action is called.
+Guild installation, immutable Discord identity, identity linking, instance access grants, capability allowlists, and channel policy are persisted in PostgreSQL. Provider-neutral authentication links live in `user_external_identities`; Discord-specific Trog authorization metadata remains in `discord_identities`. Public reads remain available without identity linking only after a provider-approved active grant exists for the exact instance. Administrative capabilities require server-side TWE membership and capability authorization. The reviewed Nitrado restart and ASA mod-add workflows are implemented; other provider mutations remain disabled.
+
+Player-owned Minecraft presence is a separate implemented service. A Community
+Member pairs the outbound-only Trog Client mod and may share its narrow presence
+feed with an existing verified Trog Discord installation. This does not create a
+hosted service, Game Instance, provider connection, or management authority.
 
 The Mattertrala-to-LizzLive onboarding path lets a linked Discord administrator request access to a Cohorts-owned Genesis instance, prove Discord guild authority through Discord OAuth, install Trog into a fixed guild, wait for Cohorts provider approval, and activate read-only responses in selected channels. TWE retrieves managed-guild permissions directly from Discord and confirms bot membership through the bot API; it does not trust browser-asserted IDs, permissions, names, or installation state. LizzLive consumes approved capabilities; it does not own Genesis.
 

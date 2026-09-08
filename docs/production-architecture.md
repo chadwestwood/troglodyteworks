@@ -21,6 +21,10 @@ Discord Gateway
        -> Railway PostgreSQL
        -> approved provider adapters
 
+Trog Client Fabric mod
+  -> outbound HTTPS pairing and allowlisted presence events
+  -> Railway web service
+
 GitHub
   -> Railway build and deployment
 ```
@@ -37,7 +41,7 @@ The worker maintains the Discord Gateway connection and handles supported mentio
 
 ### PostgreSQL
 
-Railway PostgreSQL is the authoritative production database for Users, external identities, Communities, Memberships, Game Servers, Game Instances, provider connections and resources, Discord installation/access grants, sessions, operations, and audit records.
+Railway PostgreSQL is the authoritative production database for Users, external identities, Communities, Memberships, Game Servers, Game Instances, player-owned World connections and device events, provider connections and resources, Discord installation/access grants and player-sharing bindings, sessions, operations, and audit records.
 
 ### Cloudflare
 
@@ -73,6 +77,8 @@ verification procedures rather than being faked by the public smoke command.
 - Discord identity, installation, Community Membership, capability grant, and provider approval are separate authorities.
 - Browser input never proves Discord ownership, installation, or provider state.
 - Read access must be authorized before tenant-specific reconciliation or provider calls.
+- A player-owned connection is non-authoritative client observation. It cannot
+  confer hosting, provider, World-management, or Server Operation authority.
 - Provider writes are denied by default. The reviewed Nitrado restart and ASA
   mod-add paths require exact World resolution, delegated capability, audit,
   verification, and provider-owner boundaries. Other disruptive operations

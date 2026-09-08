@@ -152,6 +152,7 @@ def main():
         )
 
     server_group = discord.app_commands.Group(name="server", description="Inspect or administer the connected game server")
+    minecraft_group = discord.app_commands.Group(name="minecraft", description="Inspect approved player-observed Minecraft presence")
 
     @server_group.command(name="status", description="Show the connected server status")
     async def server_status(interaction):
@@ -284,6 +285,16 @@ def main():
 
     trog_group.add_command(personality_group)
     tree.add_command(trog_group)
+
+    @minecraft_group.command(name="presence", description="Show approved Trog Client presence")
+    async def minecraft_presence(interaction):
+        await handle_interaction(
+            interaction, "player_world_presence", database, config, guild_map,
+            allowed_mentions=allowed_mentions,
+            request_limiter=request_limiter,
+        )
+
+    tree.add_command(minecraft_group)
 
     @client.event
     async def on_ready():

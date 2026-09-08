@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from collections.abc import Mapping
+from datetime import datetime, timedelta, timezone
 import re
 
 from ..config import Config
@@ -39,7 +40,8 @@ class BotReply:
 HELP_REPLY = BotReply(
     "I'm Trog, your Troglodyte Works guide. Once this Discord server is connected to a "
     "World, I can help check its status, players, mods, and verified settings. I can also "
-    "help with approved changes when you have permission.\n\n"
+    "help with approved changes when you have permission. For approved player connections, "
+    "I can also say whether someone is playing their Minecraft World.\n\n"
     "Just mention me and ask in your own words.",
     "server_help",
 )
@@ -130,6 +132,10 @@ def classify_intent(message: str) -> str | None:
         return "mod_add"
     if re.search(r"\brestart\b", normalized):
         return "server_restart"
+    if re.search(r"\bminecraft(?:\s+city)?\b", normalized) and re.search(
+        r"\b(playing|presence|connected|online|status|on)\b", normalized
+    ):
+        return "player_world_presence"
     if re.search(r"\bmap\s+settings\b", normalized):
         return "server_settings"
     if re.search(r"\bmod(?:'s|s)?\b", normalized) and re.search(
@@ -372,6 +378,8 @@ def respond_to_request(intent: str, guild_id: str, channel_id: str, discord_user
                        command_argument: str | None = None, confirmed: bool = False) -> BotReply:
     if intent == "server_help":
         return HELP_REPLY
+    if intent == "player_world_presence":
+        return player_world_presence_reply(conn, guild_id, channel_id)
     if intent == "server_settings":
         replies = [
             respond_to_request(read_intent, guild_id, channel_id, discord_user_id, conn, config, guild_map)
@@ -670,6 +678,73 @@ def _railway_target(conn, context):
         (context.game_server_id,),
     )
     return (rows[0]["id"], rows[0]["provider_instance_id"]) if len(rows) == 1 else (None, None)
+
+
+def player_world_presence_reply(conn, guild_id: str, channel_id: str) -> BotReply:
+    rows = fetch_all(
+        conn,
+        """
+        SELECT installation.id::text AS installation_id,
+               connection.display_name,
+               connection.status,
+               connection.last_seen_at,
+               users.display_name AS owner_display_name
+        FROM discord_player_world_bindings binding
+        JOIN discord_guild_installations installation
+          ON installation.id = binding.discord_guild_installation_id
+         AND installation.community_id = binding.community_id
+        JOIN player_world_connections connection
+          ON connection.id = binding.player_world_connection_id
+         AND connection.community_id = binding.community_id
+        JOIN users ON users.id = connection.owner_user_id
+        WHERE installation.discord_guild_id = %s
+          AND binding.status = 'active'
+          AND connection.discord_sharing_enabled = true
+          AND connection.revoked_at IS NULL
+        ORDER BY lower(connection.display_name), lower(users.display_name)
+        """,
+        (str(guild_id),),
+    )
+    if not rows:
+        return BotReply(
+            "No player has approved a Minecraft presence connection for this Discord server yet.",
+            "player_world_not_connected",
+        )
+    policy = fetch_one(
+        conn,
+        """
+        SELECT enabled
+        FROM discord_channel_policies
+        WHERE discord_guild_installation_id = %s
+          AND discord_channel_id = %s
+          AND capability_category = 'read'
+        """,
+        (rows[0]["installation_id"], str(channel_id)),
+    )
+    if policy is not None and not policy["enabled"]:
+        return BotReply("Trog's read-only replies are disabled in this channel.", "channel_disabled")
+
+    replies = [player_world_status_line(row) for row in rows]
+    return BotReply("\n".join(replies), "player_world_presence")
+
+
+def player_world_status_line(connection, now=None) -> str:
+    now = now or datetime.now(timezone.utc)
+    owner = connection["owner_display_name"]
+    world = connection["display_name"]
+    status = connection["status"]
+    last_seen_at = connection.get("last_seen_at")
+    if status in {"ready", "in_world"} and last_seen_at and last_seen_at < now - timedelta(minutes=3):
+        status = "offline"
+    if status == "in_world":
+        return f"{owner} is currently playing **{world}**, as observed by their Trog Client—not by the Minecraft server."
+    if status == "ready":
+        return f"{owner}'s Trog Client is online, but it does not currently observe them in **{world}**."
+    if status == "unpaired":
+        return f"{owner} has created **{world}**, but has not paired Trog Client yet."
+    if last_seen_at:
+        return f"Trog last heard from {owner}'s client <t:{int(last_seen_at.timestamp())}:R>; it cannot confirm **{world}** server status."
+    return f"{owner}'s Trog Client is offline; Trog cannot confirm **{world}** server status."
 
 
 def _read_reply(

@@ -60,6 +60,10 @@ Connected providers
   -> Nitrado: Cohorts in the Wild / ARK Genesis
   -> Railway: managed Minecraft provisioning foundation
   -> self-hosted: outbound-only Host Agent foundation
+
+Minecraft player client
+  -> outbound HTTPS pairing and allowlisted presence events
+  -> Railway web service
 ```
 
 Important boundaries:
@@ -71,8 +75,8 @@ Important boundaries:
   Trog worker freshness.
 - The worker is not an HTTP service and should not receive an HTTP health check.
 - PostgreSQL is the production authority for identity, Communities,
-  Memberships, Worlds, provider bindings, Discord installations/grants,
-  sessions, operations, audits, and MCP access.
+  Memberships, Worlds, player-owned World observations, provider bindings,
+  Discord installations/grants, sessions, operations, audits, and MCP access.
 - Production is not served from a home network or `10.0.0.103`.
 
 Read `production-architecture.md`, `current-state.md`, and
@@ -106,6 +110,8 @@ Read `production-architecture.md`, `current-state.md`, and
   creation after provider health is confirmed. Paid provisioning remains
   configuration- and beta-gated.
 - Outbound-only self-hosted Host Agent pairing and normalized read-only reports.
+- Member-owned Minecraft client pairing for narrowly scoped, non-authoritative
+  gameplay presence without hosting or server-management rights.
 - Public architecture diagrams at
   `https://troglodyteworks.com/architecture/`.
 
@@ -163,6 +169,8 @@ For provider work, read:
 
 - `/communities/` — My Communities, create, discover, and join entry.
 - `/communities/<community>/` — Community home and World overview.
+- `/communities/<community>/world-connections/` — connect a World the Member
+  plays in without claiming hosting or administrative authority.
 - `/communities/<community>/game-servers/<game>/worlds/<world>/` — canonical
   member-facing World page.
 - The legacy `/instances/<world>/` route serves the same World experience for
